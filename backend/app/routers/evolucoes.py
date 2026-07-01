@@ -12,6 +12,7 @@ from sqlalchemy import select
 from app.deps import SessionDep, get_current_user
 from app.models.audit import AuditLog
 from app.models.evolucao import Evolucao
+from app.models.evolucao_geracao import EvolucaoGeracao
 from app.models.sessao import Sessao
 from app.models.user import User
 from app.schemas.clinico import EvolucaoCreate, EvolucaoOut, EvolucaoUpdate
@@ -129,6 +130,20 @@ async def assinar(
         entidade="Evolucao", entidade_id=str(e.id),
         meta={"hash": e.hash_assinatura},
     ))
+
+    # Retenção "até assinar": se veio de Scribe, purga a entrada bruta cifrada.
+    ger = await session.scalar(
+        select(EvolucaoGeracao).where(EvolucaoGeracao.evolucao_id == e.id)
+    )
+    if ger is not None and ger.entrada_cifrada is not None:
+        ger.entrada_cifrada = None
+        ger.entrada_purgada_em = e.assinado_em
+        session.add(AuditLog(
+            tenant_id=user.tenant_id, user_id=user.id, acao="SCRIBE_ENTRADA_PURGED",
+            entidade="EvolucaoGeracao", entidade_id=str(ger.id),
+            meta={"modo": ger.modo},
+        ))
+
     await session.commit()
     await session.refresh(e)
     return _to_out(e)

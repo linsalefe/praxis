@@ -25,3 +25,16 @@ def decrypt_str(value: bytes | None) -> str | None:
     if value is None:
         return None
     return _fernet().decrypt(bytes(value)).decode("utf-8")
+
+
+def encrypt_bytes(value: bytes | None) -> bytes | None:
+    """AEAD Fernet para blobs binários (PDFs, etc.)."""
+    if value is None:
+        return None
+    return _fernet().encrypt(value)
+
+
+def decrypt_bytes(value: bytes | None) -> bytes | None:
+    if value is None:
+        return None
+    return _fernet().decrypt(bytes(value))

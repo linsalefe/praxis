@@ -4,9 +4,28 @@ import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { CalendarPlus, FileText, Sparkles } from "lucide-react";
+import { CalendarPlus, ClipboardCheck, ClipboardList, Download, FileSignature, FileText, Paperclip, PlusCircle, Sparkles, Wand2 } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
+import { ScribeModal } from "@/components/ScribeModal";
+import { InstrumentoModal } from "@/components/InstrumentoModal";
+import { PrepararSessaoModal } from "@/components/PrepararSessaoModal";
+import { DocumentoModal } from "@/components/DocumentoModal";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
+
+type Anexo = {
+  id: string; titulo: string; mimetype: string; bytes: number;
+  sha256: string; criado_em: string; origem_tipo: string;
+};
+type RespInstr = {
+  id: string; instrumento_tipo: string; instrumento_versao: string;
+  status: string; finalizado_em: string | null; anexo_id: string | null; criado_em: string;
+};
+type DocumentoCFP = {
+  id: string; tipo: string; finalidade: string; status: string;
+  assinado_em: string | null; anexo_pdf_id: string | null; criado_em: string;
+};
 
 type Paciente = {
   id: string; nome: string; contato: string | null;
@@ -23,6 +42,13 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
   const [sessoes, setSessoes] = useState<Sessao[]>([]);
   const [loading, setLoading] = useState(true);
   const [newSes, setNewSes] = useState({ data: "", modalidade: "presencial", status: "agendada" });
+  const [scribeSessao, setScribeSessao] = useState<string | null>(null);
+  const [instrModal, setInstrModal] = useState(false);
+  const [prepModal, setPrepModal] = useState(false);
+  const [docModal, setDocModal] = useState(false);
+  const [respostas, setRespostas] = useState<RespInstr[]>([]);
+  const [anexos, setAnexos] = useState<Anexo[]>([]);
+  const [documentos, setDocumentos] = useState<DocumentoCFP[]>([]);
 
   useEffect(() => {
     if (!getToken()) return void router.replace("/login");
@@ -30,6 +56,9 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
       try {
         setPac(await api<Paciente>(`/pacientes/${id}`));
         setSessoes(await api<Sessao[]>(`/sessoes/paciente/${id}`));
+        setRespostas(await api<RespInstr[]>(`/pacientes/${id}/respostas-instrumento`));
+        setAnexos(await api<Anexo[]>(`/pacientes/${id}/anexos`));
+        setDocumentos(await api<DocumentoCFP[]>(`/pacientes/${id}/documentos`));
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) router.replace("/login");
         else toast.error(err instanceof ApiError ? err.message : "Erro");
@@ -83,9 +112,110 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
         <p style={{ color: "var(--muted)", marginTop: 0 }}>
           {[pac.contato, pac.nascimento, pac.documento, pac.sexo].filter(Boolean).join(" · ") || "Sem dados adicionais."}
         </p>
-        <Link href={`/sofia?paciente_id=${id}`} className="btn" style={{ marginTop: 8 }}>
-          <Sparkles size={16} /> Perguntar à Sofia sobre este caso
-        </Link>
+        <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link href={`/sofia?paciente_id=${id}`} className="btn">
+            <Sparkles size={16} /> Perguntar à Sofia
+          </Link>
+          <button className="btn" onClick={() => setInstrModal(true)}>
+            <ClipboardList size={16} /> Novo instrumento
+          </button>
+          <button className="btn" onClick={() => setPrepModal(true)}>
+            <ClipboardCheck size={16} /> Preparar sessão
+          </button>
+          <button className="btn" onClick={() => setDocModal(true)}>
+            <FileSignature size={16} /> Gerar documento
+          </button>
+        </div>
+
+        {documentos.length > 0 && (
+          <>
+            <h2 style={{ fontSize: 15, margin: "24px 0 8px", color: "var(--muted)" }}>Documentos CFP</h2>
+            {documentos.map((d) => (
+              <div key={d.id} className="card" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ fontWeight: 500, textTransform: "capitalize" }}>{d.tipo}</div>
+                  <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                    <span className="badge">{d.status}</span>{" "}
+                    {d.finalidade.slice(0, 70)}{d.finalidade.length > 70 && "…"} · {new Date(d.criado_em).toLocaleDateString("pt-BR")}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Link href={`/documentos/${d.id}`} className="btn">
+                    {d.status === "assinado" ? "Ver" : "Editar"}
+                  </Link>
+                  {d.anexo_pdf_id && (
+                    <a className="btn" href={`${API_BASE}/anexos/${d.anexo_pdf_id}/arquivo`} target="_blank" rel="noreferrer">
+                      <Download size={14} /> PDF
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {(respostas.length > 0 || anexos.length > 0) && (
+          <>
+            <h2 style={{ fontSize: 15, margin: "24px 0 8px", color: "var(--muted)" }}>Instrumentos</h2>
+            {respostas.length === 0 && <p style={{ color: "var(--muted)" }}>Nenhum instrumento iniciado.</p>}
+            {respostas.map((r) => (
+              <div key={r.id} className="card" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ fontWeight: 500 }}>{r.instrumento_tipo.toUpperCase()} · {r.instrumento_versao}</div>
+                  <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                    <span className="badge">{r.status}</span>{" "}
+                    iniciado {new Date(r.criado_em).toLocaleDateString("pt-BR")}
+                    {r.finalizado_em && ` · finalizado ${new Date(r.finalizado_em).toLocaleDateString("pt-BR")}`}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Link href={`/instrumentos/${r.id}`} className="btn">
+                    {r.status === "finalizado" ? "Ver" : "Continuar"}
+                  </Link>
+                  {r.anexo_id && (
+                    <a className="btn" href={`${API_BASE}/anexos/${r.anexo_id}/arquivo`} target="_blank" rel="noreferrer">
+                      <Download size={14} /> PDF
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {anexos.length > 0 && (
+              <>
+                <h2 style={{ fontSize: 15, margin: "24px 0 8px", color: "var(--muted)" }}>
+                  <Paperclip size={13} style={{ display: "inline", verticalAlign: "middle" }} /> Anexos do prontuário
+                </h2>
+                <div className="card" style={{ padding: 0 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12 }}>
+                        <th style={{ padding: 12 }}>Título</th>
+                        <th style={{ padding: 12 }}>Tamanho</th>
+                        <th style={{ padding: 12 }}>Criado em</th>
+                        <th style={{ padding: 12 }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {anexos.map((a) => (
+                        <tr key={a.id} style={{ borderTop: "1px solid var(--border)" }}>
+                          <td style={{ padding: 12 }}>{a.titulo}</td>
+                          <td style={{ padding: 12, color: "var(--muted)" }}>{(a.bytes / 1024).toFixed(0)} KB</td>
+                          <td style={{ padding: 12, color: "var(--muted)" }}>{new Date(a.criado_em).toLocaleString("pt-BR")}</td>
+                          <td style={{ padding: 12, textAlign: "right" }}>
+                            <a className="link" href={`${API_BASE}/anexos/${a.id}/arquivo`} target="_blank" rel="noreferrer">
+                              <Download size={13} style={{ display: "inline", verticalAlign: "middle" }} /> baixar
+                            </a>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </>
+        )}
 
         <div className="card" style={{ marginTop: 20 }}>
           <h2 style={{ fontSize: 15, margin: "0 0 12px", color: "var(--muted)" }}>Agendar sessão</h2>
@@ -129,14 +259,31 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                     <span className="badge">{s.status}</span>
                   </div>
                 </div>
-                <button className="btn" onClick={() => novaEvolucao(s.id)}>
-                  <FileText size={16} /> Nova evolução
-                </button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="btn" onClick={() => setScribeSessao(s.id)}>
+                    <Wand2 size={16} /> Gerar evolução
+                  </button>
+                  <button className="btn" onClick={() => novaEvolucao(s.id)}>
+                    <FileText size={16} /> Em branco
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </main>
+      {scribeSessao && (
+        <ScribeModal sessaoId={scribeSessao} onClose={() => setScribeSessao(null)} />
+      )}
+      {instrModal && (
+        <InstrumentoModal pacienteId={id} onClose={() => setInstrModal(false)} />
+      )}
+      {prepModal && (
+        <PrepararSessaoModal pacienteId={id} onClose={() => setPrepModal(false)} />
+      )}
+      {docModal && (
+        <DocumentoModal pacienteId={id} onClose={() => setDocModal(false)} />
+      )}
     </>
   );
 }

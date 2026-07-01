@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { Compass, LogOut, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { clearToken } from "@/lib/api";
 
 export function Topbar({ meNome }: { meNome?: string }) {
@@ -30,6 +30,9 @@ export function Topbar({ meNome }: { meNome?: string }) {
         </Link>
         <Link href="/sofia" className="link" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <Sparkles size={16} /> Sofia
+        </Link>
+        <Link href="/supervisao" className="link" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <Compass size={16} /> Supervisão
         </Link>
         <Link href="/conta/2fa" className="link">Conta / 2FA</Link>
       </div>

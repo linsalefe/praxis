@@ -1,0 +1,176 @@
+"""Renderiza o instrumento finalizado como PDF (via PyMuPDF Story).
+
+Layout minimalista: cabeçalho Práxis · nome do instrumento · dados do
+paciente/profissional · respostas seção a seção · saída Markdown → HTML ·
+atribuição e SHA-256 no rodapé.
+"""
+from __future__ import annotations
+
+import hashlib
+import html
+import io
+import re
+from datetime import datetime, timezone
+from typing import Any
+
+import fitz  # PyMuPDF
+
+MEDIABOX = fitz.paper_rect("a4")
+CONTENT_RECT = MEDIABOX + (42, 42, -42, -60)  # deixa espaço p/ rodapé
+
+
+def _esc(x: str) -> str:
+    return html.escape(x or "").replace("\n", "<br/>")
+
+
+def _md_to_html_simples(md: str) -> str:
+    """Cabeçalhos ##/###, **negrito**, listas -/*. Suficiente para os
+    rascunhos que os geradores produzem.
+    """
+    linhas: list[str] = []
+    in_list = False
+    for raw in md.splitlines():
+        l = raw.rstrip()
+        if not l.strip():
+            if in_list:
+                linhas.append("</ul>")
+                in_list = False
+            linhas.append("<br/>")
+            continue
+
+        m = re.match(r"^(#{1,4})\s+(.*)$", l)
+        if m:
+            if in_list:
+                linhas.append("</ul>")
+                in_list = False
+            lvl = len(m.group(1))
+            tag = f"h{min(lvl + 1, 5)}"
+            linhas.append(f"<{tag}>{_esc(m.group(2))}</{tag}>")
+            continue
+
+        m = re.match(r"^\s*[-*]\s+(.*)$", l)
+        if m:
+            if not in_list:
+                linhas.append("<ul>")
+                in_list = True
+            item = _esc(m.group(1))
+            item = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", item)
+            item = re.sub(r"\*([^*]+)\*", r"<i>\1</i>", item)
+            linhas.append(f"<li>{item}</li>")
+            continue
+
+        if in_list:
+            linhas.append("</ul>")
+            in_list = False
+
+        p = _esc(l)
+        p = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", p)
+        p = re.sub(r"\*([^*]+)\*", r"<i>\1</i>", p)
+        linhas.append(f"<p>{p}</p>")
+    if in_list:
+        linhas.append("</ul>")
+    return "\n".join(linhas)
+
+
+CSS = """
+body { font-family: sans-serif; font-size: 10pt; color: #111; }
+h1 { font-size: 15pt; margin: 0 0 4pt 0; color: #0b3a80; }
+h2 { font-size: 12pt; margin: 12pt 0 4pt 0; color: #0b3a80; border-bottom: 1px solid #ccc; padding-bottom: 2pt; }
+h3 { font-size: 11pt; margin: 8pt 0 2pt 0; color: #1a4a99; }
+h4 { font-size: 10pt; margin: 6pt 0 2pt 0; color: #1a4a99; }
+p, li { margin: 2pt 0; line-height: 1.35; }
+.muted { color: #666; font-size: 9pt; }
+ul { margin: 2pt 0 2pt 16pt; padding: 0; }
+hr { border: 0; border-top: 1px solid #ccc; margin: 8pt 0; }
+.field-label { font-weight: bold; color: #333; }
+"""
+
+
+def _respostas_html(definicao: dict[str, Any], respostas: dict[str, Any]) -> str:
+    partes: list[str] = ["<h2>Respostas coletadas</h2>"]
+    for sec in definicao.get("secoes", []):
+        sec_id = sec["id"]
+        partes.append(f"<h3>{_esc(sec['titulo'])}</h3>")
+        rsec: dict[str, Any] = respostas.get(sec_id) or {}
+        if not rsec:
+            partes.append('<p class="muted">Sem respostas registradas nesta seção.</p>')
+            continue
+        partes.append("<ul>")
+        for p in sec.get("perguntas", []):
+            v = rsec.get(p["id"])
+            if v in (None, "", []):
+                v_txt = "<i>(não respondido)</i>"
+            elif isinstance(v, list):
+                v_txt = _esc(", ".join(map(str, v)))
+            elif isinstance(v, bool):
+                v_txt = "sim" if v else "não"
+            else:
+                v_txt = _esc(str(v))
+            partes.append(
+                f'<li><span class="field-label">{_esc(p["label"])}:</span> {v_txt}</li>'
+            )
+        partes.append("</ul>")
+    return "\n".join(partes)
+
+
+def render_instrumento_pdf(
+    *,
+    instrumento_titulo: str,
+    instrumento_fonte: str | None,
+    paciente_nome: str,
+    profissional_nome: str,
+    profissional_crp: str | None,
+    definicao: dict[str, Any],
+    respostas: dict[str, Any],
+    saida_texto: str,
+) -> tuple[bytes, str]:
+    """Devolve (pdf_bytes, sha256_hex)."""
+    emitido_em = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+    respostas_html = _respostas_html(definicao, respostas)
+    saida_html = _md_to_html_simples(saida_texto or "_Rascunho da saída não gerado._")
+    fonte_txt = _esc(instrumento_fonte or "")
+    crp_html = _esc(" · CRP " + profissional_crp) if profissional_crp else ""
+
+    html_doc = (
+        f"<h1>{_esc(instrumento_titulo)}</h1>"
+        f'<p class="muted">Práxis · CENAT · emitido em {_esc(emitido_em)}</p>'
+        f"<p><span class=\"field-label\">Paciente:</span> {_esc(paciente_nome)}<br/>"
+        f"<span class=\"field-label\">Profissional:</span> {_esc(profissional_nome)}{crp_html}</p>"
+        f"<hr/>{respostas_html}"
+        f"<h2>Saída revisada</h2>{saida_html}"
+        f"<hr/>"
+        f'<p class="muted">{fonte_txt}</p>'
+    )
+
+    # Passo 1: gera PDF de conteúdo com Story (multi-página automático).
+    buf = io.BytesIO()
+    writer = fitz.DocumentWriter(buf)
+    story = fitz.Story(html=html_doc, user_css=CSS)
+
+    def rectfn(_rect_num, _filled):
+        return MEDIABOX, CONTENT_RECT, None
+
+    story.write(writer, rectfn)
+    writer.close()
+    provisional = buf.getvalue()
+
+    # Passo 2: reabre para adicionar rodapé com paginação + hash de integridade.
+    doc = fitz.open(stream=provisional, filetype="pdf")
+    prov_sha = hashlib.sha256(provisional).hexdigest()
+    total = doc.page_count
+    for i, pg in enumerate(doc, start=1):
+        footer = f"Práxis · CENAT · pág. {i}/{total} · SHA-256: {prov_sha[:16]}…"
+        pg.insert_text(
+            (42, MEDIABOX.height - 32),
+            footer,
+            fontname="helv",
+            fontsize=7,
+            color=(0.4, 0.4, 0.45),
+        )
+    out = io.BytesIO()
+    doc.save(out)
+    doc.close()
+    pdf_bytes = out.getvalue()
+    final_sha = hashlib.sha256(pdf_bytes).hexdigest()
+    return pdf_bytes, final_sha
