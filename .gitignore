@@ -1,0 +1,40 @@
+# Python / uv
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.python-version
+.uv-cache/
+
+# Node / Next
+node_modules/
+.next/
+out/
+npm-debug.log*
+.pnpm-debug.log*
+.turbo/
+
+# Env / segredos
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# IDE / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Acervo — PDFs são grandes e o Paul Baker / Maastricht são de terceiros.
+# Mantemos o manifest.toml versionado; PDFs ficam fora do repo.
+backend/acervo/*.pdf
+
+# Build
+dist/
+build/

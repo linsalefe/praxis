@@ -1,0 +1,22 @@
+[Unit]
+Description=Praxis frontend (Next 16) - by CENAT
+After=network.target praxis-backend.service
+Wants=praxis-backend.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/praxis/frontend
+Environment=NODE_ENV=production
+Environment=PORT=3040
+Environment=HOSTNAME=127.0.0.1
+Environment=NEXT_PUBLIC_API_BASE=http://127.0.0.1:8040
+ExecStart=/usr/bin/npm run start -- -p 3040 -H 127.0.0.1
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/opt/praxis/frontend/praxis-frontend.log
+StandardError=append:/opt/praxis/frontend/praxis-frontend.log
+
+[Install]
+WantedBy=multi-user.target
