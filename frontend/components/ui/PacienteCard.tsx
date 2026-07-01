@@ -2,9 +2,9 @@
 
 /**
  * PacienteCard — cabeçalho do prontuário.
- * Avatar com iniciais, identificação e meta em mono. "Adesão" é derivada do
- * status das sessões (realizadas vs faltas/canceladas) e rotulada como
- * aproximação (~%); é omitida quando não há histórico suficiente.
+ * Avatar com iniciais, identificação e meta em mono. "Adesão" é factual, com
+ * denominador explícito: realizadas ÷ (realizadas + faltas) — mesma definição
+ * do resumo longitudinal. Omitida quando não há sessões que deveriam ter ocorrido.
  */
 
 type PacienteLike = {
@@ -59,9 +59,8 @@ export function PacienteCard({
     .sort((a, b) => +new Date(a.data) - +new Date(b.data))[0];
 
   const realizadas = sessoes.filter((s) => s.status === "realizada").length;
-  const ausencias = sessoes.filter((s) => s.status === "falta" || s.status === "cancelada").length;
-  const baseAdesao = realizadas + ausencias;
-  const adesao = baseAdesao > 0 ? Math.round((realizadas / baseAdesao) * 100) : null;
+  const faltas = sessoes.filter((s) => s.status === "falta").length;
+  const baseAdesao = realizadas + faltas; // sessões que deveriam ter ocorrido
 
   const identificacao = [
     anos != null ? `${anos} anos` : null,
@@ -118,7 +117,7 @@ export function PacienteCard({
           rotulo="Próxima"
           valor={proxima ? new Date(proxima.data).toLocaleDateString("pt-BR") : "—"}
         />
-        <Meta rotulo="Adesão" valor={adesao != null ? `~${adesao}%` : "—"} />
+        <Meta rotulo="Adesão" valor={baseAdesao > 0 ? `${realizadas}/${baseAdesao}` : "—"} />
       </div>
     </div>
   );
