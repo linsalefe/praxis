@@ -4,9 +4,10 @@ import { useEffect, useRef, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Download, FileCheck2, FileSignature, RefreshCcw } from "lucide-react";
+import { BadgeCheck, Download, FileCheck2, FileSignature, RefreshCcw, ShieldCheck } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
+import { Drawer } from "@/components/ui/Drawer";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
@@ -21,8 +22,14 @@ type Doc = {
   provider: string | null; prompt_versao: string | null;
   assinado_em: string | null; hash_assinatura: string | null;
   anexo_pdf_id: string | null;
+  assinatura_tipo: string; cert_titular: string | null;
   criado_em: string; atualizado_em: string;
   aviso: string;
+};
+type Verificacao = {
+  assinatura_tipo: string; assinado: boolean;
+  intacto: boolean | null; valido: boolean | null; confiavel: boolean | null;
+  titular: string | null; algoritmo: string | null; nota: string | null;
 };
 
 export default function Page({ params }: { params: Promise<{ id: string }> }) {
@@ -32,6 +39,9 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
   const [tpl, setTpl] = useState<Template | null>(null);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [icpOpen, setIcpOpen] = useState(false);
+  const [senhaIcp, setSenhaIcp] = useState("");
+  const [verif, setVerif] = useState<Verificacao | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -42,6 +52,9 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         setDoc(d);
         const templates = await api<Template[]>("/documentos/templates");
         setTpl(templates.find((t) => t.tipo === d.tipo) || null);
+        if (d.assinatura_tipo === "icp_brasil") {
+          api<Verificacao>(`/documentos/${id}/assinatura`).then(setVerif).catch(() => {});
+        }
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) router.replace("/login");
         else toast.error(err instanceof ApiError ? err.message : "Erro");
@@ -84,6 +97,26 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
     }
   }
 
+  async function assinarIcp() {
+    if (!doc || !senhaIcp) { toast.error("Informe a senha do certificado."); return; }
+    if (dirty) await salvar();
+    setBusy("Assinando com ICP-Brasil…");
+    try {
+      const d = await api<Doc>(`/documentos/${id}/assinar-icp`, {
+        method: "POST", body: JSON.stringify({ senha: senhaIcp }),
+      });
+      setDoc(d);
+      setIcpOpen(false);
+      setSenhaIcp("");
+      toast.success("Documento assinado com ICP-Brasil (PAdES).");
+      api<Verificacao>(`/documentos/${id}/assinatura`).then(setVerif).catch(() => {});
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Falha ao assinar");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   if (!doc || !tpl) return (
     <><Topbar /><main className="container-praxis"><p style={{ color: "var(--muted)" }}>Carregando…</p></main></>
   );
@@ -101,9 +134,16 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
           <h1 style={{ fontSize: 22, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <FileSignature size={20} color="var(--brand-2)" /> {tpl.titulo}
           </h1>
-          <span className="badge">
-            {finalizado ? "assinado" : "rascunho"}{dirty ? " · salvando…" : ""}
-          </span>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            {finalizado && (
+              <span className={`badge ${doc.assinatura_tipo === "icp_brasil" ? "badge-pos" : "badge-neutral"}`}>
+                {doc.assinatura_tipo === "icp_brasil" ? "ICP-Brasil" : "assinatura simples"}
+              </span>
+            )}
+            <span className="badge">
+              {finalizado ? "assinado" : "rascunho"}{dirty ? " · salvando…" : ""}
+            </span>
+          </div>
         </div>
         <p style={{ color: "var(--muted)", fontSize: 13, margin: "4px 0 12px" }}>{tpl.descricao}</p>
 
@@ -158,11 +198,33 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             </a>
           )}
           {!finalizado && (
-            <button className="btn btn-primary" onClick={assinar} disabled={!!busy}>
-              <FileCheck2 size={16} /> {busy || "Assinar e anexar PDF"}
-            </button>
+            <>
+              <button className="btn" onClick={() => setIcpOpen(true)} disabled={!!busy}>
+                <ShieldCheck size={16} /> Assinar com ICP-Brasil
+              </button>
+              <button className="btn btn-primary" onClick={assinar} disabled={!!busy}>
+                <FileCheck2 size={16} /> {busy || "Assinar (simples)"}
+              </button>
+            </>
           )}
         </div>
+
+        {verif && verif.assinado && (
+          <div className="card" style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <BadgeCheck size={20} color={verif.valido && verif.intacto ? "var(--pos-fg)" : "var(--warn-fg)"} style={{ flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <div style={{ fontWeight: 500 }}>
+                Assinatura ICP-Brasil (PAdES) — {verif.intacto && verif.valido ? "íntegra e válida" : "verificar"}
+              </div>
+              <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
+                Titular: {verif.titular || doc.cert_titular || "—"} · algoritmo {verif.algoritmo || "—"}
+              </div>
+              {verif.nota && (
+                <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 4 }}>{verif.nota}</div>
+              )}
+            </div>
+          </div>
+        )}
 
         {finalizado && doc.hash_assinatura && (
           <p style={{ marginTop: 12, color: "var(--muted)", fontSize: 11, fontFamily: "monospace" }}>
@@ -171,6 +233,26 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         )}
         <p style={{ marginTop: 8, color: "var(--muted)", fontSize: 11 }}>{doc.aviso}</p>
       </main>
+
+      <Drawer open={icpOpen} title="Assinar com ICP-Brasil" onClose={() => { setIcpOpen(false); setSenhaIcp(""); }}>
+        <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>
+          Assinatura digital qualificada (PAdES/A1) com o seu certificado. A senha é usada
+          apenas neste ato e <b>não é armazenada</b>. Ao assinar, o documento fica <b>imutável</b>.
+        </p>
+        <p style={{ color: "var(--muted)", fontSize: 12, margin: 0 }}>
+          Requer um certificado A1 cadastrado em <Link className="link" href="/conta/2fa">Conta</Link>.
+        </p>
+        <form onSubmit={(e) => { e.preventDefault(); assinarIcp(); }} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div>
+            <label className="label">Senha do certificado</label>
+            <input className="input" type="password" autoFocus value={senhaIcp}
+              onChange={(e) => setSenhaIcp(e.target.value)} placeholder="••••••••" />
+          </div>
+          <button className="btn btn-primary" disabled={!!busy || !senhaIcp}>
+            <ShieldCheck size={16} /> {busy || "Assinar documento"}
+          </button>
+        </form>
+      </Drawer>
     </>
   );
 }

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
+import { CertificadoManager } from "@/components/CertificadoManager";
 
 type Me = { id: string; nome: string; email: string; totp_ativado: boolean };
 type SetupResp = { otpauth_url: string; qrcode_data_uri: string };
@@ -86,6 +87,8 @@ export default function Conta2FA() {
             </>
           )}
         </div>
+
+        <CertificadoManager />
       </main>
     </>
   );

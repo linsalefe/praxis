@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import desc, select
 
 from app.deps import SessionDep, get_current_user
@@ -27,10 +28,13 @@ from app.documentos.templates import TEMPLATES
 from app.models.audit import AuditLog
 from app.models.consentimento import Consentimento
 from app.models.documento import DocumentoCFP
+from app.assinatura.pades import assinar_pades
+from app.models.certificado import CertificadoAssinatura
 from app.models.instrumentos import AnexoProntuario
 from app.models.paciente import Paciente
 from app.models.user import User
 from app.preparacao.contexto import montar_contexto_anonimo
+from app.schemas.assinatura import AssinarICPIn
 from app.schemas.documentos import (
     DocumentoBlocoTemplate,
     DocumentoOut,
@@ -38,7 +42,7 @@ from app.schemas.documentos import (
     DocumentoTemplateOut,
     GerarIn,
 )
-from app.security.crypto import decrypt_str, encrypt_bytes
+from app.security.crypto import decrypt_bytes, decrypt_str, encrypt_bytes
 
 router = APIRouter(tags=["documentos"])
 
@@ -101,6 +105,7 @@ def _to_out(d: DocumentoCFP) -> DocumentoOut:
         provider=d.provider, prompt_versao=d.prompt_versao,
         assinado_em=d.assinado_em, hash_assinatura=d.hash_assinatura,
         anexo_pdf_id=str(d.anexo_pdf_id) if d.anexo_pdf_id else None,
+        assinatura_tipo=d.assinatura_tipo, cert_titular=d.cert_titular,
         criado_em=d.criado_em, atualizado_em=d.atualizado_em,
     )
 
@@ -317,6 +322,95 @@ async def assinar(
     _log(session, tenant_id=user.tenant_id, user_id=user.id, ip=ip,
          acao="ANEXO_CRIADO", entidade="AnexoProntuario", entidade_id=str(anexo.id),
          meta={"sha256": sha_pdf, "bytes": len(pdf_bytes), "origem_tipo": "documento_cfp"})
+    await session.commit()
+    await session.refresh(d)
+    return _to_out(d)
+
+
+@router.post("/documentos/{doc_id}/assinar-icp", response_model=DocumentoOut)
+async def assinar_icp(
+    doc_id: str,
+    body: AssinarICPIn,
+    request: Request,
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+) -> DocumentoOut:
+    """Assinatura qualificada ICP-Brasil (PAdES/A1) sobre o PDF gerado.
+
+    A senha do certificado vem no corpo, é usada só em memória e não é persistida.
+    Mantém a assinatura simples (hash) e a imutabilidade do documento assinado.
+    """
+    d = await _get_doc(session, user, doc_id)
+    if d.status == "assinado":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Já assinado")
+    if d.autor_id != user.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Só o autor pode assinar")
+    if not d.conteudo:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Sem conteúdo para assinar")
+
+    cert = await session.scalar(
+        select(CertificadoAssinatura).where(CertificadoAssinatura.user_id == user.id)
+    )
+    if cert is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Nenhum certificado A1 cadastrado. Envie o .pfx em Conta antes de assinar.")
+
+    pac = await session.get(Paciente, d.paciente_id)
+    if pac is None:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Paciente ausente")
+    pac_nome = decrypt_str(pac.nome_cifrado) or "(sem nome)"
+    pac_doc = decrypt_str(pac.documento_cifrado)
+    agora = datetime.now(tz=timezone.utc)
+    data_str = agora.strftime("%d/%m/%Y")
+    hash_conteudo = _hash_conteudo(d)
+
+    # Renderiza o PDF e aplica PAdES ANTES de mutar o documento — se a assinatura
+    # falhar (senha errada), nada é persistido e o documento segue rascunho.
+    pdf_bytes, _ = render_documento_pdf(
+        tipo=d.tipo, finalidade=d.finalidade, destinatario=d.destinatario,
+        conteudo=d.conteudo or {}, profissional_nome=user.nome, profissional_crp=user.crp,
+        paciente_nome=pac_nome, paciente_doc=pac_doc,
+        data_emissao_str=data_str, hash_assinatura=hash_conteudo,
+    )
+    # pyHanko é síncrono e usa o event loop internamente — roda em threadpool
+    # (sem loop na thread) para não retornar coroutine nem bloquear o servidor.
+    try:
+        pfx = decrypt_bytes(cert.arquivo_cifrado) or b""
+        signed_pdf = await run_in_threadpool(
+            assinar_pades, pdf_bytes, pfx, body.senha,
+            reason=f"Assinatura de {TEMPLATES[d.tipo]['titulo']} — {pac_nome}",
+        )
+    except Exception:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Falha ao assinar: verifique a senha do certificado.")
+
+    sha_pdf = hashlib.sha256(signed_pdf).hexdigest()
+    d.assinado_em = agora
+    d.hash_assinatura = hash_conteudo
+    d.status = "assinado"
+    d.assinatura_tipo = "icp_brasil"
+    d.cert_titular = cert.titular
+    d.assinatura_valida = True
+
+    tpl_titulo = TEMPLATES[d.tipo]["titulo"]
+    anexo = AnexoProntuario(
+        tenant_id=user.tenant_id, paciente_id=pac.id,
+        origem_tipo="documento_cfp", origem_id=d.id,
+        titulo=f"{tpl_titulo} (ICP-Brasil) — {pac_nome} — {data_str}",
+        mimetype="application/pdf", bytes=len(signed_pdf), sha256=sha_pdf,
+        arquivo_cifrado=encrypt_bytes(signed_pdf), criado_por=user.id,
+    )
+    session.add(anexo)
+    await session.flush()
+    d.anexo_pdf_id = anexo.id
+
+    ip = request.client.host if request.client else None
+    _log(session, tenant_id=user.tenant_id, user_id=user.id, ip=ip,
+         acao="DOCUMENTO_ASSINADO_ICP", entidade="DocumentoCFP", entidade_id=str(d.id),
+         meta={"tipo": d.tipo, "cert_titular": cert.titular, "anexo_bytes": len(signed_pdf)})
+    _log(session, tenant_id=user.tenant_id, user_id=user.id, ip=ip,
+         acao="ANEXO_CRIADO", entidade="AnexoProntuario", entidade_id=str(anexo.id),
+         meta={"sha256": sha_pdf, "bytes": len(signed_pdf), "origem_tipo": "documento_cfp", "assinatura": "icp_brasil"})
     await session.commit()
     await session.refresh(d)
     return _to_out(d)
