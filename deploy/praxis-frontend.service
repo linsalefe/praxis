@@ -5,13 +5,15 @@ Wants=praxis-backend.service
 
 [Service]
 Type=simple
-User=root
-Group=root
+User=praxis
+Group=praxis
 WorkingDirectory=/opt/praxis/frontend
 Environment=NODE_ENV=production
 Environment=PORT=3040
 Environment=HOSTNAME=127.0.0.1
-Environment=NEXT_PUBLIC_API_BASE=http://127.0.0.1:8040
+# NOTE: NEXT_PUBLIC_* é inlinado no BUILD (next build), não em runtime.
+# O valor de produção vive em frontend/.env.production (NEXT_PUBLIC_API_BASE=/api),
+# servido pela mesma origem via nginx (location /api/ -> :8040). Não defina aqui.
 ExecStart=/usr/bin/npm run start -- -p 3040 -H 127.0.0.1
 Restart=on-failure
 RestartSec=5

@@ -237,21 +237,60 @@ Backend FastAPI. Externamente as rotas ficam sob `/api` (nginx); internamente o 
 
 ## 10. Deploy
 
-Dois serviços systemd em `deploy/` (ambos escutam apenas em `127.0.0.1`; a exposição pública é do nginx).
+Serviços systemd em `deploy/` (ambos escutam apenas em `127.0.0.1`; a exposição pública é do nginx). **Todos rodam como o usuário de sistema `praxis`** (não `root`) — ver §11.
 
-- **`praxis-backend.service`** — `uv run uvicorn app.main:app --host 127.0.0.1 --port 8040 --workers 1 --proxy-headers`; `EnvironmentFile=/opt/praxis/backend/.env`; logs em `backend/praxis-backend.log`.
-- **`praxis-frontend.service`** — `npm run start -- -p 3040 -H 127.0.0.1`; `NODE_ENV=production`; logs em `frontend/praxis-frontend.log`.
+- **`praxis-backend.service`** — `User=praxis`; `/usr/local/bin/uv run uvicorn app.main:app --host 127.0.0.1 --port 8040 --workers 1 --proxy-headers`; `EnvironmentFile=/opt/praxis/backend/.env`; logs em `backend/praxis-backend.log`.
+- **`praxis-frontend.service`** — `User=praxis`; `npm run start -- -p 3040 -H 127.0.0.1`; `NODE_ENV=production`; logs em `frontend/praxis-frontend.log`.
+- **`praxis-backup.service` + `praxis-backup.timer`** — dump diário do Postgres como `praxis` (ver "Backups" abaixo).
+
+**Usuário dedicado (pré-requisito).** O `uv` precisa estar num caminho alcançável pelo `praxis` (o `/root/.local/bin` fica sob `/root`, modo `0700` — inacessível). Instale-o em `/usr/local/bin/uv`:
+```bash
+sudo useradd --system --home-dir /opt/praxis --shell /usr/sbin/nologin praxis
+sudo cp /root/.local/bin/uv /usr/local/bin/uv && sudo chmod 755 /usr/local/bin/uv
+sudo chown -R praxis:praxis /opt/praxis && sudo chmod 600 /opt/praxis/backend/.env
+```
 
 Instalação típica:
 ```bash
-sudo cp deploy/praxis-backend.service deploy/praxis-frontend.service /etc/systemd/system/
+sudo cp deploy/praxis-backend.service deploy/praxis-frontend.service \
+        deploy/praxis-backup.service deploy/praxis-backup.timer /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now praxis-backend praxis-frontend
+sudo systemctl enable --now praxis-backend praxis-frontend praxis-backup.timer
 ```
 
 **nginx + certbot** para `praxis.cenatdata.online`: o vhost não está versionado neste repo; siga o prompt/procedimento de configuração do domínio. O nginx deve rotear `/api/*` → `127.0.0.1:8040` (com strip do `/api`) e o restante → `127.0.0.1:3040`, e o certbot emite o certificado TLS.
 
-> ⚠️ **Gotcha de produção — `NEXT_PUBLIC_API_BASE`.** Como é `NEXT_PUBLIC_*`, essa URL é embutida no bundle e usada **pelo navegador do usuário**. Em produção ela **precisa** ser `https://praxis.cenatdata.online/api` (mesma origem, via nginx). **Não** pode ficar `http://127.0.0.1:8040` (valor default e o que está no `praxis-frontend.service`) — esse endereço só existe dentro da VPS e o navegador do usuário não o alcança. Ajuste a env no unit do frontend (ou no build) antes de expor o domínio.
+### `NEXT_PUBLIC_API_BASE` (build-time)
+
+Como é `NEXT_PUBLIC_*`, essa variável é **inlinada no bundle durante o `next build`**, não em runtime — definir no unit systemd **não tem efeito** sobre o código que roda no navegador. O valor de produção vive em **`frontend/.env.production`** (versionado):
+
+```
+NEXT_PUBLIC_API_BASE=/api
+```
+
+Usamos o caminho **relativo `/api`** (mesma origem): o nginx roteia `location /api/ → 127.0.0.1:8040` (com strip do `/api`), então o navegador nunca precisa de um host absoluto. Isso é imune a troca de domínio e não vaza `127.0.0.1`. Se um dia precisar do absoluto, use `https://praxis.cenatdata.online/api`. Após alterar, **rebuild** (`sudo -u praxis npm run build`) e `restart` do frontend — não basta reiniciar.
+
+> Nota: `.env.local` (gitignored) **sobrepõe** `.env.production` em builds. Mantenha ambos consistentes ou remova o `.env.local` em produção.
+
+### Backups do Postgres
+
+`ops/backup_pg.sh` roda via `praxis-backup.timer` (diário, 03:30) como `praxis`:
+
+- `pg_dump -Fc` (custom format, comprimido) → `/opt/praxis/backups/daily/praxis_YYYYMMDD_HHMM.dump`.
+- **Retenção:** 14 diários + 8 semanais (cópia aos domingos em `backups/weekly/`).
+- Coordenadas do banco lidas do `DATABASE_URL`; **senha via `~praxis/.pgpass`** (`chmod 600`) — nunca na linha de comando. Arquivos de dump ficam `600`, dono `praxis`.
+- **Escopo:** apenas o banco. O áudio bruto do Scribe é efêmero (apagado pós-transcrição); anexos/PII já vivem **cifrados dentro do DB**, cobertos pelo dump.
+
+```bash
+sudo systemctl start praxis-backup.service      # rodar sob demanda
+systemctl list-timers praxis-backup.timer       # conferir próximo disparo
+```
+
+**Restore** (num banco descartável, como superusuário para recriar as extensões):
+```bash
+sudo -u postgres createdb praxis_restore_test
+sudo -u postgres pg_restore --no-owner --no-privileges -d praxis_restore_test <arquivo>.dump
+```
 
 ---
 
@@ -265,7 +304,20 @@ sudo systemctl enable --now praxis-backend praxis-frontend
 - **IA como apoio** — respostas da Sofia e saídas geradas são **apoio ao raciocínio clínico**; a responsabilidade técnica e a **assinatura são do profissional** (disclaimer explícito nas respostas). Por padrão (`PRAXIS_SOFIA_SEND_PATIENT=false`), dados de paciente não são enviados ao LLM.
 - **Obras de terceiros** — paráfrase obrigatória (ver §8).
 
-> 🔧 **Nota de hardening (TODO).** Hoje os units systemd rodam como **`User=root`**. Migrar para um usuário dedicado **`praxis`** (com permissões mínimas sobre `/opt/praxis` e o diretório de áudio) antes de considerar o deploy endurecido.
+- **Serviços sem privilégios** — os units systemd rodam como o usuário de sistema **`praxis`** (sem shell), dono de `/opt/praxis`; `.env` em `600`. Ver §10.
+- **Backups automáticos** — dump diário do Postgres com retenção e `.pgpass` restrito (§10, "Backups").
+
+### Rotação de segredos
+
+- **`PRAXIS_JWT_SECRET` (barato).** Rotacionar apenas invalida sessões ativas — usuários refazem login. Gerar um segredo forte, atualizar o `.env` e `restart` do backend:
+  ```bash
+  python -c "import secrets; print(secrets.token_urlsafe(48))"
+  ```
+
+- **`PRAXIS_FIELD_KEY` (⚠️ PERIGOSO — não rotacionar sem plano).** Trocar a chave torna **toda a PII cifrada indecifrável**. As colunas Fernet são: `pacientes.{nome,contato,nascimento,documento}_cifrado`, `users.totp_secret_cifrado`, `anexos_prontuario.arquivo_cifrado`, `evolucao_geracao.entrada_cifrada` (4 tabelas, 7 colunas). **TODO** para rotacionar com segurança:
+  1. Migrar `crypto.py` de `Fernet` para **`MultiFernet([nova, antiga])`** (decifra o legado, cifra o novo com a chave nova).
+  2. Rodar um **passe de re-cifragem** de todas as colunas acima (migração ad-hoc `011+`, respeitando o salto do `009`).
+  3. Só então **remover a chave antiga** do `MultiFernet`.
 
 ---
 

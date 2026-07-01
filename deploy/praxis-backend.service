@@ -5,12 +5,12 @@ Wants=postgresql.service
 
 [Service]
 Type=simple
-User=root
-Group=root
+User=praxis
+Group=praxis
 WorkingDirectory=/opt/praxis/backend
 EnvironmentFile=/opt/praxis/backend/.env
-Environment=PATH=/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=/root/.local/bin/uv run uvicorn app.main:app --host 127.0.0.1 --port 8040 --workers 1 --proxy-headers
+Environment=PATH=/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/usr/local/bin/uv run uvicorn app.main:app --host 127.0.0.1 --port 8040 --workers 1 --proxy-headers
 Restart=on-failure
 RestartSec=5
 StandardOutput=append:/opt/praxis/backend/praxis-backend.log

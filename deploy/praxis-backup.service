@@ -1,0 +1,15 @@
+[Unit]
+Description=Praxis Postgres backup (pg_dump -Fc) - by CENAT
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=oneshot
+User=praxis
+Group=praxis
+# HOME=/opt/praxis => ~/.pgpass = /opt/praxis/.pgpass (chmod 600). Explícito por clareza:
+Environment=PGPASSFILE=/opt/praxis/.pgpass
+ExecStart=/opt/praxis/ops/backup_pg.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

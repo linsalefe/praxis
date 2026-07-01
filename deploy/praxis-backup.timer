@@ -1,0 +1,12 @@
+[Unit]
+Description=Praxis Postgres backup diário - by CENAT
+
+[Timer]
+# Todo dia às 03:30 (horário local do servidor). Persistent recupera execuções
+# perdidas se o servidor estava desligado no horário agendado.
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
