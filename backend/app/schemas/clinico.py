@@ -55,6 +55,7 @@ class SessaoOut(BaseModel):
     modalidade: str
     status: str
     valor_centavos: int | None
+    sala_url: str | None
     criado_em: datetime
 
 
@@ -67,6 +68,16 @@ class SessaoAgendaOut(BaseModel):
     modalidade: str
     status: str
     valor_centavos: int | None
+    sala_url: str | None
+
+
+class SalaStatusOut(BaseModel):
+    """Status da sala de telessessão + gate de consentimento (CFP)."""
+    sessao_id: str
+    modalidade: str
+    consentimento_teleatendimento: bool
+    sala_url: str | None       # null enquanto não houver consentimento
+    link_paciente: str | None  # mesma URL Jitsi (quem tem o link entra)
 
 
 class EvolucaoCreate(BaseModel):
@@ -100,7 +111,7 @@ class EvolucaoOut(BaseModel):
 
 class ConsentimentoCreate(BaseModel):
     paciente_id: str
-    tipo: Literal["tratamento_dados", "gravacao", "compartilhamento"]
+    tipo: Literal["tratamento_dados", "gravacao", "compartilhamento", "teleatendimento"]
     texto_aceito: str = Field(min_length=1)
     aceito_por: str = Field(min_length=1, max_length=160)
 

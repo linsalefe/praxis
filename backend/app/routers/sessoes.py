@@ -9,11 +9,19 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 
 from app.deps import SessionDep, get_current_user
+from app.models.consentimento import Consentimento
 from app.models.paciente import Paciente
 from app.models.sessao import Sessao
 from app.models.user import User
-from app.schemas.clinico import SessaoAgendaOut, SessaoCreate, SessaoOut, SessaoUpdate
+from app.schemas.clinico import (
+    SalaStatusOut,
+    SessaoAgendaOut,
+    SessaoCreate,
+    SessaoOut,
+    SessaoUpdate,
+)
 from app.security.crypto import decrypt_str
+from app.video.sala import gerar_sala_url
 
 router = APIRouter(prefix="/sessoes", tags=["sessoes"])
 
@@ -22,7 +30,7 @@ def _to_out(s: Sessao) -> SessaoOut:
     return SessaoOut(
         id=str(s.id), paciente_id=str(s.paciente_id), data=s.data,
         modalidade=s.modalidade, status=s.status,
-        valor_centavos=s.valor_centavos, criado_em=s.criado_em,
+        valor_centavos=s.valor_centavos, sala_url=s.sala_url, criado_em=s.criado_em,
     )
 
 
@@ -76,6 +84,7 @@ async def agenda(
             modalidade=s.modalidade,
             status=s.status,
             valor_centavos=s.valor_centavos,
+            sala_url=s.sala_url,
         )
         for s, nome_cifrado in (await session.execute(q)).all()
     ]
@@ -116,3 +125,74 @@ async def atualizar(
     await session.commit()
     await session.refresh(s)
     return _to_out(s)
+
+
+# --------------------------------------------------------------------------
+# Telessessão — sala de vídeo com gate de consentimento (Res. CFP 11/2018)
+# --------------------------------------------------------------------------
+
+async def _get_sessao_online(session, user: User, sessao_id: str) -> Sessao:
+    try:
+        sid = uuid.UUID(sessao_id)
+    except ValueError:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "sessao_id inválido")
+    s = await session.get(Sessao, sid)
+    if not s or s.tenant_id != user.tenant_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Sessão não encontrada")
+    if s.modalidade != "online":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Sala só existe para sessão online")
+    return s
+
+
+async def _tem_consentimento_tele(session, tenant_id, paciente_id) -> bool:
+    c = await session.scalar(
+        select(Consentimento).where(
+            Consentimento.tenant_id == tenant_id,
+            Consentimento.paciente_id == paciente_id,
+            Consentimento.tipo == "teleatendimento",
+        )
+    )
+    return c is not None
+
+
+@router.get("/{sessao_id}/sala", response_model=SalaStatusOut)
+async def status_sala(
+    sessao_id: str,
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+) -> SalaStatusOut:
+    """Status para a UI decidir o gate — não gera a sala nem exige consentimento.
+    A URL só é revelada quando o consentimento de teleatendimento existe."""
+    s = await _get_sessao_online(session, user, sessao_id)
+    tem = await _tem_consentimento_tele(session, user.tenant_id, s.paciente_id)
+    url = s.sala_url if tem else None
+    return SalaStatusOut(
+        sessao_id=str(s.id), modalidade=s.modalidade,
+        consentimento_teleatendimento=tem,
+        sala_url=url, link_paciente=url,
+    )
+
+
+@router.post("/{sessao_id}/sala", response_model=SalaStatusOut)
+async def abrir_sala(
+    sessao_id: str,
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+) -> SalaStatusOut:
+    """Gera/obtém a sala (idempotente). Gate CFP: 409 se faltar consentimento."""
+    s = await _get_sessao_online(session, user, sessao_id)
+    if not await _tem_consentimento_tele(session, user.tenant_id, s.paciente_id):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Consentimento de teleatendimento pendente. Registre o consentimento "
+            "(Res. CFP 11/2018) antes de liberar a sala.",
+        )
+    if not s.sala_url:
+        s.sala_url = gerar_sala_url(str(s.id))
+        await session.commit()
+        await session.refresh(s)
+    return SalaStatusOut(
+        sessao_id=str(s.id), modalidade=s.modalidade,
+        consentimento_teleatendimento=True,
+        sala_url=s.sala_url, link_paciente=s.sala_url,
+    )

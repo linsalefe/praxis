@@ -4,11 +4,12 @@ import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Activity, CalendarClock, CalendarPlus, ClipboardCheck, ClipboardList, Download, FileSignature, FileText, Package, Paperclip, Trash2 } from "lucide-react";
+import { Activity, CalendarClock, CalendarPlus, ClipboardCheck, ClipboardList, Download, FileSignature, FileText, Package, Paperclip, Trash2, Video } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { formatCentavos, reaisParaCentavos } from "@/lib/money";
 import { Topbar } from "@/components/Topbar";
 import { ScribeModal } from "@/components/ScribeModal";
+import { TelessessaoModal } from "@/components/TelessessaoModal";
 import { InstrumentoModal } from "@/components/InstrumentoModal";
 import { PrepararSessaoModal } from "@/components/PrepararSessaoModal";
 import { DocumentoModal } from "@/components/DocumentoModal";
@@ -61,6 +62,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
   const [loading, setLoading] = useState(true);
   const [newSes, setNewSes] = useState({ data: "", modalidade: "presencial", status: "agendada", valor: "" });
   const [scribeSessao, setScribeSessao] = useState<string | null>(null);
+  const [telessessao, setTelessessao] = useState<string | null>(null);
   const [instrModal, setInstrModal] = useState(false);
   const [prepModal, setPrepModal] = useState(false);
   const [docModal, setDocModal] = useState(false);
@@ -421,6 +423,11 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
+                  {s.modalidade === "online" && s.status !== "cancelada" && (
+                    <button className="btn btn-primary" onClick={() => setTelessessao(s.id)}>
+                      <Video size={16} /> Sala
+                    </button>
+                  )}
                   <button className="btn" onClick={() => setScribeSessao(s.id)}>
                     <PresenceMark size={16} /> Gerar evolução
                   </button>
@@ -435,6 +442,9 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
       </main>
       {scribeSessao && (
         <ScribeModal sessaoId={scribeSessao} onClose={() => setScribeSessao(null)} />
+      )}
+      {telessessao && pac && (
+        <TelessessaoModal sessaoId={telessessao} pacienteId={pac.id} pacienteNome={pac.nome} onClose={() => setTelessessao(null)} />
       )}
       {instrModal && (
         <InstrumentoModal pacienteId={id} onClose={() => setInstrModal(false)} />
