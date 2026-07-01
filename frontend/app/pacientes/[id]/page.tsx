@@ -4,7 +4,7 @@ import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { CalendarPlus, ClipboardCheck, ClipboardList, Download, FileSignature, FileText, Paperclip, Trash2 } from "lucide-react";
+import { Activity, CalendarClock, CalendarPlus, ClipboardCheck, ClipboardList, Download, FileSignature, FileText, Paperclip, Trash2 } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { ScribeModal } from "@/components/ScribeModal";
@@ -15,6 +15,7 @@ import { PresenceMark } from "@/components/ui/PresenceMark";
 import { PacienteCard } from "@/components/ui/PacienteCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { GraficoTrajetoria, type SerieTrajetoria } from "@/components/ui/GraficoTrajetoria";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
@@ -38,6 +39,17 @@ type Paciente = {
 type Sessao = {
   id: string; paciente_id: string; data: string; modalidade: string; status: string;
 };
+type EventoTimeline = {
+  data: string; tipo_evento: string; titulo: string; ref_id: string;
+  meta: Record<string, unknown>;
+};
+type Resumo = {
+  sessoes: { realizadas: number; faltas: number; canceladas: number; agendadas_futuras: number; total: number };
+  adesao: { num: number; den: number; criterio: string };
+  evolucoes: { assinadas: number; rascunho: number };
+  instrumentos_aplicados: number;
+  primeira_sessao: string | null; ultima_sessao: string | null;
+};
 
 export default function FichaPacientePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -55,6 +67,9 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
   const [documentos, setDocumentos] = useState<DocumentoCFP[]>([]);
   const [confirmDel, setConfirmDel] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [resumo, setResumo] = useState<Resumo | null>(null);
+  const [series, setSeries] = useState<SerieTrajetoria[]>([]);
+  const [timeline, setTimeline] = useState<EventoTimeline[]>([]);
 
   useEffect(() => {
     if (!getToken()) return void router.replace("/login");
@@ -69,6 +84,9 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
         setRespostas(await api<RespInstr[]>(`/pacientes/${id}/respostas-instrumento`));
         setAnexos(await api<Anexo[]>(`/pacientes/${id}/anexos`));
         setDocumentos(await api<DocumentoCFP[]>(`/pacientes/${id}/documentos`));
+        setResumo(await api<Resumo>(`/pacientes/${id}/resumo`));
+        setSeries((await api<{ series: SerieTrajetoria[] }>(`/pacientes/${id}/trajetoria`)).series);
+        setTimeline((await api<{ eventos: EventoTimeline[] }>(`/pacientes/${id}/timeline`)).eventos);
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) router.replace("/login");
         else toast.error(err instanceof ApiError ? err.message : "Erro");
@@ -159,6 +177,75 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
             <Trash2 size={16} /> Excluir paciente
           </button>
         </div>
+
+        {/* --- Resumo factual (números reais, denominador explícito) --- */}
+        {resumo && resumo.sessoes.total > 0 && (
+          <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
+            <div className="card">
+              <div style={{ color: "var(--muted)", fontSize: 12 }}>Sessões realizadas</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 20 }}>
+                {resumo.sessoes.realizadas}<span style={{ fontSize: 12, color: "var(--warm-500)" }}>/{resumo.sessoes.total}</span>
+              </div>
+              <div style={{ color: "var(--muted)", fontSize: 11 }}>
+                {resumo.sessoes.faltas} falta(s) · {resumo.sessoes.canceladas} cancel. · {resumo.sessoes.agendadas_futuras} agendada(s)
+              </div>
+            </div>
+            <div className="card">
+              <div style={{ color: "var(--muted)", fontSize: 12 }}>Adesão</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 20 }}>
+                {resumo.adesao.den > 0 ? `${resumo.adesao.num}/${resumo.adesao.den}` : "—"}
+              </div>
+              <div style={{ color: "var(--muted)", fontSize: 11 }}>{resumo.adesao.criterio}</div>
+            </div>
+            <div className="card">
+              <div style={{ color: "var(--muted)", fontSize: 12 }}>Evoluções</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 20 }}>{resumo.evolucoes.assinadas}</div>
+              <div style={{ color: "var(--muted)", fontSize: 11 }}>assinadas · {resumo.evolucoes.rascunho} rascunho</div>
+            </div>
+            <div className="card">
+              <div style={{ color: "var(--muted)", fontSize: 12 }}>Período de acompanhamento</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, marginTop: 4 }}>
+                {resumo.primeira_sessao ? new Date(resumo.primeira_sessao).toLocaleDateString("pt-BR") : "—"}
+                {" → "}
+                {resumo.ultima_sessao ? new Date(resumo.ultima_sessao).toLocaleDateString("pt-BR") : "—"}
+              </div>
+              <div style={{ color: "var(--muted)", fontSize: 11 }}>{resumo.instrumentos_aplicados} instrumento(s) aplicado(s)</div>
+            </div>
+          </div>
+        )}
+
+        {/* --- Trajetória de escores (SVG factual) --- */}
+        {series.length > 0 && (
+          <>
+            <h2 style={{ fontSize: 15, margin: "24px 0 8px", color: "var(--muted)" }}>
+              <Activity size={13} style={{ display: "inline", verticalAlign: "middle" }} /> Trajetória de escores
+            </h2>
+            <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 12px" }}>
+              Escores registrados das escalas reaplicadas. Bandas = faixas de severidade. A leitura clínica é do profissional.
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12 }}>
+              {series.map((s) => (
+                <div key={s.tipo} className="card">
+                  <GraficoTrajetoria serie={s} />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* --- Linha do tempo unificada (read-only, linkável) --- */}
+        {timeline.length > 0 && (
+          <>
+            <h2 style={{ fontSize: 15, margin: "24px 0 8px", color: "var(--muted)" }}>
+              <CalendarClock size={13} style={{ display: "inline", verticalAlign: "middle" }} /> Linha do tempo
+            </h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {timeline.map((ev) => (
+                <EventoLinha key={`${ev.tipo_evento}-${ev.ref_id}`} ev={ev} />
+              ))}
+            </div>
+          </>
+        )}
 
         {documentos.length > 0 && (
           <>
@@ -328,4 +415,42 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
       />
     </>
   );
+}
+
+const EVENTO_ICON: Record<string, typeof CalendarClock> = {
+  sessao: CalendarClock, evolucao: FileText, instrumento: ClipboardList, documento: FileSignature,
+};
+
+function EventoLinha({ ev }: { ev: EventoTimeline }) {
+  const Icon = EVENTO_ICON[ev.tipo_evento] || CalendarClock;
+  const href =
+    ev.tipo_evento === "evolucao" ? `/evolucoes/${ev.ref_id}` :
+    ev.tipo_evento === "instrumento" ? `/instrumentos/${ev.ref_id}` :
+    ev.tipo_evento === "documento" ? `/documentos/${ev.ref_id}` : null;
+
+  const m = ev.meta as {
+    status?: string; assinada?: boolean; escore?: number; faixa?: string;
+    subescores?: { rotulo: string; escore: number; faixa?: string }[];
+  };
+  const badges: React.ReactNode[] = [];
+  if (m.assinada === true) badges.push(<span key="a" className="badge badge-pos">assinada</span>);
+  else if (typeof m.status === "string") badges.push(<span key="s" className="badge">{m.status}</span>);
+  if (typeof m.escore === "number") badges.push(<span key="e" className="badge">escore {m.escore}{m.faixa ? ` · ${m.faixa}` : ""}</span>);
+  if (Array.isArray(m.subescores)) m.subescores.forEach((s, i) =>
+    badges.push(<span key={`ss${i}`} className="badge">{s.rotulo} {s.escore}</span>));
+
+  const inner = (
+    <div className="card" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px" }}>
+      <Icon size={16} color="var(--brand-2)" style={{ flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 500, fontSize: 14 }}>{ev.titulo}</div>
+        <div style={{ color: "var(--muted)", fontSize: 12, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontFamily: "var(--font-mono)" }}>{new Date(ev.data).toLocaleDateString("pt-BR")}</span>
+          {badges}
+        </div>
+      </div>
+      {href && <span className="link" style={{ fontSize: 13, flexShrink: 0 }}>abrir →</span>}
+    </div>
+  );
+  return href ? <Link href={href} style={{ textDecoration: "none", color: "inherit" }}>{inner}</Link> : inner;
 }
