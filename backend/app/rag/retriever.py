@@ -25,23 +25,35 @@ class Hit:
     similaridade: float  # 0..1 (1 = idêntico)
 
 
-async def buscar(session: AsyncSession, embedding: list[float], top_k: int | None = None) -> list[Hit]:
+async def buscar(
+    session: AsyncSession,
+    embedding: list[float],
+    top_k: int | None = None,
+    slug: str | None = None,
+) -> list[Hit]:
+    """Top-k por similaridade cosseno. `slug` (opcional) restringe a uma obra;
+    default None preserva o comportamento usado pela Sofia."""
     s = get_settings()
     k = top_k or s.rag_topk
+    filtro = "WHERE d.slug = :slug" if slug else ""
     q = text(
-        """
+        f"""
         SELECT c.id, c.documento_id, c.capitulo, c.pagina_inicio, c.pagina_fim,
                c.texto,
                d.slug, d.titulo, d.autor, d.editora, d.is_terceiro,
                1 - (c.embedding <=> CAST(:q AS vector)) AS sim
         FROM acervo_chunks c
         JOIN acervo_documentos d ON d.id = c.documento_id
+        {filtro}
         ORDER BY c.embedding <=> CAST(:q AS vector)
         LIMIT :k
         """
     ).bindparams(bindparam("q"), bindparam("k"))
 
-    rows = (await session.execute(q, {"q": str(embedding), "k": k})).mappings().all()
+    params: dict = {"q": str(embedding), "k": k}
+    if slug:
+        params["slug"] = slug
+    rows = (await session.execute(q, params)).mappings().all()
     return [
         Hit(
             chunk_id=str(r["id"]),
