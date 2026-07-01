@@ -301,6 +301,7 @@ sudo -u postgres pg_restore --no-owner --no-privileges -d praxis_restore_test <a
 - **Isolamento multi-tenant** — todo dado clínico é filtrado por `tenant_id`.
 - **Auditoria** — `audit_log` registra acessos, edições e exportações.
 - **Retenção LGPD/CFP** — soft-delete respeitando prazos (5 anos para registros administrativos, 20 anos para prontuário).
+- **Portabilidade / exportação (LGPD art. 18)** — `GET /pacientes/{id}/exportar` gera um pacote `.zip` read-only por paciente: `export.json` (todos os registros com PII decifrada), `anexos/` (PDFs originais decifrados) e `resumo.pdf` (sumário legível). `?formato=json` devolve só o JSON. Tenant-scoped, **auditado** (`acao=EXPORT`), sem migração. Exportar **≠** excluir (a retenção acima continua valendo). O pacote contém dados sensíveis — a guarda é responsabilidade do profissional.
 - **IA como apoio** — respostas da Sofia e saídas geradas são **apoio ao raciocínio clínico**; a responsabilidade técnica e a **assinatura são do profissional** (disclaimer explícito nas respostas). Por padrão (`PRAXIS_SOFIA_SEND_PATIENT=false`), dados de paciente não são enviados ao LLM.
 - **Obras de terceiros** — paráfrase obrigatória (ver §8).
 

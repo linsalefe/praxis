@@ -4,7 +4,7 @@ import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Activity, CalendarClock, CalendarPlus, ClipboardCheck, ClipboardList, Download, FileSignature, FileText, Paperclip, Trash2 } from "lucide-react";
+import { Activity, CalendarClock, CalendarPlus, ClipboardCheck, ClipboardList, Download, FileSignature, FileText, Package, Paperclip, Trash2 } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { ScribeModal } from "@/components/ScribeModal";
@@ -67,6 +67,8 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
   const [documentos, setDocumentos] = useState<DocumentoCFP[]>([]);
   const [confirmDel, setConfirmDel] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmExport, setConfirmExport] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [series, setSeries] = useState<SerieTrajetoria[]>([]);
   const [timeline, setTimeline] = useState<EventoTimeline[]>([]);
@@ -128,6 +130,33 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
     }
   }
 
+  async function exportar() {
+    setConfirmExport(false);
+    setExporting(true);
+    try {
+      // Download binário precisa do header Authorization (token em localStorage,
+      // não em cookie) → fetch + blob, não <a href>.
+      const res = await fetch(`${API_BASE}/pacientes/${id}/exportar`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (!res.ok) throw new Error(`Falha na exportação (${res.status})`);
+      const blob = await res.blob();
+      const cd = res.headers.get("Content-Disposition") || "";
+      const m = cd.match(/filename=([^;]+)/);
+      const fname = (m ? m[1].trim() : `export_${id}.zip`).replace(/"/g, "");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = fname;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Pacote exportado. Guarde-o com segurança.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao exportar");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   async function excluir() {
     setDeleting(true);
     try {
@@ -172,6 +201,9 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
           </button>
           <button className="btn" onClick={() => setDocModal(true)}>
             <FileSignature size={16} /> Gerar documento
+          </button>
+          <button className="btn" onClick={() => setConfirmExport(true)} disabled={exporting}>
+            <Package size={16} /> {exporting ? "Exportando…" : "Exportar dados (LGPD)"}
           </button>
           <button className="btn btn-danger" onClick={() => setConfirmDel(true)} style={{ marginLeft: "auto" }}>
             <Trash2 size={16} /> Excluir paciente
@@ -404,6 +436,15 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
       {docModal && (
         <DocumentoModal pacienteId={id} onClose={() => setDocModal(false)} />
       )}
+      <ConfirmDialog
+        open={confirmExport}
+        title="Exportar dados (LGPD)"
+        description={`Será gerado um pacote (.zip) com o prontuário completo de ${pac.nome}: dados pessoais decifrados, evoluções, documentos, instrumentos e os anexos originais. O arquivo contém informação sensível — você é responsável por armazená-lo e transmiti-lo com segurança. Nada é apagado ou alterado.`}
+        confirmLabel="Baixar pacote"
+        busy={exporting}
+        onConfirm={exportar}
+        onCancel={() => setConfirmExport(false)}
+      />
       <ConfirmDialog
         open={confirmDel}
         title="Excluir paciente"
