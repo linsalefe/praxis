@@ -4,7 +4,7 @@ import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { CalendarPlus, ClipboardCheck, ClipboardList, Download, FileSignature, FileText, Paperclip } from "lucide-react";
+import { CalendarPlus, ClipboardCheck, ClipboardList, Download, FileSignature, FileText, Paperclip, Trash2 } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { ScribeModal } from "@/components/ScribeModal";
@@ -13,6 +13,8 @@ import { PrepararSessaoModal } from "@/components/PrepararSessaoModal";
 import { DocumentoModal } from "@/components/DocumentoModal";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { PacienteCard } from "@/components/ui/PacienteCard";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
@@ -51,12 +53,18 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
   const [respostas, setRespostas] = useState<RespInstr[]>([]);
   const [anexos, setAnexos] = useState<Anexo[]>([]);
   const [documentos, setDocumentos] = useState<DocumentoCFP[]>([]);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!getToken()) return void router.replace("/login");
     (async () => {
       try {
-        setPac(await api<Paciente>(`/pacientes/${id}`));
+        const p = await api<Paciente>(`/pacientes/${id}`);
+        setPac(p);
+        try {
+          localStorage.setItem("praxis.last_paciente", JSON.stringify({ id: p.id, nome: p.nome }));
+        } catch { /* ignora */ }
         setSessoes(await api<Sessao[]>(`/sessoes/paciente/${id}`));
         setRespostas(await api<RespInstr[]>(`/pacientes/${id}/respostas-instrumento`));
         setAnexos(await api<Anexo[]>(`/pacientes/${id}/anexos`));
@@ -102,7 +110,30 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
     }
   }
 
-  if (loading) return (<><Topbar /><main className="container-praxis"><p style={{ color: "var(--muted)" }}>Carregando…</p></main></>);
+  async function excluir() {
+    setDeleting(true);
+    try {
+      await api(`/pacientes/${id}`, { method: "DELETE" });
+      try { localStorage.removeItem("praxis.last_paciente"); } catch { /* ignora */ }
+      toast.success("Paciente excluído.");
+      router.push("/pacientes");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Falha ao excluir");
+      setDeleting(false);
+      setConfirmDel(false);
+    }
+  }
+
+  if (loading) return (
+    <>
+      <Topbar />
+      <main className="container-praxis" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <Skeleton height={96} radius="var(--radius-lg)" />
+        <Skeleton height={40} width="60%" />
+        <Skeleton height={140} radius="var(--radius-lg)" />
+      </main>
+    </>
+  );
   if (!pac) return null;
 
   return (
@@ -123,6 +154,9 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
           </button>
           <button className="btn" onClick={() => setDocModal(true)}>
             <FileSignature size={16} /> Gerar documento
+          </button>
+          <button className="btn btn-danger" onClick={() => setConfirmDel(true)} style={{ marginLeft: "auto" }}>
+            <Trash2 size={16} /> Excluir paciente
           </button>
         </div>
 
@@ -283,6 +317,15 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
       {docModal && (
         <DocumentoModal pacienteId={id} onClose={() => setDocModal(false)} />
       )}
+      <ConfirmDialog
+        open={confirmDel}
+        title="Excluir paciente"
+        description={`O prontuário de ${pac.nome} será removido da lista (soft-delete, mantido sob guarda legal de 20 anos). Esta ação exige nova inclusão para reverter.`}
+        confirmLabel="Excluir paciente"
+        busy={deleting}
+        onConfirm={excluir}
+        onCancel={() => setConfirmDel(false)}
+      />
     </>
   );
 }

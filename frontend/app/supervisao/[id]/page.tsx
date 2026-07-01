@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Compass, Copy, Quote, Trash2 } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type Citacao = {
   n: number; titulo: string; autor: string;
@@ -30,6 +31,8 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
   const [e, setE] = useState<Estudo | null>(null);
   const [drawer, setDrawer] = useState<Citacao | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -64,13 +67,15 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
   }
 
   async function remover() {
-    if (!confirm("Remover este estudo?")) return;
+    setRemoving(true);
     try {
       await api(`/supervisao/estudos/${id}`, { method: "DELETE" });
-      toast.success("Removido.");
+      toast.success("Estudo removido.");
       router.push("/supervisao");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Falha");
+      setRemoving(false);
+      setConfirmDel(false);
     }
   }
 
@@ -131,7 +136,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         )}
 
         <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "space-between" }}>
-          <button className="btn btn-danger" onClick={remover}>
+          <button className="btn btn-danger" onClick={() => setConfirmDel(true)}>
             <Trash2 size={14} /> Remover estudo
           </button>
           <button className="btn btn-primary" onClick={copiar}>
@@ -169,6 +174,15 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
           </div>
         )}
       </main>
+      <ConfirmDialog
+        open={confirmDel}
+        title="Remover estudo"
+        description="Este estudo de caso será removido permanentemente. Esta ação não pode ser desfeita."
+        confirmLabel="Remover estudo"
+        busy={removing}
+        onConfirm={remover}
+        onCancel={() => setConfirmDel(false)}
+      />
     </>
   );
 }

@@ -8,6 +8,7 @@ import { Compass, PlusCircle, Trash2, Users2 } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { SupervisaoModal } from "@/components/SupervisaoModal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type EstudoResumo = {
   id: string; origem: "paciente" | "avulso";
@@ -21,6 +22,8 @@ export default function Page() {
   const [rows, setRows] = useState<EstudoResumo[]>([]);
   const [loading, setLoading] = useState(true);
   const [openModal, setOpenModal] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const carregar = async () => {
     try {
@@ -39,14 +42,18 @@ export default function Page() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
-  async function remover(id: string) {
-    if (!confirm("Remover este estudo?")) return;
+  async function confirmarRemocao() {
+    if (!confirmId) return;
+    setRemoving(true);
     try {
-      await api(`/supervisao/estudos/${id}`, { method: "DELETE" });
-      setRows((r) => r.filter((x) => x.id !== id));
-      toast.success("Removido.");
+      await api(`/supervisao/estudos/${confirmId}`, { method: "DELETE" });
+      setRows((r) => r.filter((x) => x.id !== confirmId));
+      toast.success("Estudo removido.");
+      setConfirmId(null);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Falha");
+    } finally {
+      setRemoving(false);
     }
   }
 
@@ -93,7 +100,7 @@ export default function Page() {
                 </div>
                 <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                   <Link href={`/supervisao/${r.id}`} className="btn">Abrir</Link>
-                  <button className="btn btn-danger" onClick={() => remover(r.id)} title="Remover">
+                  <button className="btn btn-danger" onClick={() => setConfirmId(r.id)} title="Remover">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -105,6 +112,15 @@ export default function Page() {
       {openModal && (
         <SupervisaoModal onClose={() => setOpenModal(false)} onCreated={() => { setOpenModal(false); carregar(); }} />
       )}
+      <ConfirmDialog
+        open={confirmId !== null}
+        title="Remover estudo"
+        description="Este estudo de caso será removido permanentemente. Esta ação não pode ser desfeita."
+        confirmLabel="Remover estudo"
+        busy={removing}
+        onConfirm={confirmarRemocao}
+        onCancel={() => setConfirmId(null)}
+      />
     </>
   );
 }
