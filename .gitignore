@@ -20,6 +20,19 @@ npm-debug.log*
 .env.*.local
 *.pem
 *.key
+.pgpass
+
+# Backups de banco (contêm PII cifrada) — nunca versionar
+backups/
+
+# Uploads efêmeros (áudio do Scribe é apagado pós-transcrição)
+backend/uploads/
+
+# Caches do runtime do usuário `praxis` (HOME=/opt/praxis)
+.npm/
+.cache/
+.config/
+.local/
 
 # IDE / SO
 .vscode/
