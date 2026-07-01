@@ -6,6 +6,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Activity, CalendarClock, CalendarPlus, ClipboardCheck, ClipboardList, Download, FileSignature, FileText, Package, Paperclip, Trash2 } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
+import { formatCentavos, reaisParaCentavos } from "@/lib/money";
 import { Topbar } from "@/components/Topbar";
 import { ScribeModal } from "@/components/ScribeModal";
 import { InstrumentoModal } from "@/components/InstrumentoModal";
@@ -38,6 +39,7 @@ type Paciente = {
 };
 type Sessao = {
   id: string; paciente_id: string; data: string; modalidade: string; status: string;
+  valor_centavos: number | null;
 };
 type EventoTimeline = {
   data: string; tipo_evento: string; titulo: string; ref_id: string;
@@ -57,7 +59,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
   const [pac, setPac] = useState<Paciente | null>(null);
   const [sessoes, setSessoes] = useState<Sessao[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newSes, setNewSes] = useState({ data: "", modalidade: "presencial", status: "agendada" });
+  const [newSes, setNewSes] = useState({ data: "", modalidade: "presencial", status: "agendada", valor: "" });
   const [scribeSessao, setScribeSessao] = useState<string | null>(null);
   const [instrModal, setInstrModal] = useState(false);
   const [prepModal, setPrepModal] = useState(false);
@@ -108,10 +110,11 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
           data: new Date(newSes.data).toISOString(),
           modalidade: newSes.modalidade,
           status: newSes.status,
+          valor_centavos: reaisParaCentavos(newSes.valor),
         }),
       });
       setSessoes((r) => [s, ...r]);
-      setNewSes({ data: "", modalidade: "presencial", status: "agendada" });
+      setNewSes({ data: "", modalidade: "presencial", status: "agendada", valor: "" });
       toast.success("Sessão criada.");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Falha");
@@ -371,7 +374,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
 
         <div className="card" style={{ marginTop: 20 }}>
           <h2 style={{ fontSize: 15, margin: "0 0 12px", color: "var(--muted)" }}>Agendar sessão</h2>
-          <form onSubmit={criarSessao} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr auto", gap: 8, alignItems: "end" }}>
+          <form onSubmit={criarSessao} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr auto", gap: 8, alignItems: "end" }}>
             <div>
               <label className="label">Data e hora</label>
               <input className="input" type="datetime-local" required
@@ -393,6 +396,11 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                 <option value="falta">Falta</option>
               </select>
             </div>
+            <div>
+              <label className="label">Valor (R$)</label>
+              <input className="input" inputMode="decimal" placeholder="150,00"
+                value={newSes.valor} onChange={(e) => setNewSes({ ...newSes, valor: e.target.value })} />
+            </div>
             <button className="btn btn-primary"><CalendarPlus size={16} /> Agendar</button>
           </form>
         </div>
@@ -409,6 +417,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                   <div style={{ color: "var(--muted)", fontSize: 13 }}>
                     <span className="badge">{s.modalidade}</span>{" "}
                     <span className="badge">{s.status}</span>
+                    {s.valor_centavos != null && <> <span className="badge">{formatCentavos(s.valor_centavos)}</span></>}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>

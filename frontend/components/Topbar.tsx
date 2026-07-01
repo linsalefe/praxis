@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, CalendarDays, Compass, LayoutGrid, LogOut, ShieldCheck, Users } from "lucide-react";
+import { BookOpen, CalendarDays, Compass, LayoutGrid, LogOut, ShieldCheck, Users, Wallet } from "lucide-react";
 import { clearToken } from "@/lib/api";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 
@@ -40,6 +40,9 @@ export function Topbar({ meNome }: { meNome?: string }) {
         </Link>
         <Link href="/biblioteca" className="link" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <BookOpen size={16} /> Biblioteca
+        </Link>
+        <Link href="/financeiro" className="link" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <Wallet size={16} /> Financeiro
         </Link>
         <Link href="/supervisao" className="link" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <Compass size={16} /> Supervisão
