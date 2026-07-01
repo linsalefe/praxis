@@ -4,13 +4,15 @@ import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { CalendarPlus, ClipboardCheck, ClipboardList, Download, FileSignature, FileText, Paperclip, PlusCircle, Sparkles, Wand2 } from "lucide-react";
+import { CalendarPlus, ClipboardCheck, ClipboardList, Download, FileSignature, FileText, Paperclip } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { ScribeModal } from "@/components/ScribeModal";
 import { InstrumentoModal } from "@/components/InstrumentoModal";
 import { PrepararSessaoModal } from "@/components/PrepararSessaoModal";
 import { DocumentoModal } from "@/components/DocumentoModal";
+import { PresenceMark } from "@/components/ui/PresenceMark";
+import { PacienteCard } from "@/components/ui/PacienteCard";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
@@ -107,14 +109,11 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
     <>
       <Topbar />
       <main className="container-praxis">
-        <p style={{ margin: 0 }}><Link className="link" href="/pacientes">← Pacientes</Link></p>
-        <h1 style={{ fontSize: 22, margin: "8px 0 4px" }}>{pac.nome}</h1>
-        <p style={{ color: "var(--muted)", marginTop: 0 }}>
-          {[pac.contato, pac.nascimento, pac.documento, pac.sexo].filter(Boolean).join(" · ") || "Sem dados adicionais."}
-        </p>
-        <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <p style={{ margin: "0 0 12px" }}><Link className="link" href="/pacientes">← Pacientes</Link></p>
+        <PacienteCard paciente={pac} sessoes={sessoes} />
+        <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Link href={`/sofia?paciente_id=${id}`} className="btn">
-            <Sparkles size={16} /> Perguntar à Sofia
+            <PresenceMark size={16} /> Perguntar à Sofia
           </Link>
           <button className="btn" onClick={() => setInstrModal(true)}>
             <ClipboardList size={16} /> Novo instrumento
@@ -157,7 +156,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
         {(respostas.length > 0 || anexos.length > 0) && (
           <>
             <h2 style={{ fontSize: 15, margin: "24px 0 8px", color: "var(--muted)" }}>Instrumentos</h2>
-            {respostas.length === 0 && <p style={{ color: "var(--muted)" }}>Nenhum instrumento iniciado.</p>}
+            {respostas.length === 0 && <p style={{ color: "var(--muted)" }}>Nenhum instrumento aplicado ainda.</p>}
             {respostas.map((r) => (
               <div key={r.id} className="card" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
@@ -247,7 +246,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
 
         <h2 style={{ fontSize: 15, margin: "24px 0 12px", color: "var(--muted)" }}>Timeline de sessões</h2>
         {sessoes.length === 0 ? (
-          <p style={{ color: "var(--muted)" }}>Nenhuma sessão registrada.</p>
+          <p style={{ color: "var(--muted)" }}>Nenhuma sessão registrada ainda — agende a primeira acima.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {sessoes.map((s) => (
@@ -261,7 +260,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="btn" onClick={() => setScribeSessao(s.id)}>
-                    <Wand2 size={16} /> Gerar evolução
+                    <PresenceMark size={16} /> Gerar evolução
                   </button>
                   <button className="btn" onClick={() => novaEvolucao(s.id)}>
                     <FileText size={16} /> Em branco

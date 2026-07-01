@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, ClipboardList, Download, FileCheck2, Wand2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, FileCheck2 } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
+import { PresenceMark } from "@/components/ui/PresenceMark";
+import { InstrumentoFaixa } from "@/components/ui/InstrumentoFaixa";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
@@ -126,8 +128,6 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
     scheduleSave();
   }
 
-  const progress = useMemo(() => `${Math.min(step + 1, total)}/${total}`, [step, total]);
-
   if (!instr || !resp)
     return (
       <>
@@ -145,18 +145,23 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
         <p style={{ margin: 0 }}>
           <Link className="link" href={`/pacientes/${resp.paciente_id}`}>← Paciente</Link>
         </p>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
-          <h1 style={{ fontSize: 22, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-            <ClipboardList size={20} color="var(--brand-2)" /> {instr.titulo}
-          </h1>
-          <span className="badge">
-            {finalizado ? "finalizado" : "em andamento"} · seção {progress}
-            {dirty ? " · salvando…" : ""}
-          </span>
+        <div className="card" style={{ marginTop: 8 }}>
+          <InstrumentoFaixa
+            titulo={instr.titulo}
+            versao={instr.versao}
+            status={resp.status}
+            atual={Math.min(step + 1, total)}
+            total={total}
+          />
+          {dirty && (
+            <div style={{ marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--warm-500)" }}>
+              salvando…
+            </div>
+          )}
+          {instr.descricao && (
+            <p style={{ color: "var(--muted)", fontSize: 13, margin: "10px 0 0" }}>{instr.descricao}</p>
+          )}
         </div>
-        {instr.descricao && (
-          <p style={{ color: "var(--muted)", fontSize: 13 }}>{instr.descricao}</p>
-        )}
 
         {!isSaidaStep && (
           <div className="card" style={{ marginTop: 12 }}>
@@ -187,7 +192,7 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
             </p>
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
               <button className="btn" onClick={gerar} disabled={!!busy || finalizado}>
-                <Wand2 size={16} /> {busy || "Gerar rascunho"}
+                <PresenceMark size={16} /> {busy || "Gerar rascunho"}
               </button>
               {resp.saida_provider && (
                 <span className="badge">{resp.saida_provider}</span>

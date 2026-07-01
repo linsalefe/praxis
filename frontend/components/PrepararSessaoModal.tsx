@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ClipboardCheck, Copy, Link2, Quote, X, Wand2 } from "lucide-react";
+import { ClipboardCheck, Copy, Link2, Quote, X } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 
 type Citacao = {

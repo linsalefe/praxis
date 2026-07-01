@@ -86,8 +86,8 @@ export function DocumentoModal({
                 style={{
                   padding: "10px 12px", textAlign: "left",
                   borderRadius: 8, cursor: "pointer",
-                  border: `1px solid ${selected ? "var(--brand-2)" : "var(--border)"}`,
-                  background: selected ? "#1c2b4f" : "var(--surface-2)",
+                  border: `1px solid ${selected ? "var(--teal-300)" : "var(--border)"}`,
+                  background: selected ? "var(--teal-50)" : "var(--surface-2)",
                   color: "var(--text)",
                 }}
               >

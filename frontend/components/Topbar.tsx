@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Compass, LogOut, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { Compass, LogOut, ShieldCheck, Users } from "lucide-react";
 import { clearToken } from "@/lib/api";
+import { PresenceMark } from "@/components/ui/PresenceMark";
 
 export function Topbar({ meNome }: { meNome?: string }) {
   const router = useRouter();
@@ -29,7 +30,7 @@ export function Topbar({ meNome }: { meNome?: string }) {
           <Users size={16} /> Pacientes
         </Link>
         <Link href="/sofia" className="link" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <Sparkles size={16} /> Sofia
+          <PresenceMark size={16} /> Sofia
         </Link>
         <Link href="/supervisao" className="link" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <Compass size={16} /> Supervisão

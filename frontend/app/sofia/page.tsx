@@ -4,9 +4,11 @@ import { useEffect, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Send, Sparkles, Quote, BookOpen } from "lucide-react";
+import { Send, BookOpen } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
+import { PresenceMark } from "@/components/ui/PresenceMark";
+import { SofiaOrientacao } from "@/components/ui/SofiaOrientacao";
 
 type Citacao = {
   n: number;
@@ -82,7 +84,7 @@ function PageInner() {
       <Topbar />
       <main className="container-praxis" style={{ maxWidth: 900 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-          <Sparkles size={22} color="var(--brand-2)" />
+          <PresenceMark size={26} />
           <h1 style={{ margin: 0, fontSize: 22 }}>Sofia</h1>
           <span className="badge">acervo CENAT · RAG</span>
         </div>
@@ -115,54 +117,14 @@ function PageInner() {
             </p>
           )}
           {turnos.map((t, i) => (
-            <div key={i} style={{ marginBottom: 24 }}>
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 2 }}>Você</div>
-                <div>{t.pergunta}</div>
-              </div>
-
-              <div style={{ borderLeft: "3px solid var(--brand)", paddingLeft: 12 }}>
-                <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 2, display: "flex", alignItems: "center", gap: 6 }}>
-                  <Sparkles size={12} /> Sofia
-                </div>
-                {t.loading && <p style={{ color: "var(--muted)" }}>consultando acervo…</p>}
-                {t.erro && <p style={{ color: "var(--danger)" }}>{t.erro}</p>}
-                {t.resposta && (
-                  <>
-                    {t.resposta.sem_respaldo && (
-                      <div className="badge" style={{ marginBottom: 8, color: "var(--danger)" }}>
-                        Sem respaldo no acervo — Sofia respondeu de forma geral.
-                      </div>
-                    )}
-                    <div style={{ whiteSpace: "pre-wrap" }}>{t.resposta.resposta}</div>
-
-                    {t.resposta.citacoes.length > 0 && (
-                      <div style={{ marginTop: 12 }}>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                          {t.resposta.citacoes.map((c) => (
-                            <button
-                              key={c.n}
-                              type="button"
-                              onClick={() => setDrawer(c)}
-                              className="badge"
-                              style={{ cursor: "pointer" }}
-                              title={`${c.titulo} — ${c.autor}`}
-                            >
-                              <Quote size={12} /> T{c.n} · {c.titulo.slice(0, 40)}
-                              {c.is_terceiro && <span style={{ color: "var(--brand-2)", marginLeft: 4 }}>[3º]</span>}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <p style={{ marginTop: 12, color: "var(--muted)", fontSize: 12 }}>
-                      {t.resposta.disclaimer} · <span className="badge">{t.resposta.modelo}</span>
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
+            <SofiaOrientacao
+              key={i}
+              pergunta={t.pergunta}
+              resposta={t.resposta}
+              loading={t.loading}
+              erro={t.erro}
+              onCitacao={(c) => setDrawer(c)}
+            />
           ))}
         </div>
 

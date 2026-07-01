@@ -3,8 +3,9 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Mic, Upload, FileText, Wand2, Square, X } from "lucide-react";
+import { Mic, Upload, FileText, Square, X } from "lucide-react";
 import { getToken, ApiError } from "@/lib/api";
+import { PresenceMark } from "@/components/ui/PresenceMark";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
@@ -131,7 +132,7 @@ export function ScribeModal({
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-            <Wand2 size={18} color="var(--brand-2)" /> Gerar evolução
+            <PresenceMark size={18} /> Gerar evolução
           </h3>
           <button className="btn" onClick={onClose} disabled={!!busy} aria-label="Fechar">
             <X size={14} />
@@ -179,7 +180,7 @@ export function ScribeModal({
               />
               <div style={{ marginTop: 12, textAlign: "right" }}>
                 <button className="btn btn-primary" onClick={enviarResumo} disabled={!!busy}>
-                  <Wand2 size={16} /> {busy ?? "Gerar evolução"}
+                  <PresenceMark size={16} /> {busy ?? "Gerar evolução"}
                 </button>
               </div>
             </>
@@ -241,7 +242,7 @@ export function ScribeModal({
                       disabled={!!busy}
                       onClick={() => enviarAudio(audioBlob, `sessao-${sessaoId}.webm`)}
                     >
-                      <Wand2 size={16} /> {busy ?? "Enviar e gerar"}
+                      <PresenceMark size={16} /> {busy ?? "Enviar e gerar"}
                     </button>
                   </>
                 )}

@@ -1,26 +1,133 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   Práxis — Design System "Presença"
+   Calma clínica, quente, contida, ancorada em evidência.
+   Token-first: os 10 nomes originais permanecem como aliases de
+   compatibilidade (novos valores); o restante amplia a linguagem.
+   ========================================================================== */
+
 :root {
-  --bg: #0b1220;
-  --surface: #111a2c;
-  --surface-2: #172441;
-  --border: #22314f;
-  --text: #e6ecff;
-  --muted: #9aa8c7;
-  --brand: #4c8bf5;
-  --brand-2: #7aa9ff;
-  --danger: #f87171;
-  --ok: #34d399;
+  /* --- Aliases de compatibilidade (nomes originais, valores Presença) --- */
+  --bg: #F8F6F1;         /* porcelana greige — anti "efeito hospital" */
+  --surface: #FFFFFF;    /* card/superfície elevada */
+  --surface-2: #F3EFE7;  /* superfície rebaixada/secundária */
+  --border: #E0DACC;     /* bordas/divisores */
+  --text: #2A2620;       /* tinta quente */
+  --muted: #6B6456;      /* texto secundário — AA (~5:1 sobre porcelana) */
+  --brand: #21504B;      /* primário (petróleo) */
+  --brand-2: #2C6660;    /* acento/links legível sobre claro */
+  --danger: #8F3E31;     /* erro/risco (tijolo dessaturado) */
+  --ok: #3E6B53;         /* positivo */
+
+  /* --- Petróleo (âncora) --- */
+  --teal-900: #12332F; --teal-800: #1A413C; --teal-700: #21504B; --teal-600: #2C6660;
+  --teal-500: #3E827A; --teal-300: #94C1B9; --teal-100: #DCEAE6; --teal-50: #EEF5F2;
+  /* alias usado por alguns componentes (borda suave de moldura) */
+  --teal-200: #C4DED8;
+
+  /* --- Sálvia --- */
+  --sage-600: #5E7F6B; --sage-300: #AEC4B4; --sage-100: #E4EDE5;
+
+  /* --- Âmbar (acento humano, escasso) --- */
+  --accent: #CBA35F; --accent-strong: #A9793C; --amber-300: #E2C58C;
+  --amber-100: #F5ECD7; --amber-600: #A9793C;
+
+  /* --- Neutros quentes extra --- */
+  --sand-100: #ECE7DC; --warm-500: #857C6C; --ink-800: #3A362E;
+
+  /* --- Estados (fg / bg / line) --- */
+  --pos-fg: #3E6B53; --pos-bg: #E7F0E8; --pos-line: #BFD6C6;
+  --info-fg: #2C6660; --info-bg: #E4EFEC; --info-line: #BCD6D0;
+  --warn-fg: #8A5E1F; --warn-bg: #F6EBCF; --warn-line: #E4CE9A;
+  --risk-fg: #8F3E31; --risk-bg: #F6E4E0; --risk-line: #E4BEB4;
+
+  /* --- Marca / estados de interação --- */
+  --primary-hover: #1A413C; --primary-press: #12332F;
+  --text-on-primary: #F4F8F6; --focus-ring: rgba(44, 102, 96, .38);
+
+  /* --- Tipografia (variáveis ligadas em layout.tsx via next/font) --- */
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --font-ui: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+
+  /* --- Raio · Sombra quente · Movimento --- */
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 16px; --radius-xl: 24px; --radius-full: 999px;
+  --shadow-sm: 0 1px 2px rgba(42, 38, 32, .06);
+  --shadow-md: 0 4px 16px rgba(42, 38, 32, .08);
+  --shadow-lg: 0 14px 36px rgba(42, 38, 32, .11);
+  --ease-calm: cubic-bezier(.22, .61, .36, 1); --dur-base: 220ms; --breath: 8s;
 }
 
+/* ==========================================================================
+   @theme — expõe os tokens como utilities Tailwind 4 para NOVOS componentes
+   (bg-surface, text-secondary, rounded-lg, font-display…) sem exigir
+   migração do código existente baseado em var(--...).
+   ========================================================================== */
+@theme {
+  --color-bg: #F8F6F1;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #F3EFE7;
+  --color-border: #E0DACC;
+  --color-text: #2A2620;
+  --color-secondary: #6B6456;
+  --color-primary: #21504B;
+  --color-primary-2: #2C6660;
+  --color-accent: #CBA35F;
+  --color-accent-strong: #A9793C;
+  --color-danger: #8F3E31;
+  --color-ok: #3E6B53;
+
+  --color-teal-900: #12332F;
+  --color-teal-700: #21504B;
+  --color-teal-500: #3E827A;
+  --color-teal-300: #94C1B9;
+  --color-teal-100: #DCEAE6;
+  --color-teal-50: #EEF5F2;
+  --color-sage-600: #5E7F6B;
+  --color-sage-300: #AEC4B4;
+  --color-amber-300: #E2C58C;
+  --color-amber-100: #F5ECD7;
+  --color-warm-500: #857C6C;
+  --color-ink-800: #3A362E;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 999px;
+
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-ui: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
 html, body {
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * { box-sizing: border-box; }
 
+h1, h2, h3 { font-family: var(--font-display); font-weight: 500; letter-spacing: -0.01em; }
+
+::selection { background: var(--amber-100); color: var(--ink-800); }
+
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* ==========================================================================
+   Layout
+   ========================================================================== */
 .container-praxis {
   max-width: 1100px;
   margin: 0 auto;
@@ -30,41 +137,101 @@ html, body {
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 20px;
+  box-shadow: var(--shadow-sm);
 }
 
-.input {
+.divider { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
+
+/* ==========================================================================
+   Campos de formulário
+   ========================================================================== */
+.input, .textarea, .select {
   width: 100%;
   padding: 10px 12px;
-  background: var(--surface-2);
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: var(--text);
+  font: inherit;
   outline: none;
+  transition: border-color var(--dur-base) var(--ease-calm),
+              box-shadow var(--dur-base) var(--ease-calm);
 }
-.input:focus { border-color: var(--brand); }
+.input:focus, .textarea:focus, .select:focus {
+  border-color: var(--teal-500);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.input::placeholder, .textarea::placeholder { color: var(--warm-500); }
+.textarea { min-height: 96px; resize: vertical; line-height: 1.55; }
 
 .label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
 
+/* ==========================================================================
+   Botões
+   ========================================================================== */
 .btn {
   display: inline-flex; align-items: center; gap: 8px;
-  padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--surface-2); color: var(--text); cursor: pointer;
-  font-weight: 500; transition: background 120ms, border-color 120ms;
+  padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); cursor: pointer;
+  font-weight: 500; text-decoration: none;
+  transition: background var(--dur-base) var(--ease-calm),
+              border-color var(--dur-base) var(--ease-calm),
+              box-shadow var(--dur-base) var(--ease-calm);
 }
-.btn:hover { background: #1c2b4f; }
-.btn-primary { background: var(--brand); border-color: var(--brand); color: white; }
-.btn-primary:hover { background: var(--brand-2); }
-.btn-danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+.btn:hover { background: var(--teal-50); border-color: var(--teal-300); }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
 
+.btn-primary { background: var(--brand); border-color: var(--brand); color: var(--text-on-primary); }
+.btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+.btn-primary:active { background: var(--primary-press); }
+
+.btn-secondary { background: var(--teal-50); border-color: var(--teal-300); color: var(--teal-800); }
+.btn-secondary:hover { background: var(--teal-100); }
+
+.btn-ghost { background: transparent; border-color: transparent; color: var(--brand-2); }
+.btn-ghost:hover { background: var(--teal-50); border-color: transparent; }
+
+.btn-danger { color: var(--danger); border-color: var(--risk-line); background: transparent; }
+.btn-danger:hover { background: var(--risk-bg); border-color: var(--danger); }
+
+/* ==========================================================================
+   Badges
+   ========================================================================== */
 .badge {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 3px 10px; border-radius: 999px; font-size: 12px;
+  padding: 3px 10px; border-radius: var(--radius-full); font-size: 12px;
   background: var(--surface-2); border: 1px solid var(--border); color: var(--muted);
 }
+.badge-pos     { background: var(--pos-bg);  border-color: var(--pos-line);  color: var(--pos-fg); }
+.badge-info    { background: var(--info-bg); border-color: var(--info-line); color: var(--info-fg); }
+.badge-warn    { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn-fg); }
+.badge-risk    { background: var(--risk-bg); border-color: var(--risk-line); color: var(--risk-fg); }
+.badge-neutral { background: var(--sand-100); border-color: var(--border);   color: var(--warm-500); }
 
+/* ==========================================================================
+   Links
+   ========================================================================== */
 .link { color: var(--brand-2); text-decoration: none; }
-.link:hover { text-decoration: underline; }
+.link:hover { text-decoration: underline; text-underline-offset: 2px; }
 
-.divider { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
+/* ==========================================================================
+   Marca de Presença — respiração dos arcos concêntricos
+   ========================================================================== */
+@keyframes presence-breathe {
+  0%, 100% { transform: scale(0.62); opacity: 0.35; }
+  50%      { transform: scale(1);    opacity: 0.9; }
+}
+
+/* ==========================================================================
+   Acessibilidade — respeitar preferência de movimento reduzido
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
