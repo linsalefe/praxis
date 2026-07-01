@@ -55,6 +55,16 @@ class SessaoOut(BaseModel):
     criado_em: datetime
 
 
+class SessaoAgendaOut(BaseModel):
+    """Sessão na agenda, com nome do paciente decifrado (espelha SessaoHoje)."""
+    id: str
+    paciente_id: str
+    paciente_nome: str
+    data: datetime
+    modalidade: str
+    status: str
+
+
 class EvolucaoCreate(BaseModel):
     sessao_id: str
     identificacao: str | None = None
