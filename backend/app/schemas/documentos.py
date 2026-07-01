@@ -51,6 +51,8 @@ class DocumentoOut(BaseModel):
     assinado_em: datetime | None
     hash_assinatura: str | None
     anexo_pdf_id: str | None
+    assinatura_tipo: str = "simples"
+    cert_titular: str | None = None
     criado_em: datetime
     atualizado_em: datetime
     aviso: str = (
