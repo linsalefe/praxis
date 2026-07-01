@@ -217,11 +217,29 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 500; letter-spacing:
 .link:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 /* ==========================================================================
+   Autofill — o preenchimento do navegador usa a paleta Presença
+   ========================================================================== */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text);
+  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+  caret-color: var(--text);
+  transition: background-color 9999s ease-out 0s;
+}
+
+/* ==========================================================================
    Marca de Presença — respiração dos arcos concêntricos
    ========================================================================== */
 @keyframes presence-breathe {
   0%, 100% { transform: scale(0.62); opacity: 0.35; }
   50%      { transform: scale(1);    opacity: 0.9; }
+}
+
+/* Shimmer suave dos skeletons */
+@keyframes presence-shimmer {
+  0%   { background-position: -180% 0; }
+  100% { background-position: 180% 0; }
 }
 
 /* ==========================================================================

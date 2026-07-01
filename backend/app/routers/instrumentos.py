@@ -9,18 +9,20 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 
 from app.deps import SessionDep, get_current_user
-from app.instrumentos.geradores import formular_maastricht, planejar_wrap
+from app.instrumentos.geradores import formular_maastricht, planejar_wrap, redigir_leitura_escala
 from app.instrumentos.pdf import render_instrumento_pdf
 from app.models.audit import AuditLog
 from app.models.consentimento import Consentimento
 from app.models.instrumentos import AnexoProntuario, Instrumento, RespostaInstrumento
 from app.models.paciente import Paciente
 from app.models.user import User
+from app.instrumentos.scoring import pontuar_likert
 from app.schemas.instrumentos import (
     AnexoOut,
     GerarSaidaOut,
     IniciarIn,
     InstrumentoOut,
+    PontuacaoOut,
     RespostaOut,
     RespostaSalvarIn,
 )
@@ -95,6 +97,12 @@ async def _resposta_out(session, r: RespostaInstrumento) -> RespostaOut:
             AnexoProntuario.origem_id == r.id,
         )
     )
+    # Escore determinístico (factual) para instrumentos likert_sum — calculado
+    # sempre, na serialização, independente de `gerar-saida`.
+    pontuacao = None
+    if instr and (instr.definicao or {}).get("kind") == "likert_sum":
+        pontuacao = PontuacaoOut(**pontuar_likert(instr.definicao, r.respostas or {}))
+
     return RespostaOut(
         id=str(r.id), paciente_id=str(r.paciente_id),
         instrumento_tipo=instr.tipo if instr else "",
@@ -103,6 +111,7 @@ async def _resposta_out(session, r: RespostaInstrumento) -> RespostaOut:
         saida_texto=r.saida_texto, saida_gerada_em=r.saida_gerada_em,
         saida_provider=r.saida_provider, finalizado_em=r.finalizado_em,
         anexo_id=str(anexo.id) if anexo else None,
+        pontuacao=pontuacao,
         criado_em=r.criado_em, atualizado_em=r.atualizado_em,
     )
 
@@ -244,6 +253,11 @@ async def gerar_saida(
         gerada = await formular_maastricht(session, instr.definicao, r.respostas or {}, user.abordagem)
     elif instr.tipo == "wrap":
         gerada = await planejar_wrap(instr.definicao, r.respostas or {})
+    elif (instr.definicao or {}).get("kind") == "likert_sum":
+        # Escore/faixa são calculados de forma determinística; a IA só redige a
+        # leitura sobre o número pronto (nunca recalcula).
+        pont = pontuar_likert(instr.definicao, r.respostas or {})
+        gerada = await redigir_leitura_escala(instr.titulo, instr.definicao, pont, r.respostas or {})
     else:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Gerador não implementado para '{instr.tipo}'")
 

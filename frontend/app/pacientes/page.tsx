@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Search, X } from "lucide-react";
 import { api, ApiError, getScope, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type Paciente = {
   id: string; nome: string; contato: string | null;
@@ -21,12 +22,15 @@ export default function PacientesPage() {
   const [rows, setRows] = useState<Paciente[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [drawer, setDrawer] = useState(false);
+  const [busca, setBusca] = useState("");
   const [form, setForm] = useState({ nome: "", contato: "", nascimento: "", documento: "", sexo: "" });
 
   useEffect(() => {
     const t = getToken();
     if (!t) return void router.replace("/login");
     if (getScope() === "pre_2fa") return void router.replace("/login/2fa");
+    if (new URLSearchParams(window.location.search).get("novo") === "1") setDrawer(true);
     (async () => {
       try {
         setMe(await api<Me>("/auth/me"));
@@ -39,6 +43,14 @@ export default function PacientesPage() {
       }
     })();
   }, [router]);
+
+  const filtrados = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(
+      (p) => p.nome.toLowerCase().includes(q) || (p.contato || "").toLowerCase().includes(q),
+    );
+  }, [rows, busca]);
 
   async function criar(e: React.FormEvent) {
     e.preventDefault();
@@ -56,6 +68,7 @@ export default function PacientesPage() {
       });
       setRows((r) => [p, ...r]);
       setForm({ nome: "", contato: "", nascimento: "", documento: "", sexo: "" });
+      setDrawer(false);
       toast.success("Paciente criado.");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Falha ao criar");
@@ -68,31 +81,33 @@ export default function PacientesPage() {
     <>
       <Topbar meNome={me?.nome} />
       <main className="container-praxis">
-        <h1 style={{ fontSize: 22, margin: "8px 0 20px" }}>Pacientes</h1>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, margin: "8px 0 20px" }}>
+          <h1 style={{ fontSize: 22, margin: 0 }}>Pacientes</h1>
+          <button className="btn btn-primary" onClick={() => setDrawer(true)}>
+            <PlusCircle size={16} /> Novo paciente
+          </button>
+        </div>
 
-        <div className="card" style={{ marginBottom: 24 }}>
-          <h2 style={{ fontSize: 15, margin: "0 0 12px", color: "var(--muted)" }}>Novo paciente</h2>
-          <form onSubmit={criar} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr auto", gap: 8, alignItems: "end" }}>
-            <div><label className="label">Nome</label>
-              <input className="input" required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
-            <div><label className="label">Contato</label>
-              <input className="input" value={form.contato} onChange={(e) => setForm({ ...form, contato: e.target.value })} /></div>
-            <div><label className="label">Nascimento</label>
-              <input className="input" type="date" value={form.nascimento} onChange={(e) => setForm({ ...form, nascimento: e.target.value })} /></div>
-            <div><label className="label">Documento</label>
-              <input className="input" value={form.documento} onChange={(e) => setForm({ ...form, documento: e.target.value })} /></div>
-            <div><label className="label">Sexo</label>
-              <input className="input" value={form.sexo} onChange={(e) => setForm({ ...form, sexo: e.target.value })} /></div>
-            <button className="btn btn-primary" disabled={creating}>
-              <PlusCircle size={16} /> {creating ? "..." : "Adicionar"}
-            </button>
-          </form>
+        {/* Busca */}
+        <div style={{ position: "relative", marginBottom: 16, maxWidth: 420 }}>
+          <Search size={16} color="var(--muted)" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
+          <input
+            className="input"
+            style={{ paddingLeft: 36 }}
+            placeholder="Buscar por nome ou contato…"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
         </div>
 
         {loading ? (
-          <p style={{ color: "var(--muted)" }}>Carregando…</p>
+          <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} height={20} width={`${90 - i * 8}%`} />)}
+          </div>
         ) : rows.length === 0 ? (
-          <p style={{ color: "var(--muted)" }}>Nenhum paciente cadastrado ainda.</p>
+          <p style={{ color: "var(--muted)" }}>Nenhum paciente cadastrado ainda — comece por “Novo paciente”.</p>
+        ) : filtrados.length === 0 ? (
+          <p style={{ color: "var(--muted)" }}>Nenhum paciente encontrado para “{busca}”.</p>
         ) : (
           <div className="card" style={{ padding: 0 }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -105,7 +120,7 @@ export default function PacientesPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((p) => (
+                {filtrados.map((p) => (
                   <tr key={p.id} style={{ borderTop: "1px solid var(--border)" }}>
                     <td style={{ padding: 12 }}>
                       <Link className="link" href={`/pacientes/${p.id}`}>{p.nome}</Link>
@@ -122,6 +137,49 @@ export default function PacientesPage() {
           </div>
         )}
       </main>
+
+      {/* Drawer — Novo paciente */}
+      {drawer && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Novo paciente"
+          onClick={() => !creating && setDrawer(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(42,38,32,0.38)", display: "flex", justifyContent: "flex-end", zIndex: 60 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(440px, 100%)", height: "100%", background: "var(--surface)",
+              borderLeft: "1px solid var(--border)", boxShadow: "var(--shadow-lg)",
+              padding: 24, overflowY: "auto",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <h2 style={{ fontSize: 18, margin: 0 }}>Novo paciente</h2>
+              <button className="btn btn-ghost" onClick={() => setDrawer(false)} aria-label="Fechar"><X size={18} /></button>
+            </div>
+            <form onSubmit={criar} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div><label className="label">Nome *</label>
+                <input className="input" required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
+              <div><label className="label">Contato</label>
+                <input className="input" value={form.contato} onChange={(e) => setForm({ ...form, contato: e.target.value })} /></div>
+              <div><label className="label">Nascimento</label>
+                <input className="input" type="date" value={form.nascimento} onChange={(e) => setForm({ ...form, nascimento: e.target.value })} /></div>
+              <div><label className="label">Documento</label>
+                <input className="input" value={form.documento} onChange={(e) => setForm({ ...form, documento: e.target.value })} /></div>
+              <div><label className="label">Sexo</label>
+                <input className="input" value={form.sexo} onChange={(e) => setForm({ ...form, sexo: e.target.value })} /></div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+                <button type="button" className="btn" onClick={() => setDrawer(false)} disabled={creating}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" disabled={creating}>
+                  <PlusCircle size={16} /> {creating ? "Adicionando…" : "Adicionar"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }

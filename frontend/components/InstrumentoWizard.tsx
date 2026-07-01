@@ -8,7 +8,7 @@ import { ChevronLeft, ChevronRight, Download, FileCheck2 } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { PresenceMark } from "@/components/ui/PresenceMark";
-import { InstrumentoFaixa } from "@/components/ui/InstrumentoFaixa";
+import { InstrumentoFaixa, FaixaSeveridade, type FaixaDef } from "@/components/ui/InstrumentoFaixa";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
@@ -17,10 +17,32 @@ type Pergunta = {
   opcoes?: string[]; obrigatorio?: boolean;
 };
 type Secao = { id: string; titulo: string; descricao?: string; perguntas: Pergunta[] };
-type Definicao = { secoes: Secao[] };
+type OpcaoLikert = { valor: number; rotulo: string };
+type ItemLikert = { id: string; texto: string; invertido?: boolean; subescala?: string; flag?: string };
+type SubescalaDef = { id: string; rotulo: string; itens: string[]; faixas: FaixaDef[]; multiplicador?: number };
+type Definicao = {
+  secoes?: Secao[];
+  kind?: string;
+  instrucoes?: string;
+  opcoes?: OpcaoLikert[];
+  itens?: ItemLikert[];
+  faixas?: FaixaDef[];
+  subescalas?: SubescalaDef[];
+};
 type Instrumento = {
   id: string; tipo: string; versao: string; titulo: string;
   descricao: string | null; fonte: string | null; definicao?: Definicao;
+};
+type Subescore = {
+  id: string; rotulo: string; escore: number; itens_respondidos: number;
+  total_itens: number; completo: boolean; faixa_rotulo: string | null; severidade: string | null;
+};
+type Pontuacao = {
+  tipo: "unico" | "subescalas";
+  escore: number | null; escore_bruto: number | null; transformado: number | null;
+  faixa_rotulo: string | null; severidade: string | null;
+  itens_respondidos: number; total_itens: number; completo: boolean;
+  subescores: Subescore[];
 };
 type Resposta = {
   id: string; paciente_id: string; instrumento_tipo: string;
@@ -29,6 +51,7 @@ type Resposta = {
   saida_texto: string | null; saida_gerada_em: string | null;
   saida_provider: string | null; finalizado_em: string | null;
   anexo_id: string | null;
+  pontuacao: Pontuacao | null;
 };
 
 export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
@@ -55,9 +78,12 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
     })();
   }, [respostaId, router]);
 
-  const secoes = instr?.definicao?.secoes ?? [];
-  const total = secoes.length + 1; // + tela final
-  const isSaidaStep = step >= secoes.length;
+  const isLikert = instr?.definicao?.kind === "likert_sum";
+  const secoes = isLikert ? [] : (instr?.definicao?.secoes ?? []);
+  // likert: 1 passo de itens + 1 de saída. qualitativo: 1 passo por seção + saída.
+  const passosItens = isLikert ? 1 : secoes.length;
+  const total = passosItens + 1;
+  const isSaidaStep = step >= passosItens;
 
   const scheduleSave = () => {
     setDirty(true);
@@ -128,6 +154,16 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
     scheduleSave();
   }
 
+  // likert_sum: respostas ficam numa única seção "itens" { itemId: valor }
+  function updItem(itemId: string, valor: number) {
+    if (!resp) return;
+    setResp({
+      ...resp,
+      respostas: { ...resp.respostas, itens: { ...(resp.respostas.itens || {}), [itemId]: valor } },
+    });
+    scheduleSave();
+  }
+
   if (!instr || !resp)
     return (
       <>
@@ -163,7 +199,7 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
           )}
         </div>
 
-        {!isSaidaStep && (
+        {!isSaidaStep && !isLikert && (
           <div className="card" style={{ marginTop: 12 }}>
             <h2 style={{ fontSize: 15, marginTop: 0 }}>{secoes[step].titulo}</h2>
             {secoes[step].descricao && (
@@ -183,12 +219,50 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
           </div>
         )}
 
+        {!isSaidaStep && isLikert && instr.definicao && (
+          <>
+            <div className="card" style={{ marginTop: 12 }}>
+              {instr.definicao.instrucoes && (
+                <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 0 }}>{instr.definicao.instrucoes}</p>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {(instr.definicao.itens || []).map((it, idx) => (
+                  <ItemLikertCampo
+                    key={it.id}
+                    idx={idx + 1}
+                    item={it}
+                    opcoes={instr.definicao!.opcoes || []}
+                    valor={(resp.respostas.itens || {})[it.id] as number | undefined}
+                    onChange={(v) => updItem(it.id, v)}
+                    disabled={finalizado}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="card" style={{ marginTop: 12 }}>
+              <h2 style={{ fontSize: 15, marginTop: 0 }}>Escore (calculado)</h2>
+              <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 12px" }}>
+                O escore e a faixa são calculados pelo servidor — factuais. A interpretação clínica é do profissional.
+              </p>
+              <PainelFaixa definicao={instr.definicao} pontuacao={resp.pontuacao} />
+            </div>
+          </>
+        )}
+
         {isSaidaStep && (
           <div className="card" style={{ marginTop: 12 }}>
             <h2 style={{ fontSize: 15, marginTop: 0 }}>Saída — revise e finalize</h2>
+            {isLikert && instr.definicao && (
+              <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid var(--border)" }}>
+                <PainelFaixa definicao={instr.definicao} pontuacao={resp.pontuacao} />
+                <p style={{ color: "var(--warm-500)", fontSize: 11, margin: "8px 0 0", fontFamily: "var(--font-mono)" }}>
+                  Escore factual acima. O texto abaixo é interpretação (rascunho editável) — separado do número.
+                </p>
+              </div>
+            )}
             <p style={{ color: "var(--muted)", fontSize: 13, margin: "0 0 12px" }}>
-              Gere um rascunho com IA (baseado no acervo, para Maastricht) e edite livremente.
-              O PDF fica anexado ao prontuário do paciente. Enquanto não finalizar, permanece rascunho editável.
+              Gere um rascunho com IA e edite livremente. O PDF fica anexado ao prontuário do paciente.
+              Enquanto não finalizar, permanece rascunho editável.
             </p>
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
               <button className="btn" onClick={gerar} disabled={!!busy || finalizado}>
@@ -225,7 +299,7 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
           <button className="btn" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
             <ChevronLeft size={16} /> Anterior
           </button>
-          <button className="btn" onClick={() => setStep((s) => Math.min(secoes.length, s + 1))} disabled={step >= secoes.length}>
+          <button className="btn" onClick={() => setStep((s) => Math.min(passosItens, s + 1))} disabled={step >= passosItens}>
             Próximo <ChevronRight size={16} />
           </button>
         </div>
@@ -235,6 +309,89 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
         </p>
       </main>
     </>
+  );
+}
+
+function PainelFaixa({ definicao, pontuacao }: { definicao: Definicao; pontuacao: Pontuacao | null }) {
+  if (!pontuacao) return <p style={{ color: "var(--muted)", fontSize: 13 }}>Responda os itens para ver o escore.</p>;
+
+  if (pontuacao.tipo === "subescalas") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {(definicao.subescalas || []).map((sub) => {
+          const s = pontuacao.subescores.find((x) => x.id === sub.id);
+          if (!s) return null;
+          return (
+            <FaixaSeveridade
+              key={sub.id}
+              rotulo={sub.rotulo}
+              escore={s.escore}
+              faixas={sub.faixas}
+              faixaRotulo={s.faixa_rotulo}
+              severidade={s.severidade}
+              completo={s.completo}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <FaixaSeveridade
+      rotulo="Escore total"
+      escore={pontuacao.escore}
+      escoreBruto={pontuacao.escore_bruto}
+      faixas={definicao.faixas || []}
+      faixaRotulo={pontuacao.faixa_rotulo}
+      severidade={pontuacao.severidade}
+      completo={pontuacao.completo}
+    />
+  );
+}
+
+function ItemLikertCampo({
+  idx, item, opcoes, valor, onChange, disabled,
+}: {
+  idx: number;
+  item: ItemLikert;
+  opcoes: OpcaoLikert[];
+  valor: number | undefined;
+  onChange: (v: number) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div style={{ padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+      <div style={{ fontSize: 13, color: "var(--text)", marginBottom: 8 }}>
+        <span style={{ fontFamily: "var(--font-mono)", color: "var(--warm-500)" }}>{idx}.</span>{" "}
+        {item.texto}
+        {item.flag === "risco" && (
+          <span className="badge badge-risk" style={{ marginLeft: 6, fontSize: 10 }}>atenção</span>
+        )}
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {opcoes.map((o) => {
+          const on = valor === o.valor;
+          return (
+            <label
+              key={o.valor}
+              className={`badge ${on ? "badge-info" : ""}`}
+              style={{ cursor: disabled ? "default" : "pointer", opacity: disabled && !on ? 0.5 : 1 }}
+            >
+              <input
+                type="radio"
+                name={`item-${item.id}`}
+                checked={on}
+                disabled={disabled}
+                onChange={() => onChange(o.valor)}
+                style={{ marginRight: 4 }}
+              />
+              {o.rotulo}
+            </label>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

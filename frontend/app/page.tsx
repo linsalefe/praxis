@@ -11,7 +11,7 @@ export default function Home() {
     const scope = getScope();
     if (!tok) router.replace("/login");
     else if (scope === "pre_2fa") router.replace("/login/2fa");
-    else router.replace("/pacientes");
+    else router.replace("/inicio");
   }, [router]);
   return (
     <main className="container-praxis">

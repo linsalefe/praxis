@@ -182,3 +182,91 @@ async def planejar_wrap(
         provider_id=f"openai:{s.llm_model}",
         hits=[],
     )
+
+
+# --------------------------------------------------------------------------
+# Escalas Likert (likert_sum) → leitura clínica curta sobre o escore FACTUAL
+# --------------------------------------------------------------------------
+
+SISTEMA_LIKERT = """Você é o assistente clínico do Práxis (CENAT). Uma escala
+psicométrica de autorrelato foi respondida e o **escore e a faixa já foram
+calculados de forma determinística pelo sistema** — são FACTUAIS.
+
+Regras absolutas:
+1. NUNCA recalcule, questione ou altere o escore/faixa fornecidos. Use os
+   números exatamente como estão.
+2. NÃO é diagnóstico. Escala é rastreio/apoio; escreva uma leitura clínica
+   BREVE (~120-200 palavras) que contextualize o escore e a faixa.
+3. Se houver subescalas, comente cada uma pela sua faixa.
+4. Se algum item de risco (ex.: ideação) estiver sinalizado, oriente avaliação
+   de segurança — sem alarmismo, como próximo passo clínico.
+5. Markdown com os cabeçalhos:
+   ## Leitura do escore
+   ## Pontos de atenção
+   ## Próximos passos sugeridos (sugestões, não prescrição)
+6. Feche com:
+   *"O escore é calculado (factual); esta leitura é apoio ao raciocínio clínico.
+   A responsabilidade técnica pela conduta é do profissional (Manual CFP 2025)."*
+"""
+
+
+def _resumo_pontuacao(definicao: dict[str, Any], pont: dict[str, Any]) -> str:
+    """Texto compacto e factual do escore/faixa para embasar o prompt."""
+    linhas: list[str] = []
+    if pont.get("tipo") == "subescalas":
+        for sub in pont.get("subescores", []):
+            estado = "" if sub.get("completo") else " (incompleta)"
+            linhas.append(
+                f"- {sub['rotulo']}: escore {sub['escore']} → "
+                f"faixa **{sub.get('faixa_rotulo') or 'n/d'}**{estado} "
+                f"[{sub['itens_respondidos']}/{sub['total_itens']} itens]"
+            )
+    else:
+        transf = pont.get("transformado")
+        base = f"escore {pont.get('escore')}"
+        if transf is not None:
+            base = f"escore transformado {transf} (bruto {pont.get('escore_bruto')})"
+        estado = "" if pont.get("completo") else " (incompleto)"
+        linhas.append(
+            f"- {base} → faixa **{pont.get('faixa_rotulo') or 'n/d'}**{estado} "
+            f"[{pont.get('itens_respondidos')}/{pont.get('total_itens')} itens]"
+        )
+    # sinaliza itens de risco respondidos positivamente
+    return "\n".join(linhas)
+
+
+async def redigir_leitura_escala(
+    titulo: str,
+    definicao: dict[str, Any],
+    pontuacao: dict[str, Any],
+    respostas: dict[str, Any],
+) -> SaidaGerada:
+    s = get_settings()
+
+    # Flags de risco marcadas no definicao e respondidas com valor > 0.
+    respmap = (respostas or {}).get("itens", {}) or {}
+    riscos = [
+        it["texto"] for it in definicao.get("itens", [])
+        if it.get("flag") == "risco" and (respmap.get(it["id"]) or 0)
+    ]
+    alerta = ("\n\nSINAL DE RISCO sinalizado no(s) item(ns): "
+              + "; ".join(riscos)) if riscos else ""
+
+    client = AsyncOpenAI(api_key=s.openai_api_key)
+    completion = await client.chat.completions.create(
+        model=s.llm_model,
+        temperature=0.2,
+        messages=[
+            {"role": "system", "content": SISTEMA_LIKERT},
+            {"role": "user", "content":
+                f"Instrumento: {titulo}\n\n"
+                f"Escore/faixa (FACTUAIS, já calculados):\n{_resumo_pontuacao(definicao, pontuacao)}"
+                f"{alerta}\n\n"
+                "Escreva a leitura clínica breve em Markdown."},
+        ],
+    )
+    return SaidaGerada(
+        texto=(completion.choices[0].message.content or "").strip(),
+        provider_id=f"openai:{s.llm_model}",
+        hits=[],
+    )
