@@ -88,7 +88,10 @@ const SEV: Record<string, { fg: string; bg: string; line: string }> = {
   "warn-strong": { fg: "#7a4a12", bg: "var(--warn-bg)", line: "var(--warn-line)" },
   risk: { fg: "var(--risk-fg)", bg: "var(--risk-bg)", line: "var(--risk-line)" },
 };
-const sevOf = (s?: string | null) => (s && SEV[s]) || SEV.warn;
+
+/** Cores semânticas da severidade (fonte única, reusada pela trajetória). */
+export const corSeveridade = (s?: string | null) => (s && SEV[s]) || SEV.warn;
+const sevOf = corSeveridade;
 
 export function FaixaSeveridade({
   rotulo,
