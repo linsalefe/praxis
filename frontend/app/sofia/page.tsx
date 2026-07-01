@@ -1,0 +1,237 @@
+"use client";
+
+import { useEffect, useRef, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { toast } from "sonner";
+import { Send, Sparkles, Quote, BookOpen } from "lucide-react";
+import { api, ApiError, getToken } from "@/lib/api";
+import { Topbar } from "@/components/Topbar";
+
+type Citacao = {
+  n: number;
+  documento_id: string;
+  slug: string;
+  titulo: string;
+  autor: string;
+  editora: string | null;
+  is_terceiro: boolean;
+  capitulo: string | null;
+  pagina_inicio: number | null;
+  pagina_fim: number | null;
+  snippet: string;
+  similaridade: number;
+};
+
+type Resp = {
+  resposta: string;
+  citacoes: Citacao[];
+  sem_respaldo: boolean;
+  usou_paciente: boolean;
+  modelo: string;
+  disclaimer: string;
+};
+
+type Turno = {
+  pergunta: string;
+  resposta: Resp | null;
+  loading: boolean;
+  erro?: string;
+};
+
+function PageInner() {
+  const router = useRouter();
+  const qs = useSearchParams();
+  const pacienteId = qs.get("paciente_id");
+
+  const [usarPaciente, setUsarPaciente] = useState<boolean>(!!pacienteId);
+  const [pergunta, setPergunta] = useState("");
+  const [turnos, setTurnos] = useState<Turno[]>([]);
+  const [drawer, setDrawer] = useState<Citacao | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!getToken()) router.replace("/login");
+  }, [router]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [turnos]);
+
+  async function enviar(e: React.FormEvent) {
+    e.preventDefault();
+    const q = pergunta.trim();
+    if (q.length < 3) return;
+    setPergunta("");
+    const t: Turno = { pergunta: q, resposta: null, loading: true };
+    setTurnos((ts) => [...ts, t]);
+    try {
+      const body: Record<string, unknown> = { pergunta: q };
+      if (usarPaciente && pacienteId) body.paciente_id = pacienteId;
+      const r = await api<Resp>("/sofia/perguntar", { method: "POST", body: JSON.stringify(body) });
+      setTurnos((ts) => ts.map((x, i) => (i === ts.length - 1 ? { ...x, loading: false, resposta: r } : x)));
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Falha ao consultar Sofia";
+      toast.error(msg);
+      setTurnos((ts) => ts.map((x, i) => (i === ts.length - 1 ? { ...x, loading: false, erro: msg } : x)));
+    }
+  }
+
+  return (
+    <>
+      <Topbar />
+      <main className="container-praxis" style={{ maxWidth: 900 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+          <Sparkles size={22} color="var(--brand-2)" />
+          <h1 style={{ margin: 0, fontSize: 22 }}>Sofia</h1>
+          <span className="badge">acervo CENAT · RAG</span>
+        </div>
+        <p style={{ color: "var(--muted)", margin: "0 0 16px", fontSize: 14 }}>
+          Faça perguntas clínicas. As respostas são fundamentadas no acervo e trazem citação da fonte.
+          {pacienteId && (
+            <>
+              {" "}
+              <label style={{ marginLeft: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={usarPaciente}
+                  onChange={(e) => setUsarPaciente(e.target.checked)}
+                />{" "}
+                marcar contexto deste paciente <span className="badge">nada de PII vai à IA</span>
+              </label>
+            </>
+          )}
+        </p>
+
+        <div
+          ref={scrollRef}
+          className="card"
+          style={{ minHeight: 360, maxHeight: "62vh", overflowY: "auto", padding: 16 }}
+        >
+          {turnos.length === 0 && (
+            <p style={{ color: "var(--muted)" }}>
+              Ex.: “Como estruturar a primeira reunião de rede em Diálogo Aberto?”,
+              “O que a literatura diz sobre redução de danos com clozapina?”
+            </p>
+          )}
+          {turnos.map((t, i) => (
+            <div key={i} style={{ marginBottom: 24 }}>
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 2 }}>Você</div>
+                <div>{t.pergunta}</div>
+              </div>
+
+              <div style={{ borderLeft: "3px solid var(--brand)", paddingLeft: 12 }}>
+                <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 2, display: "flex", alignItems: "center", gap: 6 }}>
+                  <Sparkles size={12} /> Sofia
+                </div>
+                {t.loading && <p style={{ color: "var(--muted)" }}>consultando acervo…</p>}
+                {t.erro && <p style={{ color: "var(--danger)" }}>{t.erro}</p>}
+                {t.resposta && (
+                  <>
+                    {t.resposta.sem_respaldo && (
+                      <div className="badge" style={{ marginBottom: 8, color: "var(--danger)" }}>
+                        Sem respaldo no acervo — Sofia respondeu de forma geral.
+                      </div>
+                    )}
+                    <div style={{ whiteSpace: "pre-wrap" }}>{t.resposta.resposta}</div>
+
+                    {t.resposta.citacoes.length > 0 && (
+                      <div style={{ marginTop: 12 }}>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {t.resposta.citacoes.map((c) => (
+                            <button
+                              key={c.n}
+                              type="button"
+                              onClick={() => setDrawer(c)}
+                              className="badge"
+                              style={{ cursor: "pointer" }}
+                              title={`${c.titulo} — ${c.autor}`}
+                            >
+                              <Quote size={12} /> T{c.n} · {c.titulo.slice(0, 40)}
+                              {c.is_terceiro && <span style={{ color: "var(--brand-2)", marginLeft: 4 }}>[3º]</span>}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <p style={{ marginTop: 12, color: "var(--muted)", fontSize: 12 }}>
+                      {t.resposta.disclaimer} · <span className="badge">{t.resposta.modelo}</span>
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <form onSubmit={enviar} style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <input
+            className="input"
+            placeholder="Pergunte à Sofia…"
+            value={pergunta}
+            onChange={(e) => setPergunta(e.target.value)}
+            minLength={3}
+            required
+          />
+          <button className="btn btn-primary" type="submit">
+            <Send size={16} /> Enviar
+          </button>
+        </form>
+
+        <p style={{ marginTop: 12, fontSize: 12, color: "var(--muted)" }}>
+          <Link className="link" href="/sofia/acervo">
+            <BookOpen size={12} style={{ display: "inline", verticalAlign: "middle" }} /> Ver acervo indexado
+          </Link>
+        </p>
+
+        {drawer && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)",
+              display: "flex", alignItems: "center", justifyContent: "center", zIndex: 40,
+            }}
+            onClick={() => setDrawer(null)}
+          >
+            <div
+              className="card"
+              style={{ maxWidth: 640, width: "92%", background: "var(--surface)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 style={{ marginTop: 0 }}>{drawer.titulo}</h3>
+              <p style={{ color: "var(--muted)", margin: "4px 0" }}>
+                {drawer.autor}{drawer.editora ? ` · ${drawer.editora}` : ""}
+              </p>
+              <p style={{ margin: "4px 0" }}>
+                <span className="badge">cap. {drawer.capitulo || "n/d"}</span>{" "}
+                <span className="badge">
+                  {drawer.pagina_inicio ? `pp. ${drawer.pagina_inicio}${drawer.pagina_fim && drawer.pagina_fim !== drawer.pagina_inicio ? `-${drawer.pagina_fim}` : ""}` : "p. n/d"}
+                </span>{" "}
+                <span className="badge">sim {(drawer.similaridade * 100).toFixed(0)}%</span>
+                {drawer.is_terceiro && (
+                  <span className="badge" style={{ color: "var(--brand-2)" }}>obra de terceiro — paráfrase</span>
+                )}
+              </p>
+              <hr className="divider" />
+              <p style={{ whiteSpace: "pre-wrap" }}>{drawer.snippet}</p>
+              <div style={{ textAlign: "right", marginTop: 12 }}>
+                <button className="btn" onClick={() => setDrawer(null)}>Fechar</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    </>
+  );
+}
+
+export default function SofiaPage() {
+  return (
+    <Suspense fallback={<main className="container-praxis"><p style={{ color: "var(--muted)" }}>Carregando…</p></main>}>
+      <PageInner />
+    </Suspense>
+  );
+}

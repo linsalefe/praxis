@@ -1,0 +1,69 @@
+# Manifesto do acervo Práxis.
+# Cada [[livro]] gera um AcervoDocumento. `slug` é a chave de idempotência.
+# is_terceiro=true aciona guardrail de paráfrase obrigatória.
+# Ordenei do menor para o maior para a ingestão progredir visível.
+
+[[livro]]
+slug        = "maastricht-interview"
+titulo      = "Entrevista de Maastricht — Ouvir Vozes"
+autor       = "Marius Romme; Sandra Escher"
+editora     = "Maastricht (tradução PT)"
+ano         = 2000
+arquivo     = "maastricht-interview.pdf"
+is_terceiro = true
+
+[[livro]]
+slug        = "trabalhar-com-criancas-que-ouvem-vozes"
+titulo      = "Como trabalhar com crianças que ouvem vozes"
+autor       = "Coletivo Hearing Voices"
+editora     = "CENAT"
+arquivo     = "trabalhar-com-criancas-que-ouvem-vozes.pdf"
+is_terceiro = false
+
+[[livro]]
+slug        = "implantar-novas-abordagens"
+titulo      = "Como implantar novas abordagens em saúde mental"
+autor       = "CENAT"
+editora     = "CENAT"
+arquivo     = "implantar-novas-abordagens.pdf"
+is_terceiro = false
+
+[[livro]]
+slug        = "guia-reducao-de-danos"
+titulo      = "Guia de Redução de Danos e saída de medicamentos psiquiátricos"
+autor       = "Adaptação e tradução"
+editora     = "CENAT"
+arquivo     = "guia-reducao-de-danos.pdf"
+is_terceiro = false
+
+[[livro]]
+slug        = "saude-mental-atencao-basica"
+titulo      = "A saúde mental na atenção básica"
+autor       = "CENAT"
+editora     = "CENAT"
+arquivo     = "saude-mental-atencao-basica.pdf"
+is_terceiro = false
+
+[[livro]]
+slug        = "reforma-psiquiatrica-brasil"
+titulo      = "A reforma psiquiátrica no Brasil — história e impactos"
+autor       = "CENAT"
+editora     = "CENAT"
+arquivo     = "reforma-psiquiatrica-brasil.pdf"
+is_terceiro = false
+
+[[livro]]
+slug        = "paul-baker-a-voz-interior"
+titulo      = "A voz interior — um guia prático para e sobre pessoas que ouvem vozes"
+autor       = "Paul Baker"
+editora     = "Adaptação UFPA"
+arquivo     = "paul-baker-a-voz-interior.pdf"
+is_terceiro = true
+
+[[livro]]
+slug        = "novas-abordagens-saude-mental"
+titulo      = "Novas abordagens em saúde mental — transformando vidas de forma humana, autônoma e consciente"
+autor       = "CENAT"
+editora     = "CENAT"
+arquivo     = "novas-abordagens-saude-mental.pdf"
+is_terceiro = false
