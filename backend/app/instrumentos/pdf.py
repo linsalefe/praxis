@@ -86,7 +86,58 @@ hr { border: 0; border-top: 1px solid #ccc; margin: 8pt 0; }
 """
 
 
+def _likert_html(definicao: dict[str, Any], respostas: dict[str, Any]) -> str:
+    """Itens + valores + bloco de escore FACTUAL para instrumentos likert_sum."""
+    from app.instrumentos.scoring import pontuar_likert
+
+    opcoes = {o.get("valor"): o.get("rotulo", "") for o in definicao.get("opcoes", [])}
+    respmap: dict[str, Any] = (respostas or {}).get("itens", {}) or {}
+
+    partes: list[str] = ["<h2>Respostas coletadas</h2>", "<ul>"]
+    for it in definicao.get("itens", []):
+        raw = respmap.get(it["id"])
+        if raw is None or raw == "":
+            v_txt = "<i>(não respondido)</i>"
+        else:
+            rotulo = opcoes.get(raw, "")
+            v_txt = _esc(f"{raw} — {rotulo}" if rotulo else str(raw))
+        flag = ' <b>[item de atenção]</b>' if it.get("flag") == "risco" else ""
+        partes.append(f'<li><span class="field-label">{_esc(it["texto"])}:</span> {v_txt}{flag}</li>')
+    partes.append("</ul>")
+
+    pont = pontuar_likert(definicao, respostas or {})
+    partes.append("<h2>Escore (calculado)</h2>")
+    if pont["tipo"] == "subescalas":
+        partes.append("<ul>")
+        for sub in pont["subescores"]:
+            faixa = sub.get("faixa_rotulo") or ("incompleta" if not sub["completo"] else "n/d")
+            partes.append(
+                f'<li><span class="field-label">{_esc(sub["rotulo"])}:</span> '
+                f'escore {sub["escore"]} — faixa <b>{_esc(faixa)}</b> '
+                f'<span class="muted">({sub["itens_respondidos"]}/{sub["total_itens"]} itens)</span></li>'
+            )
+        partes.append("</ul>")
+    else:
+        if pont.get("transformado") is not None:
+            escore_txt = f'{pont["transformado"]} (bruto {pont["escore_bruto"]})'
+        else:
+            escore_txt = str(pont.get("escore"))
+        faixa = pont.get("faixa_rotulo") or ("incompleto" if not pont["completo"] else "n/d")
+        partes.append(
+            f'<p><span class="field-label">Escore:</span> {_esc(escore_txt)} — '
+            f'faixa <b>{_esc(faixa)}</b> '
+            f'<span class="muted">({pont["itens_respondidos"]}/{pont["total_itens"]} itens)</span></p>'
+        )
+    partes.append(
+        '<p class="muted">Escore e faixa são calculados de forma determinística '
+        '(factuais). A interpretação clínica é do profissional.</p>'
+    )
+    return "\n".join(partes)
+
+
 def _respostas_html(definicao: dict[str, Any], respostas: dict[str, Any]) -> str:
+    if definicao.get("kind") == "likert_sum":
+        return _likert_html(definicao, respostas)
     partes: list[str] = ["<h2>Respostas coletadas</h2>"]
     for sec in definicao.get("secoes", []):
         sec_id = sec["id"]

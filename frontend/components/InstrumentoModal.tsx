@@ -1,21 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ClipboardList, X } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 
-const INSTR = [
-  { tipo: "maastricht" as const, titulo: "Entrevista de Maastricht", subt: "13 seções · para quem ouve vozes" },
-  { tipo: "wrap" as const,       titulo: "WRAP — Plano de bem-estar",     subt: "6 blocos · plano pessoal" },
-];
+type InstrumentoCatalogo = {
+  id: string; tipo: string; versao: string; titulo: string;
+  descricao: string | null; fonte: string | null;
+};
 
 export function InstrumentoModal({ pacienteId, onClose }: { pacienteId: string; onClose: () => void }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [itens, setItens] = useState<InstrumentoCatalogo[] | null>(null);
 
-  async function iniciar(tipo: "maastricht" | "wrap") {
+  useEffect(() => {
+    (async () => {
+      try {
+        setItens(await api<InstrumentoCatalogo[]>("/instrumentos"));
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : "Falha ao carregar catálogo");
+        setItens([]);
+      }
+    })();
+  }, []);
+
+  async function iniciar(tipo: string) {
     setBusy(true);
     try {
       const r = await api<{ id: string }>(`/pacientes/${pacienteId}/respostas-instrumento`, {
@@ -35,7 +47,7 @@ export function InstrumentoModal({ pacienteId, onClose }: { pacienteId: string; 
       style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}
       onClick={busy ? undefined : onClose}
     >
-      <div className="card" style={{ width: "92%", maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
+      <div className="card" style={{ width: "92%", maxWidth: 520, maxHeight: "80vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <ClipboardList size={18} color="var(--brand-2)" /> Novo instrumento
@@ -46,7 +58,8 @@ export function InstrumentoModal({ pacienteId, onClose }: { pacienteId: string; 
           Escolha o instrumento para esta pessoa. Você pode salvar em rascunho e retomar depois.
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {INSTR.map((i) => (
+          {itens === null && <p style={{ color: "var(--muted)", fontSize: 13 }}>Carregando catálogo…</p>}
+          {itens?.map((i) => (
             <button
               key={i.tipo}
               className="btn"
@@ -55,8 +68,13 @@ export function InstrumentoModal({ pacienteId, onClose }: { pacienteId: string; 
               style={{ justifyContent: "flex-start", padding: "12px 14px" }}
             >
               <div style={{ textAlign: "left" }}>
-                <div style={{ fontWeight: 600 }}>{i.titulo}</div>
-                <div style={{ color: "var(--muted)", fontSize: 12 }}>{i.subt}</div>
+                <div style={{ fontWeight: 600 }}>
+                  {i.titulo}
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--warm-500)" }}> · {i.versao}</span>
+                </div>
+                {i.descricao && (
+                  <div style={{ color: "var(--muted)", fontSize: 12 }}>{i.descricao}</div>
+                )}
               </div>
             </button>
           ))}
