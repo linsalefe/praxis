@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     scribe_audio_dir: str = Field(default="/opt/praxis/backend/uploads/audio", alias="PRAXIS_SCRIBE_AUDIO_DIR")
     scribe_max_mb: int = Field(default=25, alias="PRAXIS_SCRIBE_MAX_MB")
 
+    # Telessessão (vídeo)
+    video_provider: str = Field(default="jitsi", alias="PRAXIS_VIDEO_PROVIDER")  # jitsi | daily(futuro)
+    jitsi_base: str = Field(default="https://meet.jit.si", alias="PRAXIS_JITSI_BASE")
+
     # App
     env: str = Field(default="dev", alias="PRAXIS_ENV")
     bind_host: str = Field(default="127.0.0.1", alias="PRAXIS_BIND_HOST")

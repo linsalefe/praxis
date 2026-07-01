@@ -4,12 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { CalendarPlus, ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { CalendarPlus, ChevronLeft, ChevronRight, Clock, Video } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Drawer } from "@/components/ui/Drawer";
+import { TelessessaoModal } from "@/components/TelessessaoModal";
 
 type Sessao = {
   id: string; paciente_id: string; paciente_nome: string;
@@ -42,6 +43,7 @@ export default function AgendaPage() {
   const [pacientes, setPacientes] = useState<PacienteLite[]>([]);
   const [drawer, setDrawer] = useState<{ open: boolean; editar?: Sessao }>({ open: false });
   const [cancelar, setCancelar] = useState<Sessao | null>(null);
+  const [telessessao, setTelessessao] = useState<Sessao | null>(null);
 
   const range = useMemo(() => {
     if (view === "dia") return { de: ymd(anchor), ate: ymd(anchor) };
@@ -171,7 +173,8 @@ export default function AgendaPage() {
                     {lista.map((s) => (
                       <SessaoRow key={s.id} s={s} onStatus={mudarStatus}
                         onReagendar={() => setDrawer({ open: true, editar: s })}
-                        onCancelar={() => setCancelar(s)} />
+                        onCancelar={() => setCancelar(s)}
+                        onSala={() => setTelessessao(s)} />
                     ))}
                   </div>
                 </div>
@@ -202,17 +205,27 @@ export default function AgendaPage() {
         onConfirm={() => { if (cancelar) mudarStatus(cancelar, "cancelada"); setCancelar(null); }}
         onCancel={() => setCancelar(null)}
       />
+
+      {telessessao && (
+        <TelessessaoModal
+          sessaoId={telessessao.id}
+          pacienteId={telessessao.paciente_id}
+          pacienteNome={telessessao.paciente_nome}
+          onClose={() => setTelessessao(null)}
+        />
+      )}
     </>
   );
 }
 
 function SessaoRow({
-  s, onStatus, onReagendar, onCancelar,
+  s, onStatus, onReagendar, onCancelar, onSala,
 }: {
   s: Sessao;
   onStatus: (s: Sessao, status: string) => void;
   onReagendar: () => void;
   onCancelar: () => void;
+  onSala: () => void;
 }) {
   const pendente = s.status === "agendada" && new Date(s.data) < new Date();
   return (
@@ -232,6 +245,9 @@ function SessaoRow({
         </div>
       </div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        {s.modalidade === "online" && s.status !== "cancelada" && (
+          <button className="btn btn-primary" onClick={onSala} title="Telessessão"><Video size={15} /> Sala</button>
+        )}
         {s.status === "agendada" ? (
           <>
             <button className="btn" onClick={() => onStatus(s, "realizada")} title="Marcar comparecido">Realizada</button>
