@@ -242,6 +242,13 @@ input:-webkit-autofill:focus {
   100% { background-position: 180% 0; }
 }
 
+/* Drawer lateral — desliza da direita (neutralizado no prefers-reduced-motion) */
+@keyframes drawer-in {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+.drawer-panel { animation: drawer-in var(--dur-base) var(--ease-calm); }
+
 /* ==========================================================================
    Acessibilidade — respeitar preferência de movimento reduzido
    ========================================================================== */

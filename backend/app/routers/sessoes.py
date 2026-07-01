@@ -2,16 +2,18 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.deps import SessionDep, get_current_user
 from app.models.paciente import Paciente
 from app.models.sessao import Sessao
 from app.models.user import User
-from app.schemas.clinico import SessaoCreate, SessaoOut, SessaoUpdate
+from app.schemas.clinico import SessaoAgendaOut, SessaoCreate, SessaoOut, SessaoUpdate
+from app.security.crypto import decrypt_str
 
 router = APIRouter(prefix="/sessoes", tags=["sessoes"])
 
@@ -40,6 +42,38 @@ async def criar(
     await session.commit()
     await session.refresh(s)
     return _to_out(s)
+
+
+@router.get("/agenda", response_model=list[SessaoAgendaOut])
+async def agenda(
+    de: date,
+    ate: date,
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+) -> list[SessaoAgendaOut]:
+    """Sessões do intervalo [de, ate] (inclusive), todos os status, com nome do
+    paciente decifrado — espelha o join do cockpit "Hoje" (inicio.py)."""
+    q = (
+        select(Sessao, Paciente.nome_cifrado)
+        .join(Paciente, Paciente.id == Sessao.paciente_id)
+        .where(
+            Sessao.tenant_id == user.tenant_id,
+            Paciente.deleted_at.is_(None),
+            func.date(Sessao.data).between(de, ate),
+        )
+        .order_by(Sessao.data)
+    )
+    return [
+        SessaoAgendaOut(
+            id=str(s.id),
+            paciente_id=str(s.paciente_id),
+            paciente_nome=decrypt_str(nome_cifrado) or "—",
+            data=s.data,
+            modalidade=s.modalidade,
+            status=s.status,
+        )
+        for s, nome_cifrado in (await session.execute(q)).all()
+    ]
 
 
 @router.get("/paciente/{paciente_id}", response_model=list[SessaoOut])
