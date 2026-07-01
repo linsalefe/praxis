@@ -20,6 +20,8 @@ Cada capacidade abaixo é entregue por um router do backend e telas corresponden
 - **Preparação de sessão** — gera um roteiro de sessão a partir do contexto clínico do paciente.
 - **Documentos CFP (Res. 06/2019)** — templates de documentos psicológicos (declaração, atestado, relatório, laudo, parecer), geração, edição e assinatura.
 - **Supervisão / estudo de caso** — análise assistida de casos para apoio a supervisão e estudo.
+- **Biblioteca viva** — o acervo CENAT navegável e buscável direto: grade das obras, índice por obra e **busca semântica** (reusa a busca vetorial da Sofia). Guardrail de copyright: obras de terceiros expõem só estrutura + trecho curto.
+- **Financeiro & Recibos** — valor por sessão (em **centavos**, nunca float), controle de pagamento (`pix`/`dinheiro`/`cartao`/`transferencia`) e emissão de **recibo em PDF** com numeração sequencial por tenant, anexado ao prontuário. **Recibo ≠ Nota Fiscal:** o recibo é o comprovante que o paciente usa para reembolso de plano; **NF-e/ISS municipal é integração fiscal separada, fora de escopo** (o PDF é marcado "Documento não fiscal"). Pendências e valores são sempre o registrado — sem projeção de receita.
 
 Transversais: autenticação **JWT + 2FA TOTP obrigatório**, isolamento multi-tenant por `tenant_id`, `audit_log` de acessos/edições/exportações.
 

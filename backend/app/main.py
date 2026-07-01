@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.db import SessionLocal
 from app.instrumentos.seed import upsert_catalogo
-from app.routers import assinatura, auth, biblioteca, consentimentos, documentos, evolucoes, exportacao, inicio, instrumentos as instrumentos_router, longitudinal, pacientes, preparacao, scribe, sessoes, sofia, supervisao
+from app.routers import assinatura, auth, biblioteca, consentimentos, documentos, evolucoes, exportacao, financeiro, inicio, instrumentos as instrumentos_router, longitudinal, pacientes, preparacao, scribe, sessoes, sofia, supervisao
 
 
 @asynccontextmanager
@@ -61,6 +61,7 @@ app.include_router(evolucoes.router)
 app.include_router(consentimentos.router)
 app.include_router(sofia.router)
 app.include_router(biblioteca.router)
+app.include_router(financeiro.router)
 app.include_router(scribe.router)
 app.include_router(instrumentos_router.router)
 app.include_router(preparacao.router)

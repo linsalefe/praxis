@@ -38,12 +38,14 @@ class SessaoCreate(BaseModel):
     data: datetime
     modalidade: Literal["presencial", "online"]
     status: Literal["agendada", "realizada", "cancelada", "falta"] = "agendada"
+    valor_centavos: int | None = Field(default=None, ge=0)  # ausente → puxa padrão do paciente
 
 
 class SessaoUpdate(BaseModel):
     data: datetime | None = None
     modalidade: Literal["presencial", "online"] | None = None
     status: Literal["agendada", "realizada", "cancelada", "falta"] | None = None
+    valor_centavos: int | None = Field(default=None, ge=0)
 
 
 class SessaoOut(BaseModel):
@@ -52,6 +54,7 @@ class SessaoOut(BaseModel):
     data: datetime
     modalidade: str
     status: str
+    valor_centavos: int | None
     criado_em: datetime
 
 
@@ -63,6 +66,7 @@ class SessaoAgendaOut(BaseModel):
     data: datetime
     modalidade: str
     status: str
+    valor_centavos: int | None
 
 
 class EvolucaoCreate(BaseModel):
