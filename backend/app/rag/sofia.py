@@ -1,6 +1,7 @@
 """Prompt e chamada ao LLM (GPT-5.1-mini) com guardrails clínicos."""
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
 from openai import AsyncOpenAI
@@ -52,10 +53,13 @@ def _formatar_contexto(hits: list[Hit]) -> str:
     return "\n\n---\n\n".join(partes)
 
 
-async def responder(pergunta: str, hits: list[Hit], sobre_paciente: bool = False) -> Resposta:
+def calcular_sem_respaldo(hits: list[Hit]) -> bool:
     s = get_settings()
-    sem_respaldo = not hits or max((h.similaridade for h in hits), default=0.0) < s.rag_sim_min
+    return not hits or max((h.similaridade for h in hits), default=0.0) < s.rag_sim_min
 
+
+def _montar_mensagens(pergunta: str, hits: list[Hit], sobre_paciente: bool) -> list[dict[str, str]]:
+    """Monta as mensagens do LLM — mesmo prompt/guardrails para stream e não-stream."""
     aviso_paciente = ""
     if sobre_paciente:
         aviso_paciente = (
@@ -65,29 +69,56 @@ async def responder(pergunta: str, hits: list[Hit], sobre_paciente: bool = False
         )
 
     contexto = _formatar_contexto(hits) if hits else "(nenhum trecho relevante encontrado no acervo)"
-    if sem_respaldo:
+    if calcular_sem_respaldo(hits):
         contexto += (
             "\n\n(Atenção: nenhum trecho com similaridade suficiente. "
             "Você deve avisar o usuário que o acervo não sustenta esta resposta.)"
         )
 
+    return [
+        {"role": "system", "content": SISTEMA + aviso_paciente},
+        {
+            "role": "user",
+            "content": (
+                f"Pergunta do profissional:\n{pergunta}\n\n"
+                f"Trechos do acervo (referências T1..Tk):\n\n{contexto}"
+            ),
+        },
+    ]
+
+
+async def responder(pergunta: str, hits: list[Hit], sobre_paciente: bool = False) -> Resposta:
+    s = get_settings()
     client = AsyncOpenAI(api_key=s.openai_api_key)
     completion = await client.chat.completions.create(
         model=s.llm_model,
-        messages=[
-            {"role": "system", "content": SISTEMA + aviso_paciente},
-            {
-                "role": "user",
-                "content": (
-                    f"Pergunta do profissional:\n{pergunta}\n\n"
-                    f"Trechos do acervo (referências T1..Tk):\n\n{contexto}"
-                ),
-            },
-        ],
+        messages=_montar_mensagens(pergunta, hits, sobre_paciente),
         temperature=0.2,
     )
     return Resposta(
         resposta=(completion.choices[0].message.content or "").strip(),
-        sem_respaldo=sem_respaldo,
+        sem_respaldo=calcular_sem_respaldo(hits),
         modelo=s.llm_model,
     )
+
+
+async def responder_stream(
+    pergunta: str, hits: list[Hit], sobre_paciente: bool = False
+) -> AsyncIterator[str]:
+    """Versão streaming de `responder`: mesmo prompt/guardrails, emite os deltas
+    de texto conforme o LLM gera. Citações/sem_respaldo/modelo são derivados dos
+    hits pelo chamador (conhecidos antes da geração)."""
+    s = get_settings()
+    client = AsyncOpenAI(api_key=s.openai_api_key)
+    stream = await client.chat.completions.create(
+        model=s.llm_model,
+        messages=_montar_mensagens(pergunta, hits, sobre_paciente),
+        temperature=0.2,
+        stream=True,
+    )
+    async for chunk in stream:
+        if not chunk.choices:
+            continue
+        delta = chunk.choices[0].delta.content
+        if delta:
+            yield delta

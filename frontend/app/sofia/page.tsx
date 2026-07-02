@@ -11,6 +11,9 @@ import { PresenceMark } from "@/components/ui/PresenceMark";
 import { SofiaOrientacao } from "@/components/ui/SofiaOrientacao";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PrepararSessaoModal } from "@/components/PrepararSessaoModal";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
 type Citacao = {
   n: number;
@@ -40,8 +43,23 @@ type Turno = {
   pergunta: string;
   resposta: Resp | null;
   loading: boolean;
+  streaming?: boolean;
   erro?: string;
 };
+
+const RESP_VAZIA: Resp = {
+  resposta: "", citacoes: [], sem_respaldo: false, usou_paciente: false, modelo: "", disclaimer: "",
+};
+
+function parseSSE(block: string): { event: string; data: unknown } {
+  let event = "";
+  let data = "";
+  for (const line of block.split("\n")) {
+    if (line.startsWith("event:")) event = line.slice(6).trim();
+    else if (line.startsWith("data:")) data += line.slice(5).trim();
+  }
+  return { event, data: data ? JSON.parse(data) : null };
+}
 
 function PageInner() {
   const router = useRouter();
@@ -52,6 +70,7 @@ function PageInner() {
   const [pergunta, setPergunta] = useState("");
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [drawer, setDrawer] = useState<Citacao | null>(null);
+  const [prep, setPrep] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,24 +81,68 @@ function PageInner() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [turnos]);
 
-  const enviando = turnos.some((t) => t.loading);
+  const enviando = turnos.some((t) => t.loading || t.streaming);
 
   async function enviar(e?: React.FormEvent | React.KeyboardEvent) {
     e?.preventDefault();
     const q = pergunta.trim();
     if (q.length < 3 || enviando) return;
     setPergunta("");
-    const t: Turno = { pergunta: q, resposta: null, loading: true };
-    setTurnos((ts) => [...ts, t]);
+    setTurnos((ts) => [...ts, { pergunta: q, resposta: null, loading: true }]);
+
+    const body: Record<string, unknown> = { pergunta: q };
+    if (usarPaciente && pacienteId) body.paciente_id = pacienteId;
+    const patchLast = (patch: Partial<Turno>) =>
+      setTurnos((ts) => ts.map((x, i) => (i === ts.length - 1 ? { ...x, ...patch } : x)));
+
     try {
-      const body: Record<string, unknown> = { pergunta: q };
-      if (usarPaciente && pacienteId) body.paciente_id = pacienteId;
-      const r = await api<Resp>("/sofia/perguntar", { method: "POST", body: JSON.stringify(body) });
-      setTurnos((ts) => ts.map((x, i) => (i === ts.length - 1 ? { ...x, loading: false, resposta: r } : x)));
-    } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Falha ao consultar Sofia";
-      toast.error(msg);
-      setTurnos((ts) => ts.map((x, i) => (i === ts.length - 1 ? { ...x, loading: false, erro: msg } : x)));
+      // Caminho principal: streaming SSE (primeira palavra em ~1s).
+      const res = await fetch(`${API_BASE}/sofia/perguntar/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify(body),
+      });
+      if (res.status === 401) { router.replace("/login"); return; }
+      if (!res.ok || !res.body) throw new Error("stream indisponível");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let acc = "";
+      let concluido = false;
+
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const blocos = buf.split("\n\n");
+        buf = blocos.pop() ?? "";
+        for (const bloco of blocos) {
+          if (!bloco.trim()) continue;
+          const { event, data } = parseSSE(bloco);
+          if (event === "token") {
+            acc += (data as { delta: string }).delta;
+            patchLast({ loading: false, streaming: true, resposta: { ...RESP_VAZIA, resposta: acc } });
+          } else if (event === "done") {
+            const d = data as Omit<Resp, "resposta">;
+            patchLast({ loading: false, streaming: false, resposta: { ...d, resposta: acc } });
+            concluido = true;
+          } else if (event === "error") {
+            throw new Error((data as { message?: string })?.message || "Falha ao consultar Sofia");
+          }
+        }
+      }
+      if (!concluido) throw new Error("resposta incompleta");
+    } catch {
+      // Fallback: endpoint não-stream — mantém a Sofia funcional se o SSE falhar.
+      try {
+        const r = await api<Resp>("/sofia/perguntar", { method: "POST", body: JSON.stringify(body) });
+        patchLast({ loading: false, streaming: false, resposta: r });
+      } catch (err) {
+        const msg = err instanceof ApiError ? err.message : "Falha ao consultar Sofia";
+        toast.error(msg);
+        patchLast({ loading: false, streaming: false, erro: msg });
+      }
     }
   }
 
@@ -126,8 +189,10 @@ function PageInner() {
               pergunta={t.pergunta}
               resposta={t.resposta}
               loading={t.loading}
+              streaming={t.streaming}
               erro={t.erro}
               onCitacao={(c) => setDrawer(c)}
+              onUsarNaPreparacao={pacienteId ? () => setPrep(t.resposta?.resposta ?? "") : undefined}
             />
           ))}
         </div>
@@ -197,6 +262,14 @@ function PageInner() {
               </div>
             </Card>
           </div>
+        )}
+
+        {prep !== null && pacienteId && (
+          <PrepararSessaoModal
+            pacienteId={pacienteId}
+            sofiaContexto={prep}
+            onClose={() => setPrep(null)}
+          />
         )}
       </main>
     </>

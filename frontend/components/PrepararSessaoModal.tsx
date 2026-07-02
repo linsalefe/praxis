@@ -25,10 +25,11 @@ type Sessao = {
 };
 
 export function PrepararSessaoModal({
-  pacienteId, onClose,
+  pacienteId, onClose, sofiaContexto,
 }: {
   pacienteId: string;
   onClose: () => void;
+  sofiaContexto?: string;
 }) {
   const [roteiro, setRoteiro] = useState<Roteiro | null>(null);
   const [sessoes, setSessoes] = useState<Sessao[]>([]);
@@ -59,8 +60,11 @@ export function PrepararSessaoModal({
 
   async function copiar() {
     if (!roteiro) return;
+    const texto = sofiaContexto
+      ? `Orientação da Sofia:\n${sofiaContexto}\n\n---\n\n${roteiro.texto}`
+      : roteiro.texto;
     try {
-      await navigator.clipboard.writeText(roteiro.texto);
+      await navigator.clipboard.writeText(texto);
       toast.success("Roteiro copiado.");
     } catch {
       toast.error("Falha ao copiar");
@@ -104,6 +108,21 @@ export function PrepararSessaoModal({
           </h3>
           <Button onClick={onClose} disabled={!!busy}><X size={14} /></Button>
         </div>
+
+        {sofiaContexto && (
+          <div
+            style={{
+              marginTop: 12, padding: "10px 12px",
+              background: "var(--teal-50)", border: "1px solid var(--teal-200)",
+              borderRadius: 8, fontSize: 12.5, lineHeight: 1.5, maxHeight: 140, overflowY: "auto",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--teal-800)", fontWeight: 500, marginBottom: 4 }}>
+              <Quote size={13} /> Trazido da Sofia
+            </div>
+            <div style={{ whiteSpace: "pre-wrap", color: "var(--ink-800)" }}>{sofiaContexto}</div>
+          </div>
+        )}
 
         {busy && (
           <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 12 }}>

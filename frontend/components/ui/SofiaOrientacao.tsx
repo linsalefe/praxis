@@ -1,8 +1,9 @@
 "use client";
 
-import { BookOpen, Quote } from "lucide-react";
+import { BookOpen, ClipboardCheck, Quote } from "lucide-react";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { CopiarBtn } from "@/components/ui/CopiarBtn";
+import { Button } from "@/components/ui/Button";
 
 /**
  * SofiaOrientacao — a assinatura da Sofia.
@@ -36,14 +37,18 @@ export function SofiaOrientacao<C extends SofiaCitacaoBase>({
   pergunta,
   resposta,
   loading,
+  streaming,
   erro,
   onCitacao,
+  onUsarNaPreparacao,
 }: {
   pergunta: string;
   resposta: SofiaRespostaBase<C> | null;
   loading?: boolean;
+  streaming?: boolean;
   erro?: string;
   onCitacao?: (c: C) => void;
+  onUsarNaPreparacao?: () => void;
 }) {
   return (
     <div style={{ marginBottom: 24 }}>
@@ -122,6 +127,9 @@ export function SofiaOrientacao<C extends SofiaCitacaoBase>({
               }}
             >
               {resposta.resposta}
+              {streaming && (
+                <span style={{ marginLeft: 4 }}><PresenceMark size={14} title="escrevendo" /></span>
+              )}
             </div>
 
             {resposta.citacoes.length > 0 && (
@@ -161,6 +169,14 @@ export function SofiaOrientacao<C extends SofiaCitacaoBase>({
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {onUsarNaPreparacao && !streaming && (
+              <div style={{ marginTop: 14 }}>
+                <Button variant="ghost" onClick={onUsarNaPreparacao}>
+                  <ClipboardCheck size={15} /> Usar na preparação de sessão
+                </Button>
               </div>
             )}
 
