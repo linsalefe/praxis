@@ -42,7 +42,7 @@ export default function LoginPage() {
         router.replace("/login/2fa");
       } else {
         toast.success("Login realizado.");
-        router.replace("/pacientes");
+        router.replace("/inicio");
       }
     } catch (err) {
       // Credenciais/validação → erro inline; falha de rede → toast.
