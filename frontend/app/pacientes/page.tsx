@@ -135,7 +135,7 @@ export default function PacientesPage() {
           <p style={{ color: "var(--muted)" }}>Nenhum paciente encontrado para “{busca}”.</p>
         ) : (
           <Card style={{ padding: 0 }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table className="table-cards" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12 }}>
                   <th style={{ padding: 12 }}>Nome</th>
@@ -147,12 +147,12 @@ export default function PacientesPage() {
               <tbody>
                 {filtrados.map((p) => (
                   <tr key={p.id} style={{ borderTop: "1px solid var(--border)" }}>
-                    <td style={{ padding: 12 }}>
+                    <td data-label="Nome" style={{ padding: 12 }}>
                       <Link className="link" href={`/pacientes/${p.id}`}>{p.nome}</Link>
                     </td>
-                    <td style={{ padding: 12 }}>{p.contato || "—"}</td>
-                    <td style={{ padding: 12 }}>{p.nascimento || "—"}</td>
-                    <td style={{ padding: 12, color: "var(--muted)" }}>
+                    <td data-label="Contato" style={{ padding: 12 }}>{p.contato || "—"}</td>
+                    <td data-label="Nascimento" style={{ padding: 12 }}>{p.nascimento || "—"}</td>
+                    <td data-label="Criado em" style={{ padding: 12, color: "var(--muted)" }}>
                       {dataRelativa(p.criado_em)}
                     </td>
                   </tr>

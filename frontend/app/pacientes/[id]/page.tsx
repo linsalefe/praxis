@@ -383,7 +383,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {sessoes.map((s) => (
-                <Card key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Card key={s.id} className="row-stack" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div>
                     <div style={{ fontWeight: 500 }}>{dataRelativa(s.data)}</div>
                     <div style={{ color: "var(--muted)", fontSize: 13 }}>
@@ -420,7 +420,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
           {respostas.length === 0 ? (
             <p style={{ color: "var(--muted)" }}>Nenhum instrumento aplicado ainda.</p>
           ) : respostas.map((r) => (
-            <Card key={r.id} style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <Card key={r.id} className="row-stack" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontWeight: 500 }}>{r.instrumento_tipo.toUpperCase()} · {r.instrumento_versao}</div>
                 <div style={{ color: "var(--muted)", fontSize: 12 }}>
@@ -453,7 +453,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
             <p style={{ color: "var(--muted)" }}>Nenhum documento gerado ainda.</p>
           ) : (
             documentos.map((d) => (
-              <Card key={d.id} style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Card key={d.id} className="row-stack" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
                   <div style={{ fontWeight: 500, textTransform: "capitalize" }}>{d.tipo}</div>
                   <div style={{ color: "var(--muted)", fontSize: 12 }}>
@@ -478,7 +478,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
             <>
               <SectionTitle icon={<Paperclip size={13} style={{ display: "inline", verticalAlign: "middle" }} />} margin="24px 0 8px">Anexos do prontuário</SectionTitle>
               <Card style={{ padding: 0 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <table className="table-cards" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12 }}>
                       <th style={{ padding: 12 }}>Título</th>
@@ -490,10 +490,10 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                   <tbody>
                     {anexos.map((a) => (
                       <tr key={a.id} style={{ borderTop: "1px solid var(--border)", background: novoAnexoId === a.id ? "var(--amber-100)" : undefined }}>
-                        <td style={{ padding: 12 }}>{a.titulo}</td>
-                        <td style={{ padding: 12, color: "var(--muted)" }}>{(a.bytes / 1024).toFixed(0)} KB</td>
-                        <td style={{ padding: 12, color: "var(--muted)" }}>{dataRelativa(a.criado_em)}</td>
-                        <td style={{ padding: 12, textAlign: "right" }}>
+                        <td data-label="Título" style={{ padding: 12 }}>{a.titulo}</td>
+                        <td data-label="Tamanho" style={{ padding: 12, color: "var(--muted)" }}>{(a.bytes / 1024).toFixed(0)} KB</td>
+                        <td data-label="Criado em" style={{ padding: 12, color: "var(--muted)" }}>{dataRelativa(a.criado_em)}</td>
+                        <td data-label="" style={{ padding: 12, textAlign: "right" }}>
                           <a className="link" href={`${API_BASE}/anexos/${a.id}/arquivo`} target="_blank" rel="noreferrer">
                             <Download size={13} style={{ display: "inline", verticalAlign: "middle" }} /> baixar
                           </a>

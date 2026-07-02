@@ -172,7 +172,7 @@ export default function FinanceiroPage() {
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
                 {pendentes.map((l) => (
-                  <Card key={l.sessao_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <Card key={l.sessao_id} className="row-stack" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                     <div>
                       <div style={{ fontWeight: 500 }}>{l.paciente_nome}</div>
                       <div style={{ color: "var(--muted)", fontSize: 13 }}>
@@ -194,7 +194,7 @@ export default function FinanceiroPage() {
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
                 {pagos.map((l) => (
-                  <Card key={l.sessao_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <Card key={l.sessao_id} className="row-stack" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                     <div>
                       <div style={{ fontWeight: 500 }}>{l.paciente_nome}</div>
                       <div style={{ color: "var(--muted)", fontSize: 13 }}>

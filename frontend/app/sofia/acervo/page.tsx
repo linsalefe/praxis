@@ -41,7 +41,7 @@ export default function AcervoPage() {
           <p style={{ color: "var(--muted)" }}>Carregando…</p>
         ) : (
           <Card style={{ padding: 0 }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table className="table-cards" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12 }}>
                   <th style={{ padding: 12 }}>Título</th>
@@ -54,11 +54,11 @@ export default function AcervoPage() {
               <tbody>
                 {rows.map((d) => (
                   <tr key={d.id} style={{ borderTop: "1px solid var(--border)" }}>
-                    <td style={{ padding: 12 }}>{d.titulo}</td>
-                    <td style={{ padding: 12, color: "var(--muted)" }}>{d.autor}</td>
-                    <td style={{ padding: 12, color: "var(--muted)" }}>{d.editora || "—"}</td>
-                    <td style={{ padding: 12 }}>{d.total_chunks}</td>
-                    <td style={{ padding: 12 }}>
+                    <td data-label="Título" style={{ padding: 12 }}>{d.titulo}</td>
+                    <td data-label="Autor" style={{ padding: 12, color: "var(--muted)" }}>{d.autor}</td>
+                    <td data-label="Editora" style={{ padding: 12, color: "var(--muted)" }}>{d.editora || "—"}</td>
+                    <td data-label="Chunks" style={{ padding: 12 }}>{d.total_chunks}</td>
+                    <td data-label="Origem" style={{ padding: 12 }}>
                       <span className="badge">{d.is_terceiro ? "terceiro" : "CENAT"}</span>
                     </td>
                   </tr>
