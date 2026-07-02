@@ -145,7 +145,7 @@ export function ScribeModal({
       });
       const data = await res.json();
       if (!res.ok) throw new ApiError(res.status, data.detail || "Falha");
-      toast.success(`Rascunho pronto (${data.latencia_ms} ms).`);
+      toast.success("Rascunho pronto para sua revisão.");
       router.push(`/evolucoes/${data.evolucao_id}`);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Falha ao gerar");
@@ -168,7 +168,7 @@ export function ScribeModal({
       });
       const data = await res.json();
       if (!res.ok) throw new ApiError(res.status, data.detail || "Falha");
-      toast.success(`Rascunho pronto. Áudio deletado (${data.provider_transc}).`);
+      toast.success("Rascunho pronto. O áudio já foi apagado do servidor.");
       router.push(`/evolucoes/${data.evolucao_id}`);
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : "Falha ao processar áudio";

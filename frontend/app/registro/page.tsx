@@ -63,7 +63,7 @@ export default function RegisterPage() {
           <h1 style={{ margin: 0, fontSize: 20 }}>Cadastro profissional</h1>
         </div>
         <p style={{ color: "var(--muted)", margin: "0 0 20px" }}>
-          Suas credenciais criam o tenant do seu consultório.
+          Isso cria o espaço do seu consultório no Práxis.
         </p>
         <form onSubmit={onSubmit}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -90,7 +90,7 @@ export default function RegisterPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Tipo do tenant">
+            <Field label="Você atende em…">
               <select
                 className="input"
                 value={form.tenant_tipo}

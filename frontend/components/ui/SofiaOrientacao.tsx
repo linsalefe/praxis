@@ -153,14 +153,14 @@ export function SofiaOrientacao<C extends SofiaCitacaoBase>({
           <PresenceMark size={30} />
           <div style={{ lineHeight: 1.2 }}>
             <div style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>Sofia</div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--warm-500)" }}>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--muted)" }}>
               Copiloto clínico
             </div>
           </div>
           {resposta && (
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
               {hora && (
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--warm-500)" }}>{hora}</span>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--muted)" }}>{hora}</span>
               )}
               <CopiarBtn texto={resposta.resposta} className="btn btn-ghost" label="Copiar" />
             </div>
@@ -206,7 +206,7 @@ export function SofiaOrientacao<C extends SofiaCitacaoBase>({
                   style={{
                     fontFamily: "var(--font-mono)",
                     fontSize: 11,
-                    color: "var(--warm-500)",
+                    color: "var(--muted)",
                     marginBottom: 6,
                     display: "flex",
                     alignItems: "center",
@@ -252,7 +252,7 @@ export function SofiaOrientacao<C extends SofiaCitacaoBase>({
                 fontFamily: "var(--font-mono)",
                 fontStyle: "italic",
                 fontSize: 12,
-                color: "var(--warm-500)",
+                color: "var(--muted)",
               }}
             >
               {resposta.disclaimer}

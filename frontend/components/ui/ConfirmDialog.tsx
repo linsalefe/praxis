@@ -16,6 +16,7 @@ export function ConfirmDialog({
   confirmLabel = "Excluir",
   cancelLabel = "Cancelar",
   busy = false,
+  busyLabel,
   onConfirm,
   onCancel,
 }: {
@@ -25,6 +26,8 @@ export function ConfirmDialog({
   confirmLabel?: string;
   cancelLabel?: string;
   busy?: boolean;
+  /** Rótulo do botão de confirmação enquanto `busy`. Default: "Excluindo…". */
+  busyLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -74,7 +77,7 @@ export function ConfirmDialog({
             {cancelLabel}
           </Button>
           <Button variant="danger" onClick={onConfirm} disabled={busy} type="button">
-            {busy ? "Excluindo…" : confirmLabel}
+            {busy ? (busyLabel ?? "Excluindo…") : confirmLabel}
           </Button>
         </div>
       </div>

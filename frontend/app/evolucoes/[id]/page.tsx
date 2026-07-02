@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useRef, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CheckCircle2, Save } from "lucide-react";
@@ -10,6 +10,7 @@ import { CopiarBtn } from "@/components/ui/CopiarBtn";
 import { BreadcrumbPaciente } from "@/components/ui/BreadcrumbPaciente";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type Evolucao = {
   id: string; sessao_id: string; paciente_id: string | null; autor_id: string;
@@ -32,6 +33,13 @@ export default function EvolucaoPage({ params }: { params: Promise<{ id: string 
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [signing, setSigning] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [confirmAssinar, setConfirmAssinar] = useState(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Referência sempre atualizada — o autosave debounced lê daqui, não de um
+  // closure antigo, então nenhuma tecla final se perde.
+  const evRef = useRef<Evolucao | null>(ev);
+  evRef.current = ev;
 
   useEffect(() => {
     if (!getToken()) return void router.replace("/login");
@@ -44,42 +52,63 @@ export default function EvolucaoPage({ params }: { params: Promise<{ id: string 
     })();
   }, [id, router]);
 
+  // Limpa timer pendente ao desmontar.
+  useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
+
+  // Guarda de saída: enquanto houver texto não salvo, o navegador confirma antes de sair.
+  useEffect(() => {
+    if (!dirty) return;
+    const h = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [dirty]);
+
   function upd(k: keyof Evolucao, v: string) {
     if (!ev || ev.assinado_em) return;
     setEv({ ...ev, [k]: v });
     setDirty(true);
+    scheduleSave();
   }
 
-  async function salvarRascunho() {
-    if (!ev) return;
+  const scheduleSave = () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => salvar({ silent: true }), 800);
+  };
+
+  async function salvar({ silent = false }: { silent?: boolean } = {}) {
+    const cur = evRef.current;
+    if (!cur || cur.assinado_em) return;
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
     setSaving(true);
     try {
       const patched = await api<Evolucao>(`/evolucoes/${id}`, {
         method: "PATCH",
         body: JSON.stringify({
-          identificacao: ev.identificacao,
-          demanda_objetivos: ev.demanda_objetivos,
-          evolucao: ev.evolucao,
-          encaminhamento: ev.encaminhamento,
+          identificacao: cur.identificacao,
+          demanda_objetivos: cur.demanda_objetivos,
+          evolucao: cur.evolucao,
+          encaminhamento: cur.encaminhamento,
         }),
       });
       setEv(patched);
       setDirty(false);
-      toast.success("Rascunho salvo.");
+      setLastSaved(new Date());
+      if (!silent) toast.success("Rascunho salvo.");
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Falha");
+      if (!silent) toast.error(err instanceof ApiError ? err.message : "Falha");
     } finally {
       setSaving(false);
     }
   }
 
   async function assinar() {
-    if (!ev) return;
-    if (dirty) await salvarRascunho();
+    if (!evRef.current) return;
+    if (dirty) await salvar({ silent: true });
     setSigning(true);
     try {
       const signed = await api<Evolucao>(`/evolucoes/${id}/assinar`, { method: "POST" });
       setEv(signed);
+      setConfirmAssinar(false);
       toast.success("Evolução assinada.");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Falha");
@@ -104,9 +133,25 @@ export default function EvolucaoPage({ params }: { params: Promise<{ id: string 
               className="btn btn-ghost"
               texto={BLOCOS.map(([k, titulo]) => `${titulo}\n${(ev[k] as string) || ""}`).join("\n\n")}
             />
-            <span className="badge" style={{ color: assinada ? "var(--ok)" : "var(--muted)" }}>
-              {assinada ? `Assinada em ${new Date(ev.assinado_em!).toLocaleString("pt-BR")}` : "Rascunho"}
-            </span>
+            {assinada ? (
+              <span className="badge" style={{ color: "var(--ok)" }}>
+                Assinada em {new Date(ev.assinado_em!).toLocaleString("pt-BR")}
+              </span>
+            ) : (
+              <span className="badge" style={{ color: "var(--muted)" }}>
+                {saving ? (
+                  "salvando…"
+                ) : dirty ? (
+                  "Rascunho · editando…"
+                ) : lastSaved ? (
+                  <span style={{ fontFamily: "var(--font-mono)" }}>
+                    salvo às {lastSaved.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                ) : (
+                  "Rascunho"
+                )}
+              </span>
+            )}
           </div>
         </div>
 
@@ -127,10 +172,10 @@ export default function EvolucaoPage({ params }: { params: Promise<{ id: string 
         </div>
 
         <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
-          <Button onClick={salvarRascunho} loading={saving} disabled={assinada || !dirty}>
+          <Button onClick={() => salvar()} loading={saving} disabled={assinada || !dirty}>
             <Save size={16} /> {saving ? "Salvando…" : "Salvar rascunho"}
           </Button>
-          <Button variant="primary" onClick={assinar} loading={signing} disabled={assinada}>
+          <Button variant="primary" onClick={() => setConfirmAssinar(true)} loading={signing} disabled={assinada}>
             <CheckCircle2 size={16} /> {signing ? "Assinando…" : "Assinar evolução"}
           </Button>
         </div>
@@ -141,6 +186,18 @@ export default function EvolucaoPage({ params }: { params: Promise<{ id: string 
           </p>
         )}
       </main>
+
+      <ConfirmDialog
+        open={confirmAssinar}
+        title="Assinar evolução"
+        description="Após assinar, o conteúdo fica imutável, recebe hash de integridade e passa a compor o prontuário. Revise o texto antes de confirmar."
+        confirmLabel="Assinar"
+        cancelLabel="Continuar revisando"
+        busy={signing}
+        busyLabel="Assinando…"
+        onConfirm={assinar}
+        onCancel={() => setConfirmAssinar(false)}
+      />
     </>
   );
 }

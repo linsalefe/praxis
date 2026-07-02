@@ -45,3 +45,12 @@ export function formatNome(nome: string | null | undefined): string {
     .map((palavra, i) => (i > 0 && CONECTORES.has(palavra) ? palavra : capitalizar(palavra)))
     .join(" ");
 }
+
+/**
+ * Plural pt-BR: "3 evoluções" / "1 evolução" / "0 evoluções".
+ * O sufixo não é flexionável de forma confiável (evolução→evoluções,
+ * sessão→sessões), então SEMPRE passe as duas formas por extenso.
+ */
+export function plural(n: number, singular: string, plural: string): string {
+  return `${n} ${n === 1 ? singular : plural}`;
+}

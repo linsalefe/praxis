@@ -117,7 +117,7 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
       );
       const refreshed = await api<Resposta>(`/respostas-instrumento/${resp.id}`);
       setResp(refreshed);
-      toast.success(`Rascunho gerado (${r.provider}).`);
+      toast.success("Rascunho gerado — revise antes de usar.");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Falha ao gerar");
     } finally {
@@ -190,7 +190,7 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
             total={total}
           />
           {dirty && (
-            <div style={{ marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--warm-500)" }}>
+            <div style={{ marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--muted)" }}>
               salvando…
             </div>
           )}
@@ -265,7 +265,7 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
             {isLikert && instr.definicao && (
               <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid var(--border)" }}>
                 <PainelFaixa definicao={instr.definicao} pontuacao={resp.pontuacao} />
-                <p style={{ color: "var(--warm-500)", fontSize: 11, margin: "8px 0 0", fontFamily: "var(--font-mono)" }}>
+                <p style={{ color: "var(--muted)", fontSize: 11, margin: "8px 0 0", fontFamily: "var(--font-mono)" }}>
                   Escore factual acima. O texto abaixo é interpretação (rascunho editável) — separado do número.
                 </p>
               </div>
@@ -279,7 +279,7 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
                 <PresenceMark size={16} /> {busy || "Gerar rascunho"}
               </Button>
               {resp.saida_provider && (
-                <span className="badge">{resp.saida_provider}</span>
+                <span className="badge">IA de apoio · revisão obrigatória</span>
               )}
             </div>
             <textarea
@@ -373,7 +373,7 @@ function ItemLikertCampo({
   return (
     <div style={{ padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
       <div style={{ fontSize: 13, color: "var(--text)", marginBottom: 8 }}>
-        <span style={{ fontFamily: "var(--font-mono)", color: "var(--warm-500)" }}>{idx}.</span>{" "}
+        <span style={{ fontFamily: "var(--font-mono)", color: "var(--muted)" }}>{idx}.</span>{" "}
         {item.texto}
         {item.flag === "risco" && (
           <span className="badge badge-risk" style={{ marginLeft: 6, fontSize: 10 }}>atenção</span>

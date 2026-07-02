@@ -47,7 +47,7 @@ export default function AcervoPage() {
                   <th style={{ padding: 12 }}>Título</th>
                   <th style={{ padding: 12 }}>Autor</th>
                   <th style={{ padding: 12 }}>Editora</th>
-                  <th style={{ padding: 12 }}>Chunks</th>
+                  <th style={{ padding: 12 }}>Trechos</th>
                   <th style={{ padding: 12 }}>Origem</th>
                 </tr>
               </thead>
@@ -57,7 +57,7 @@ export default function AcervoPage() {
                     <td data-label="Título" style={{ padding: 12 }}>{d.titulo}</td>
                     <td data-label="Autor" style={{ padding: 12, color: "var(--muted)" }}>{d.autor}</td>
                     <td data-label="Editora" style={{ padding: 12, color: "var(--muted)" }}>{d.editora || "—"}</td>
-                    <td data-label="Chunks" style={{ padding: 12 }}>{d.total_chunks}</td>
+                    <td data-label="Trechos" style={{ padding: 12 }}>{d.total_chunks}</td>
                     <td data-label="Origem" style={{ padding: 12 }}>
                       <span className="badge">{d.is_terceiro ? "terceiro" : "CENAT"}</span>
                     </td>

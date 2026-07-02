@@ -13,6 +13,7 @@ import { BreadcrumbPaciente } from "@/components/ui/BreadcrumbPaciente";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
@@ -36,6 +37,8 @@ type Verificacao = {
   intacto: boolean | null; valido: boolean | null; confiavel: boolean | null;
   titular: string | null; algoritmo: string | null; nota: string | null;
 };
+// Metadados do certificado A1 (GET /assinatura/certificado, 404 se não houver).
+type Cert = { titular: string; validade_ate: string; expirado: boolean };
 
 export default function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -47,6 +50,8 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
   const [icpOpen, setIcpOpen] = useState(false);
   const [senhaIcp, setSenhaIcp] = useState("");
   const [verif, setVerif] = useState<Verificacao | null>(null);
+  const [cert, setCert] = useState<Cert | null>(null);
+  const [confirmAssinar, setConfirmAssinar] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -59,6 +64,10 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         setTpl(templates.find((t) => t.tipo === d.tipo) || null);
         if (d.assinatura_tipo === "icp_brasil") {
           api<Verificacao>(`/documentos/${id}/assinatura`).then(setVerif).catch(() => {});
+        }
+        // Só enquanto rascunho: se houver A1 válido, a UI prioriza o ICP-Brasil.
+        if (d.status !== "assinado") {
+          api<Cert>("/assinatura/certificado").then(setCert).catch(() => {});
         }
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) router.replace("/login");
@@ -94,6 +103,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
     try {
       const d = await api<Doc>(`/documentos/${id}/assinar`, { method: "POST" });
       setDoc(d);
+      setConfirmAssinar(false);
       toast.success("Documento assinado e anexado ao prontuário.");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Falha ao assinar");
@@ -127,6 +137,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
   );
 
   const finalizado = doc.status === "assinado";
+  const temCertValido = !!cert && !cert.expirado;
 
   return (
     <>
@@ -206,11 +217,11 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
           )}
           {!finalizado && (
             <>
-              <Button onClick={() => setIcpOpen(true)} disabled={!!busy}>
+              <Button variant={temCertValido ? "primary" : undefined} onClick={() => setIcpOpen(true)} disabled={!!busy}>
                 <ShieldCheck size={16} /> Assinar com ICP-Brasil
               </Button>
-              <Button variant="primary" onClick={assinar} disabled={!!busy}>
-                <FileCheck2 size={16} /> {busy || "Assinar (simples)"}
+              <Button variant={temCertValido ? undefined : "primary"} onClick={() => setConfirmAssinar(true)} disabled={!!busy}>
+                <FileCheck2 size={16} /> Assinar (simples)
               </Button>
             </>
           )}
@@ -259,6 +270,18 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
           </Button>
         </form>
       </Drawer>
+
+      <ConfirmDialog
+        open={confirmAssinar}
+        title="Assinar documento"
+        description="Após assinar, o documento fica imutável e o PDF é anexado ao prontuário do paciente."
+        confirmLabel="Assinar"
+        cancelLabel="Continuar revisando"
+        busy={busy === "Assinando…"}
+        busyLabel="Assinando…"
+        onConfirm={assinar}
+        onCancel={() => setConfirmAssinar(false)}
+      />
     </>
   );
 }

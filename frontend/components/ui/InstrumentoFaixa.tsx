@@ -32,7 +32,7 @@ export function InstrumentoFaixa({
         <div style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
           {titulo}
           {versao && (
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--warm-500)" }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--muted)" }}>
               {" "}· {versao}
             </span>
           )}
@@ -68,7 +68,7 @@ export function InstrumentoFaixa({
         ))}
       </div>
 
-      <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--warm-500)" }}>
+      <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--muted)" }}>
         {segsPreenchidos}/{total} {unidade}
       </div>
     </div>
@@ -122,7 +122,7 @@ export function FaixaSeveridade({
             {escore ?? "—"}
           </span>
           {typeof escoreBruto === "number" && escoreBruto !== escore && (
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--warm-500)" }}> (bruto {escoreBruto})</span>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--muted)" }}> (bruto {escoreBruto})</span>
           )}
         </span>
       </div>
@@ -154,7 +154,7 @@ export function FaixaSeveridade({
             {faixaRotulo}
           </span>
         ) : (
-          <span style={{ fontFamily: "var(--font-mono)", color: "var(--warm-500)" }}>
+          <span style={{ fontFamily: "var(--font-mono)", color: "var(--muted)" }}>
             faixa preliminar — responda todos os itens
           </span>
         )}

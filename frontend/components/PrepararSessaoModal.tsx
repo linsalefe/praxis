@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ClipboardCheck, Copy, Link2, Quote, X } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { modalidadeLabel, statusLabel } from "@/lib/labels";
+import { plural } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
@@ -134,8 +135,8 @@ export function PrepararSessaoModal({
         {roteiro && (
           <>
             <p style={{ color: "var(--muted)", fontSize: 12, margin: "8px 0 4px" }}>
-              Gerado por <span className="badge">{roteiro.provider}</span>{" "}
-              usando {String(roteiro.meta.n_evolucoes_usadas || 0)} evolução(ões), {String(roteiro.meta.n_instrumentos_usados || 0)} instrumento(s) e {String(roteiro.meta.n_chunks_acervo || 0)} trecho(s) do acervo.
+              Gerado com <span className="badge">IA de apoio · revisão obrigatória</span>{" "}
+              usando {plural(Number(roteiro.meta.n_evolucoes_usadas || 0), "evolução", "evoluções")}, {plural(Number(roteiro.meta.n_instrumentos_usados || 0), "instrumento", "instrumentos")} e {plural(Number(roteiro.meta.n_chunks_acervo || 0), "trecho", "trechos")} do acervo.
               Nome e dados pessoais do paciente não foram enviados à IA.
             </p>
 

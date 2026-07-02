@@ -8,7 +8,7 @@ import { Activity, CalendarClock, CalendarPlus, ClipboardCheck, ClipboardList, D
 import { api, ApiError, getToken } from "@/lib/api";
 import { formatCentavos, reaisParaCentavos } from "@/lib/money";
 import { dataRelativa } from "@/lib/date";
-import { instrumentoTipoLabel, modalidadeLabel } from "@/lib/labels";
+import { instrumentoTipoLabel, modalidadeLabel, docTipoLabel } from "@/lib/labels";
 import { formatNome } from "@/lib/format";
 import { Topbar } from "@/components/Topbar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -315,7 +315,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
               <Card>
                 <div style={{ color: "var(--muted)", fontSize: 12 }}>Sessões realizadas</div>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 20 }}>
-                  {resumo.sessoes.realizadas}<span style={{ fontSize: 12, color: "var(--warm-500)" }}>/{resumo.sessoes.total}</span>
+                  {resumo.sessoes.realizadas}<span style={{ fontSize: 12, color: "var(--muted)" }}>/{resumo.sessoes.total}</span>
                 </div>
                 <div style={{ color: "var(--muted)", fontSize: 11 }}>
                   {resumo.sessoes.faltas} falta(s) · {resumo.sessoes.canceladas} cancel. · {resumo.sessoes.agendadas_futuras} agendada(s)
@@ -471,7 +471,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
             documentos.map((d) => (
               <Card key={d.id} className="row-stack" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
-                  <div style={{ fontWeight: 500, textTransform: "capitalize" }}>{d.tipo}</div>
+                  <div style={{ fontWeight: 500 }}>{docTipoLabel(d.tipo)}</div>
                   <div style={{ color: "var(--muted)", fontSize: 12 }}>
                     <StatusBadge status={d.status} />{" "}
                     {d.finalidade.slice(0, 70)}{d.finalidade.length > 70 && "…"} · {dataRelativa(d.criado_em)}

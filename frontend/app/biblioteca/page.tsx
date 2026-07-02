@@ -134,7 +134,6 @@ export default function BibliotecaPage() {
                       <span className="badge">{h.is_terceiro ? "terceiro" : "CENAT"}</span>
                       <span className="badge">cap. {h.capitulo || "n/d"}</span>
                       <span className="badge">{paginas(h.pagina_inicio, h.pagina_fim)}</span>
-                      <span className="badge">sim {(h.similaridade * 100).toFixed(0)}%</span>
                     </div>
                     <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{h.trecho}</p>
                     {h.is_terceiro && (

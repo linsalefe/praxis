@@ -106,7 +106,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
           </div>
         </div>
         <p style={{ color: "var(--muted)", fontSize: 12, marginTop: 4 }}>
-          Gerado por <span className="badge">{e.provider}</span> ·
+          <span className="badge">IA de apoio · revisão obrigatória</span> ·
           {" "}{String((e.meta.abordagens_comparadas as string[] | undefined)?.length || 0)} abordagens ·
           {" "}{String(e.meta.n_chunks_acervo || 0)} trechos do acervo
         </p>
@@ -162,7 +162,6 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                 <span className="badge">
                   {drawer.pagina_inicio ? `pp. ${drawer.pagina_inicio}${drawer.pagina_fim && drawer.pagina_fim !== drawer.pagina_inicio ? `-${drawer.pagina_fim}` : ""}` : "p. n/d"}
                 </span>{" "}
-                <span className="badge">sim {(drawer.similaridade * 100).toFixed(0)}%</span>
                 {drawer.is_terceiro && <span className="badge" style={{ color: "var(--brand-2)" }}>terceiro — paráfrase</span>}
               </p>
               <hr className="divider" />

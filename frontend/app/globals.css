@@ -8,6 +8,10 @@
    ========================================================================== */
 
 :root {
+  /* Controles nativos (radio/checkbox/range/date pickers) na cor da marca — I1. */
+  accent-color: var(--brand);
+  color-scheme: light;
+
   /* --- Aliases de compatibilidade (nomes originais, valores Presença) --- */
   --bg: #F8F6F1;         /* porcelana greige — anti "efeito hospital" */
   --surface: #FFFFFF;    /* card/superfície elevada */
@@ -34,6 +38,8 @@
   --amber-100: #F5ECD7; --amber-600: #A9793C;
 
   /* --- Neutros quentes extra --- */
+  /* --warm-500: uso restrito a placeholder/decoração. Contraste ~3,8:1 sobre
+     porcelana — REPROVA AA para texto. Nunca como cor de texto ≤13px (use --muted). */
   --sand-100: #ECE7DC; --warm-500: #857C6C; --ink-800: #3A362E;
 
   /* --- Estados (fg / bg / line) --- */
@@ -216,7 +222,7 @@ kbd {
   border-color: var(--teal-500);
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
-.input::placeholder, .textarea::placeholder { color: var(--warm-500); }
+.input::placeholder, .textarea::placeholder { color: var(--warm-500); } /* placeholder: uso sancionado de --warm-500 (não é texto de leitura) */
 /* Autofill do Chrome/WebKit na paleta (evita amarelo/azul fora do tema) — L7 */
 .input:-webkit-autofill,
 .input:-webkit-autofill:hover,
@@ -270,7 +276,7 @@ kbd {
 .badge-info    { background: var(--info-bg); border-color: var(--info-line); color: var(--info-fg); }
 .badge-warn    { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn-fg); }
 .badge-risk    { background: var(--risk-bg); border-color: var(--risk-line); color: var(--risk-fg); }
-.badge-neutral { background: var(--sand-100); border-color: var(--border);   color: var(--warm-500); }
+.badge-neutral { background: var(--sand-100); border-color: var(--border);   color: var(--muted); }
 
 /* ==========================================================================
    Links
