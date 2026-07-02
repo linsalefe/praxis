@@ -46,7 +46,7 @@ export default function RegisterPage() {
       });
       saveToken(data.access_token, data.scope);
       toast.success("Cadastro concluído.");
-      router.replace("/pacientes");
+      router.replace("/inicio");
     } catch (err) {
       if (err instanceof ApiError) setErro(err.message);
       else toast.error("Falha de conexão. Tente novamente.");

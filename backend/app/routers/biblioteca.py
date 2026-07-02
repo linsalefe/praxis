@@ -1,9 +1,10 @@
 """Biblioteca viva — navegação e busca semântica sobre o acervo (read-only).
 
 Reusa a busca vetorial da Sofia (embed_query + retriever.buscar) e o guardrail
-de copyright (_snippet / SNIPPET_TERCEIRO / SNIPPET_PROPRIO). Não gera texto,
-não toca a ingestão nem a Sofia, e nenhum endpoint devolve texto integral:
-o índice é pura estrutura e os hits carregam apenas o trecho já cortado.
+de copyright (_snippet / SNIPPET_TERCEIRO / SNIPPET_PROPRIO). Não gera texto e
+não toca a ingestão nem a Sofia. Obras próprias do CENAT (is_terceiro=False)
+devolvem o texto integral das seções no índice, para leitura na página da obra;
+obras de terceiros nunca devolvem texto (índice puro + trecho cortado na busca).
 """
 from __future__ import annotations
 
@@ -77,8 +78,9 @@ async def obter_obra(
         select(func.count(AcervoChunk.id)).where(AcervoChunk.documento_id == doc.id)
     )
 
-    # Índice = pura estrutura (capítulo/seção/páginas), ordenado por `ordem`.
-    # Sem texto de chunk — vale igual para próprio e terceiro.
+    # Índice = estrutura (capítulo/seção/páginas) ordenada por `ordem`, mais o
+    # texto integral da seção. O texto só sai para obras próprias do CENAT;
+    # em obras de terceiros fica None (guardrail de copyright preservado).
     rows = (
         await session.execute(
             select(
@@ -87,6 +89,7 @@ async def obter_obra(
                 AcervoChunk.secao_titulo,
                 AcervoChunk.pagina_inicio,
                 AcervoChunk.pagina_fim,
+                AcervoChunk.texto,
             )
             .where(AcervoChunk.documento_id == doc.id)
             .order_by(AcervoChunk.ordem)
@@ -102,6 +105,7 @@ async def obter_obra(
         IndiceItemOut(
             ordem=r.ordem, capitulo=r.capitulo, secao_titulo=r.secao_titulo,
             pagina_inicio=r.pagina_inicio, pagina_fim=r.pagina_fim,
+            texto=None if doc.is_terceiro else r.texto,
         )
         for r in rows
     ]

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Send, BookOpen, MessageSquarePlus } from "lucide-react";
+import { Send, BookOpen, MessageSquarePlus, History, Trash2, X } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { PresenceMark } from "@/components/ui/PresenceMark";
@@ -37,6 +37,23 @@ type Resp = {
   usou_paciente: boolean;
   modelo: string;
   disclaimer: string;
+  conversa_id?: string;
+};
+
+type ConversaResumo = {
+  id: string; titulo: string; paciente_id: string | null;
+  total_turnos: number; criado_em: string; atualizado_em: string;
+};
+
+type TurnoHist = {
+  pergunta: string; resposta: string; citacoes: Citacao[];
+  sem_respaldo: boolean; usou_paciente: boolean; modelo: string | null;
+  disclaimer: string; criado_em: string;
+};
+
+type ConversaDetalhe = {
+  id: string; titulo: string; paciente_id: string | null;
+  criado_em: string; turnos: TurnoHist[];
 };
 
 type Turno = {
@@ -72,6 +89,9 @@ function PageInner() {
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [drawer, setDrawer] = useState<Citacao | null>(null);
   const [prep, setPrep] = useState<string | null>(null);
+  const [conversaId, setConversaId] = useState<string | null>(null);
+  const [historico, setHistorico] = useState<ConversaResumo[] | null>(null);
+  const [showHist, setShowHist] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const ultimoTurnoRef = useRef<HTMLDivElement>(null);
 
@@ -97,6 +117,7 @@ function PageInner() {
 
     const body: Record<string, unknown> = { pergunta: q };
     if (usarPaciente && pacienteId) body.paciente_id = pacienteId;
+    if (conversaId) body.conversa_id = conversaId;
     const patchLast = (patch: Partial<Turno>) =>
       setTurnos((ts) => ts.map((x, i) => (i === ts.length - 1 ? { ...x, ...patch } : x)));
 
@@ -129,7 +150,8 @@ function PageInner() {
             acc += (data as { delta: string }).delta;
             patchLast({ loading: false, streaming: true, resposta: { ...RESP_VAZIA, resposta: acc } });
           } else if (event === "done") {
-            const d = data as Omit<Resp, "resposta">;
+            const d = data as Omit<Resp, "resposta"> & { conversa_id?: string };
+            if (d.conversa_id) setConversaId(d.conversa_id);
             patchLast({ loading: false, streaming: false, resposta: { ...d, resposta: acc } });
             concluido = true;
           } else if (event === "error") {
@@ -142,6 +164,7 @@ function PageInner() {
       // Fallback: endpoint não-stream — mantém a Sofia funcional se o SSE falhar.
       try {
         const r = await api<Resp>("/sofia/perguntar", { method: "POST", body: JSON.stringify(body) });
+        if (r.conversa_id) setConversaId(r.conversa_id);
         patchLast({ loading: false, streaming: false, resposta: r });
       } catch (err) {
         const msg = err instanceof ApiError ? err.message : "Falha ao consultar Sofia";
@@ -149,6 +172,58 @@ function PageInner() {
         patchLast({ loading: false, streaming: false, erro: msg });
       }
     }
+  }
+
+  async function carregarHistorico() {
+    setShowHist(true);
+    setHistorico(null);
+    try {
+      setHistorico(await api<ConversaResumo[]>("/sofia/conversas"));
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) return router.replace("/login");
+      toast.error("Não foi possível carregar o histórico.");
+      setHistorico([]);
+    }
+  }
+
+  async function abrirConversa(id: string) {
+    try {
+      const c = await api<ConversaDetalhe>(`/sofia/conversas/${id}`);
+      setTurnos(
+        c.turnos.map((t) => ({
+          pergunta: t.pergunta,
+          resposta: {
+            resposta: t.resposta, citacoes: t.citacoes, sem_respaldo: t.sem_respaldo,
+            usou_paciente: t.usou_paciente, modelo: t.modelo ?? "", disclaimer: t.disclaimer,
+          },
+          loading: false,
+          hora: new Date(t.criado_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+        })),
+      );
+      setConversaId(c.id);
+      setShowHist(false);
+      setDrawer(null);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) return router.replace("/login");
+      toast.error("Não foi possível abrir a conversa.");
+    }
+  }
+
+  async function excluirConversa(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    try {
+      await api(`/sofia/conversas/${id}`, { method: "DELETE" });
+      setHistorico((h) => (h ? h.filter((c) => c.id !== id) : h));
+      if (conversaId === id) { setTurnos([]); setConversaId(null); }
+    } catch {
+      toast.error("Não foi possível excluir a conversa.");
+    }
+  }
+
+  function novaConversa() {
+    setTurnos([]);
+    setDrawer(null);
+    setConversaId(null);
   }
 
   return (
@@ -167,15 +242,16 @@ function PageInner() {
             <PresenceMark size={26} />
             <h1 style={{ margin: 0, fontSize: 22 }}>Sofia</h1>
             <span className="badge">acervo CENAT · RAG</span>
-            {turnos.length > 0 && (
-              <Button
-                variant="ghost"
-                onClick={() => { setTurnos([]); setDrawer(null); }}
-                style={{ marginLeft: "auto" }}
-              >
-                <MessageSquarePlus size={15} /> Nova conversa
+            <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+              <Button variant="ghost" onClick={carregarHistorico}>
+                <History size={15} /> Histórico
               </Button>
-            )}
+              {turnos.length > 0 && (
+                <Button variant="ghost" onClick={novaConversa}>
+                  <MessageSquarePlus size={15} /> Nova conversa
+                </Button>
+              )}
+            </div>
           </div>
           {pacienteId && (
             <label style={{ fontSize: 13, color: "var(--muted)", marginBottom: 8, display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -295,6 +371,72 @@ function PageInner() {
             sofiaContexto={prep}
             onClose={() => setPrep(null)}
           />
+        )}
+
+        {showHist && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)",
+              display: "flex", justifyContent: "flex-end", zIndex: 45,
+            }}
+            onClick={() => setShowHist(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "min(420px, 92%)", height: "100%", background: "var(--surface)",
+                borderLeft: "1px solid var(--border)", padding: 20, overflowY: "auto",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                <History size={18} color="var(--brand-2)" />
+                <h2 style={{ margin: 0, fontSize: 18 }}>Histórico</h2>
+                <Button variant="ghost" onClick={() => setShowHist(false)} style={{ marginLeft: "auto" }} aria-label="Fechar">
+                  <X size={16} />
+                </Button>
+              </div>
+              {historico === null ? (
+                <p style={{ color: "var(--muted)" }}>Carregando…</p>
+              ) : historico.length === 0 ? (
+                <p style={{ color: "var(--muted)" }}>Nenhuma conversa salva ainda.</p>
+              ) : (
+                <div style={{ display: "grid", gap: 8 }}>
+                  {historico.map((c) => (
+                    <div
+                      key={c.id}
+                      onClick={() => abrirConversa(c.id)}
+                      className="card"
+                      style={{
+                        cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 8,
+                        padding: "10px 12px",
+                        outline: c.id === conversaId ? "2px solid var(--brand-2)" : "none",
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {c.titulo}
+                        </div>
+                        <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
+                          {c.total_turnos} pergunta{c.total_turnos === 1 ? "" : "s"}
+                          {c.paciente_id && <> · <span className="badge">paciente</span></>}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => excluirConversa(c.id, e)}
+                        aria-label="Excluir conversa"
+                        style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--muted)", padding: 4 }}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         )}
         </main>
       </div>

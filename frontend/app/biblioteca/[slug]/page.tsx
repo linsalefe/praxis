@@ -19,6 +19,7 @@ type Obra = {
 type IndiceItem = {
   ordem: number; capitulo: string | null; secao_titulo: string | null;
   pagina_inicio: number | null; pagina_fim: number | null;
+  texto: string | null;   // texto integral da seção; só vem em obras próprias do CENAT
 };
 
 type Detalhe = { obra: Obra; indice: IndiceItem[] };
@@ -26,17 +27,6 @@ type Detalhe = { obra: Obra; indice: IndiceItem[] };
 function paginas(pi: number | null, pf: number | null): string {
   if (!pi) return "p. n/d";
   return pf && pf !== pi ? `pp. ${pi}-${pf}` : `p. ${pi}`;
-}
-
-// Agrupa o índice por capítulo, preservando a ordem original.
-function agrupar(indice: IndiceItem[]) {
-  const grupos: { capitulo: string | null; itens: IndiceItem[] }[] = [];
-  for (const it of indice) {
-    const ultimo = grupos[grupos.length - 1];
-    if (ultimo && ultimo.capitulo === it.capitulo) ultimo.itens.push(it);
-    else grupos.push({ capitulo: it.capitulo, itens: [it] });
-  }
-  return grupos;
 }
 
 export default function ObraPage() {
@@ -65,7 +55,9 @@ export default function ObraPage() {
   }, [router, slug]);
 
   const obra = data?.obra;
-  const grupos = data ? agrupar(data.indice) : [];
+  const indice = data?.indice ?? [];
+  // Obras próprias do CENAT vêm com texto → leitura; terceiros só estrutura.
+  const podeLer = !!obra && !obra.is_terceiro;
 
   return (
     <>
@@ -111,39 +103,44 @@ export default function ObraPage() {
               </Card>
             )}
 
-            <SectionTitle margin="0 0 10px">Índice</SectionTitle>
-            {grupos.length === 0 ? (
+            <SectionTitle margin="0 0 10px">{podeLer ? "Conteúdo" : "Índice"}</SectionTitle>
+            {indice.length === 0 ? (
               <Card>
                 <p style={{ margin: 0, color: "var(--muted)" }}>
-                  Índice indisponível para esta obra.
+                  {podeLer ? "Conteúdo indisponível para esta obra." : "Índice indisponível para esta obra."}
                 </p>
               </Card>
-            ) : (
-              <Card style={{ padding: 0 }}>
-                {grupos.map((g, gi) => {
-                  const pi = g.itens[0].pagina_inicio;
-                  const pf = g.itens[g.itens.length - 1].pagina_fim;
-                  return (
-                    <div
-                      key={gi}
-                      style={{
-                        display: "flex", justifyContent: "space-between", gap: 12,
-                        padding: "12px 14px",
-                        borderTop: gi === 0 ? "none" : "1px solid var(--border)",
-                      }}
-                    >
-                      <span>
-                        {g.capitulo || <span style={{ color: "var(--muted)" }}>Trecho sem capítulo</span>}
-                        {g.itens.length > 1 && (
-                          <span style={{ color: "var(--muted)", fontSize: 12 }}> · {g.itens.length} partes</span>
-                        )}
-                      </span>
-                      <span style={{ color: "var(--muted)", fontSize: 13, whiteSpace: "nowrap" }}>
-                        {paginas(pi, pf)}
-                      </span>
+            ) : podeLer ? (
+              // Obra própria do CENAT — leitura corrida das seções, na ordem.
+              <div style={{ display: "grid", gap: 16 }}>
+                {indice.map((it, i) => (
+                  <Card key={it.ordem}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                      <span className="badge">Seção {i + 1}</span>
+                      <span className="badge">{paginas(it.pagina_inicio, it.pagina_fim)}</span>
                     </div>
-                  );
-                })}
+                    <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.65 }}>{it.texto}</p>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              // Obra de terceiros — só estrutura navegável por páginas (sem texto).
+              <Card style={{ padding: 0 }}>
+                {indice.map((it, i) => (
+                  <div
+                    key={it.ordem}
+                    style={{
+                      display: "flex", justifyContent: "space-between", gap: 12,
+                      padding: "12px 14px",
+                      borderTop: i === 0 ? "none" : "1px solid var(--border)",
+                    }}
+                  >
+                    <span>Seção {i + 1}</span>
+                    <span style={{ color: "var(--muted)", fontSize: 13, whiteSpace: "nowrap" }}>
+                      {paginas(it.pagina_inicio, it.pagina_fim)}
+                    </span>
+                  </div>
+                ))}
               </Card>
             )}
           </>

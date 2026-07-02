@@ -25,7 +25,7 @@ export default function TwoFactorPage() {
       });
       saveToken(data.access_token, data.scope);
       toast.success("2FA verificado.");
-      router.replace("/pacientes");
+      router.replace("/inicio");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Código inválido");
     } finally {
