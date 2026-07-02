@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Download, FileCheck2, ShieldCheck } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
+import { BreadcrumbPaciente } from "@/components/ui/BreadcrumbPaciente";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { InstrumentoFaixa, FaixaSeveridade, type FaixaDef } from "@/components/ui/InstrumentoFaixa";
 
@@ -178,9 +178,7 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
     <>
       <Topbar />
       <main className="container-praxis" style={{ maxWidth: 900 }}>
-        <p style={{ margin: 0 }}>
-          <Link className="link" href={`/pacientes/${resp.paciente_id}`}>← Paciente</Link>
-        </p>
+        <BreadcrumbPaciente pacienteId={resp.paciente_id} />
         <div className="card" style={{ marginTop: 8 }}>
           <InstrumentoFaixa
             titulo={instr.titulo}

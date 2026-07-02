@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState, use } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { toast } from "sonner";
 import { Compass, Copy, Quote, Trash2 } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { BreadcrumbPaciente } from "@/components/ui/BreadcrumbPaciente";
 
 type Citacao = {
   n: number; titulo: string; autor: string;
@@ -93,9 +93,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
     <>
       <Topbar />
       <main className="container-praxis" style={{ maxWidth: 900 }}>
-        <p style={{ margin: 0 }}>
-          <Link className="link" href="/supervisao">← Supervisão</Link>
-        </p>
+        <BreadcrumbPaciente pacienteId={e.paciente_id} fallbackHref="/supervisao" fallbackLabel="Supervisão" />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
           <h1 style={{ fontSize: 22, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <Compass size={20} color="var(--brand-2)" /> Estudo de caso

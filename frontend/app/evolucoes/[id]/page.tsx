@@ -7,9 +7,10 @@ import { CheckCircle2, Save } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { CopiarBtn } from "@/components/ui/CopiarBtn";
+import { BreadcrumbPaciente } from "@/components/ui/BreadcrumbPaciente";
 
 type Evolucao = {
-  id: string; sessao_id: string; autor_id: string;
+  id: string; sessao_id: string; paciente_id: string | null; autor_id: string;
   identificacao: string | null; demanda_objetivos: string | null;
   evolucao: string | null; encaminhamento: string | null;
   assinado_em: string | null; hash_assinatura: string | null;
@@ -93,6 +94,7 @@ export default function EvolucaoPage({ params }: { params: Promise<{ id: string 
     <>
       <Topbar />
       <main className="container-praxis" style={{ maxWidth: 820 }}>
+        <BreadcrumbPaciente pacienteId={ev.paciente_id} />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h1 style={{ fontSize: 22, margin: "8px 0" }}>Evolução clínica</h1>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

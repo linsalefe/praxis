@@ -264,6 +264,76 @@ input:-webkit-autofill:focus {
 @keyframes rec-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 
 /* ==========================================================================
+   UX-2 — Sub-navegação da ficha do paciente (tabs sticky) + menu "···"
+   ========================================================================== */
+.subnav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin: 16px 0 20px;
+  padding: 6px 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.subnav-tab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color var(--dur-base) var(--ease-calm),
+              background var(--dur-base) var(--ease-calm);
+}
+.subnav-tab:hover { color: var(--text); background: var(--teal-50); }
+.subnav-tab[aria-selected="true"] {
+  color: var(--brand-2);
+  font-weight: 600;
+  border-bottom-color: var(--brand-2);
+}
+
+.menu-acoes-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md, var(--shadow-sm));
+  padding: 6px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+}
+.menu-acoes-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+.menu-acoes-item:hover:not(:disabled) { background: var(--teal-50); }
+.menu-acoes-item:disabled { opacity: .55; cursor: not-allowed; }
+.menu-acoes-item[data-danger] { color: var(--danger); }
+.menu-acoes-item[data-danger]:hover:not(:disabled) { background: var(--risk-bg); }
+
+/* ==========================================================================
    Acessibilidade — respeitar preferência de movimento reduzido
    ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
