@@ -207,6 +207,15 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 500; letter-spacing:
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .input::placeholder, .textarea::placeholder { color: var(--warm-500); }
+/* Autofill do Chrome/WebKit na paleta (evita amarelo/azul fora do tema) — L7 */
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text);
+  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+  caret-color: var(--text);
+  transition: background-color 5000s ease-in-out 0s;
+}
 .textarea { min-height: 96px; resize: vertical; line-height: 1.55; }
 
 .label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
