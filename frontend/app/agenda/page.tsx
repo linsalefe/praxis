@@ -103,12 +103,25 @@ export default function AgendaPage() {
   const ehHoje = (d: Date) => ymd(d) === ymd(new Date());
 
   async function mudarStatus(s: Sessao, status: string) {
+    const anterior = s.status;
     try {
       await api(`/sessoes/${s.id}`, { method: "PATCH", body: JSON.stringify({ status }) });
-      toast.success(`Sessão marcada como ${statusLabel(status).toLowerCase()}.`);
+      toast.success(`Sessão marcada como ${statusLabel(status).toLowerCase()}.`, {
+        action: { label: "Desfazer", onClick: () => reverterStatus(s.id, anterior) },
+      });
       carregar();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Falha ao atualizar");
+    }
+  }
+
+  async function reverterStatus(sessaoId: string, status: string) {
+    try {
+      await api(`/sessoes/${sessaoId}`, { method: "PATCH", body: JSON.stringify({ status }) });
+      toast.success(`Alteração desfeita — sessão voltou para ${statusLabel(status).toLowerCase()}.`);
+      carregar();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Falha ao desfazer");
     }
   }
 

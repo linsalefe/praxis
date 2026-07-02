@@ -115,13 +115,24 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
         try {
           localStorage.setItem("praxis.last_paciente", JSON.stringify({ id: p.id, nome: p.nome }));
         } catch { /* ignora */ }
-        setSessoes(await api<Sessao[]>(`/sessoes/paciente/${id}`));
-        setRespostas(await api<RespInstr[]>(`/pacientes/${id}/respostas-instrumento`));
-        setAnexos(await api<Anexo[]>(`/pacientes/${id}/anexos`));
-        setDocumentos(await api<DocumentoCFP[]>(`/pacientes/${id}/documentos`));
-        setResumo(await api<Resumo>(`/pacientes/${id}/resumo`));
-        setSeries((await api<{ series: SerieTrajetoria[] }>(`/pacientes/${id}/trajetoria`)).series);
-        setTimeline((await api<{ eventos: EventoTimeline[] }>(`/pacientes/${id}/timeline`)).eventos);
+        // Blocos independentes (só dependem do id): buscados em paralelo. allSettled
+        // → uma falha em bloco não-crítico não apaga o prontuário inteiro.
+        const [sess, resp, anex, docs, res, traj, tl] = await Promise.allSettled([
+          api<Sessao[]>(`/sessoes/paciente/${id}`),
+          api<RespInstr[]>(`/pacientes/${id}/respostas-instrumento`),
+          api<Anexo[]>(`/pacientes/${id}/anexos`),
+          api<DocumentoCFP[]>(`/pacientes/${id}/documentos`),
+          api<Resumo>(`/pacientes/${id}/resumo`),
+          api<{ series: SerieTrajetoria[] }>(`/pacientes/${id}/trajetoria`),
+          api<{ eventos: EventoTimeline[] }>(`/pacientes/${id}/timeline`),
+        ]);
+        if (sess.status === "fulfilled") setSessoes(sess.value);
+        if (resp.status === "fulfilled") setRespostas(resp.value);
+        if (anex.status === "fulfilled") setAnexos(anex.value);
+        if (docs.status === "fulfilled") setDocumentos(docs.value);
+        if (res.status === "fulfilled") setResumo(res.value);
+        if (traj.status === "fulfilled") setSeries(traj.value.series);
+        if (tl.status === "fulfilled") setTimeline(tl.value.eventos);
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) router.replace("/login");
         else toast.error(err instanceof ApiError ? err.message : "Erro");

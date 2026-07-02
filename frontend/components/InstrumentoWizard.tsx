@@ -379,14 +379,19 @@ function ItemLikertCampo({
           <span className="badge badge-risk" style={{ marginLeft: 6, fontSize: 10 }}>atenção</span>
         )}
       </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+      <div role="radiogroup" aria-label={item.texto} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
         {opcoes.map((o) => {
           const on = valor === o.valor;
           return (
             <label
               key={o.valor}
               className={`badge ${on ? "badge-info" : ""}`}
-              style={{ cursor: disabled ? "default" : "pointer", opacity: disabled && !on ? 0.5 : 1 }}
+              style={{
+                cursor: disabled ? "default" : "pointer",
+                opacity: disabled && !on ? 0.5 : 1,
+                padding: "6px 10px",
+                fontWeight: on ? 600 : 400,
+              }}
             >
               <input
                 type="radio"
