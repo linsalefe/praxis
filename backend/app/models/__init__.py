@@ -8,6 +8,7 @@ from app.models.instrumentos import AnexoProntuario, Instrumento, RespostaInstru
 from app.models.paciente import Paciente
 from app.models.roteiro import RoteiroSessao
 from app.models.sessao import Sessao
+from app.models.sofia import SofiaConversa, SofiaTurno
 from app.models.supervisao import EstudoSupervisao
 from app.models.tenant import Tenant
 from app.models.user import User
@@ -26,6 +27,8 @@ __all__ = [
     "Paciente",
     "RoteiroSessao",
     "Sessao",
+    "SofiaConversa",
+    "SofiaTurno",
     "EstudoSupervisao",
     "Tenant",
     "User",

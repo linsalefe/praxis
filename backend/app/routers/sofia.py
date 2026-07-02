@@ -6,25 +6,30 @@ import json
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 
 from app.config import get_settings
+from app.db import SessionLocal
 from app.deps import SessionDep, get_current_user
 from app.models.acervo import AcervoChunk, AcervoDocumento
 from app.models.audit import AuditLog
 from app.models.consentimento import Consentimento
 from app.models.paciente import Paciente
+from app.models.sofia import SofiaConversa, SofiaTurno
 from app.models.user import User
 from app.rag.embeddings import embed_query
 from app.rag.retriever import Hit, buscar
 from app.rag.sofia import calcular_sem_respaldo, responder, responder_stream
 from app.schemas.sofia import (
     CitacaoOut,
+    ConversaDetalheOut,
+    ConversaResumoOut,
     DocumentoOut,
     PerguntarIn,
     PerguntarOut,
+    TurnoOut,
 )
 
 router = APIRouter(prefix="/sofia", tags=["sofia"])
@@ -86,6 +91,61 @@ async def _validar_paciente_e_consentimento(
     return pac
 
 
+# --- Histórico de conversas ------------------------------------------------
+# Persistência do par pergunta/resposta por usuário/tenant. Cada turno é
+# independente (a Sofia não recebe turnos anteriores); serve só para reabrir.
+
+def _titulo_de(pergunta: str) -> str:
+    t = " ".join(pergunta.strip().split())
+    return (t[:80] + "…") if len(t) > 80 else t
+
+
+async def _carregar_conversa(session, user: User, conversa_id: str) -> SofiaConversa:
+    """Carrega uma conversa garantindo que pertence ao usuário/tenant (404 senão)."""
+    try:
+        cid = uuid.UUID(conversa_id)
+    except ValueError:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "conversa_id inválido")
+    conv = await session.get(SofiaConversa, cid)
+    if conv is None or conv.tenant_id != user.tenant_id or conv.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversa não encontrada")
+    return conv
+
+
+async def _resolver_conversa(
+    session, user: User, conversa_id: str | None, paciente_id: str | None, pergunta: str
+) -> SofiaConversa:
+    """Retorna a conversa existente (validando dono) ou cria uma nova. Não commita."""
+    if conversa_id:
+        return await _carregar_conversa(session, user, conversa_id)
+    conv = SofiaConversa(
+        tenant_id=user.tenant_id,
+        user_id=user.id,
+        paciente_id=uuid.UUID(paciente_id) if paciente_id else None,
+        titulo=_titulo_de(pergunta),
+    )
+    session.add(conv)
+    await session.flush()  # garante conv.id
+    return conv
+
+
+async def _gravar_turno(
+    session, conv: SofiaConversa, *, pergunta: str, resposta: str,
+    citacoes: list[dict], sem_respaldo: bool, usou_paciente: bool, modelo: str | None,
+) -> None:
+    ordem = await session.scalar(
+        select(func.coalesce(func.max(SofiaTurno.ordem), 0)).where(
+            SofiaTurno.conversa_id == conv.id
+        )
+    )
+    session.add(SofiaTurno(
+        conversa_id=conv.id, ordem=int(ordem or 0) + 1,
+        pergunta=pergunta, resposta=resposta, citacoes=citacoes,
+        sem_respaldo=sem_respaldo, usou_paciente=usou_paciente, modelo=modelo,
+    ))
+    conv.atualizado_em = func.now()  # sobe a conversa no topo do histórico
+
+
 @router.post("/perguntar", response_model=PerguntarOut)
 async def perguntar(
     body: PerguntarIn,
@@ -106,12 +166,21 @@ async def perguntar(
 
     # 2) LLM (com aviso de que é sobre paciente, mas sem PII)
     resp = await responder(body.pergunta, hits, sobre_paciente=usou_paciente)
+    citacoes = [_to_citacao(i, h) for i, h in enumerate(hits, start=1)]
 
-    # 3) auditoria — armazena hash da pergunta, nunca o texto integral
+    # 3) histórico — grava o turno (pergunta/resposta integrais) na conversa
+    conv = await _resolver_conversa(session, user, body.conversa_id, body.paciente_id, body.pergunta)
+    await _gravar_turno(
+        session, conv, pergunta=body.pergunta, resposta=resp.resposta,
+        citacoes=[c.model_dump() for c in citacoes], sem_respaldo=resp.sem_respaldo,
+        usou_paciente=usou_paciente, modelo=resp.modelo,
+    )
+
+    # 4) auditoria — armazena hash da pergunta, nunca o texto integral
     pergunta_hash = hashlib.sha256(body.pergunta.encode("utf-8")).hexdigest()
     session.add(AuditLog(
         tenant_id=user.tenant_id, user_id=user.id, acao="SOFIA_ASK",
-        entidade="SofiaQuery", entidade_id=None,
+        entidade="SofiaConversa", entidade_id=str(conv.id),
         ip=request.client.host if request.client else None,
         meta={
             "pergunta_hash": pergunta_hash,
@@ -122,15 +191,17 @@ async def perguntar(
             "modelo": resp.modelo,
         },
     ))
+    conversa_id = str(conv.id)
     await session.commit()
 
     return PerguntarOut(
         resposta=resp.resposta,
-        citacoes=[_to_citacao(i, h) for i, h in enumerate(hits, start=1)],
+        citacoes=citacoes,
         sem_respaldo=resp.sem_respaldo,
         usou_paciente=usou_paciente,
         modelo=resp.modelo,
         disclaimer=DISCLAIMER,
+        conversa_id=conversa_id,
     )
 
 
@@ -155,6 +226,14 @@ async def perguntar_stream(
         await _validar_paciente_e_consentimento(session, user, body.paciente_id)
         usou_paciente = True
 
+    # Valida a conversa (se veio) ANTES de abrir o stream, para devolver 404 com
+    # status HTTP normal (e não no meio do corpo já iniciado). A gravação do turno
+    # acontece no fim do gerador, numa sessão própria.
+    conv_id_valida: str | None = None
+    if body.conversa_id:
+        conv = await _carregar_conversa(session, user, body.conversa_id)
+        conv_id_valida = str(conv.id)
+
     q_vec = await embed_query(body.pergunta)
     hits = await buscar(session, q_vec, top_k=body.top_k)
     citacoes = [_to_citacao(i, h).model_dump() for i, h in enumerate(hits, start=1)]
@@ -166,7 +245,7 @@ async def perguntar_stream(
     # commit não corre dentro do gerador, evitando risco com o ciclo da sessão.
     session.add(AuditLog(
         tenant_id=user.tenant_id, user_id=user.id, acao="SOFIA_ASK",
-        entidade="SofiaQuery", entidade_id=None,
+        entidade="SofiaConversa", entidade_id=conv_id_valida,
         ip=request.client.host if request.client else None,
         meta={
             "pergunta_hash": hashlib.sha256(body.pergunta.encode("utf-8")).hexdigest(),
@@ -181,12 +260,31 @@ async def perguntar_stream(
     await session.commit()
 
     async def gen():
+        acc = ""
         try:
             async for delta in responder_stream(body.pergunta, hits, sobre_paciente=usou_paciente):
+                acc += delta
                 yield _sse("token", {"delta": delta})
         except Exception:  # noqa: BLE001 — falha do provedor vira evento SSE
             yield _sse("error", {"message": "Falha ao consultar a Sofia. Tente novamente."})
             return
+
+        # Grava o turno numa sessão fresca — fora do ciclo da sessão do request.
+        # Se a gravação falhar, a resposta ao usuário não é afetada.
+        conversa_id = conv_id_valida
+        try:
+            async with SessionLocal() as s2:
+                conv2 = await _resolver_conversa(
+                    s2, user, conv_id_valida, body.paciente_id, body.pergunta
+                )
+                await _gravar_turno(
+                    s2, conv2, pergunta=body.pergunta, resposta=acc, citacoes=citacoes,
+                    sem_respaldo=sem_respaldo, usou_paciente=usou_paciente, modelo=modelo,
+                )
+                await s2.commit()
+                conversa_id = str(conv2.id)
+        except Exception:  # noqa: BLE001 — persistência é best-effort no stream
+            pass
 
         yield _sse("done", {
             "citacoes": citacoes,
@@ -194,6 +292,7 @@ async def perguntar_stream(
             "usou_paciente": usou_paciente,
             "modelo": modelo,
             "disclaimer": DISCLAIMER,
+            "conversa_id": conversa_id,
         })
 
     return StreamingResponse(
@@ -201,6 +300,83 @@ async def perguntar_stream(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.get("/conversas", response_model=list[ConversaResumoOut])
+async def listar_conversas(
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+) -> list[ConversaResumoOut]:
+    rows = (
+        await session.execute(
+            select(
+                SofiaConversa.id,
+                SofiaConversa.titulo,
+                SofiaConversa.paciente_id,
+                SofiaConversa.criado_em,
+                SofiaConversa.atualizado_em,
+                func.count(SofiaTurno.id).label("total_turnos"),
+            )
+            .join(SofiaTurno, SofiaTurno.conversa_id == SofiaConversa.id, isouter=True)
+            .where(
+                SofiaConversa.tenant_id == user.tenant_id,
+                SofiaConversa.user_id == user.id,
+            )
+            .group_by(SofiaConversa.id)
+            .order_by(SofiaConversa.atualizado_em.desc())
+        )
+    ).all()
+    return [
+        ConversaResumoOut(
+            id=str(r.id), titulo=r.titulo,
+            paciente_id=str(r.paciente_id) if r.paciente_id else None,
+            total_turnos=int(r.total_turnos or 0),
+            criado_em=r.criado_em.isoformat(),
+            atualizado_em=r.atualizado_em.isoformat(),
+        )
+        for r in rows
+    ]
+
+
+@router.get("/conversas/{conversa_id}", response_model=ConversaDetalheOut)
+async def obter_conversa(
+    conversa_id: str,
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+) -> ConversaDetalheOut:
+    conv = await _carregar_conversa(session, user, conversa_id)
+    turnos = (
+        await session.execute(
+            select(SofiaTurno)
+            .where(SofiaTurno.conversa_id == conv.id)
+            .order_by(SofiaTurno.ordem)
+        )
+    ).scalars().all()
+    return ConversaDetalheOut(
+        id=str(conv.id), titulo=conv.titulo,
+        paciente_id=str(conv.paciente_id) if conv.paciente_id else None,
+        criado_em=conv.criado_em.isoformat(),
+        turnos=[
+            TurnoOut(
+                pergunta=t.pergunta, resposta=t.resposta, citacoes=t.citacoes,
+                sem_respaldo=t.sem_respaldo, usou_paciente=t.usou_paciente,
+                modelo=t.modelo, disclaimer=DISCLAIMER, criado_em=t.criado_em.isoformat(),
+            )
+            for t in turnos
+        ],
+    )
+
+
+@router.delete("/conversas/{conversa_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def excluir_conversa(
+    conversa_id: str,
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+) -> Response:
+    conv = await _carregar_conversa(session, user, conversa_id)
+    await session.delete(conv)          # turnos vão por CASCADE
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/acervo", response_model=list[DocumentoOut])
