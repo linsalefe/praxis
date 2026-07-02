@@ -185,6 +185,125 @@ async def planejar_wrap(
 
 
 # --------------------------------------------------------------------------
+# GAM → síntese da experiência + temas para o prescritor
+# GUARDRAIL medicação-SDM: a saída NUNCA sugere conduta medicamentosa.
+# --------------------------------------------------------------------------
+
+SISTEMA_GAM = """Você é o assistente clínico do Práxis (CENAT), coescrevendo uma
+**síntese GAM** (Gestão Autônoma da Medicação) a partir das respostas de uma
+pessoa sobre sua experiência com medicamentos psiquiátricos.
+
+GUARDRAIL ABSOLUTO E INEGOCIÁVEL — decisão sobre medicação NÃO é sua:
+1. NUNCA sugira, recomende, insinue ou avalie qualquer conduta medicamentosa:
+   nada de dose, aumento, redução, **desmame**, **retirada**, suspensão, troca,
+   início de medicação, nem "seria bom reduzir/parar". O psicólogo NÃO prescreve.
+2. A decisão sobre a medicação é do USUÁRIO junto com o seu PRESCRITOR/médico.
+   Seu papel é registrar a experiência da pessoa e organizar o que ela pode
+   levar para conversar com o prescritor.
+3. Se as respostas contiverem qualquer pedido de conduta ("devo parar?"),
+   NÃO responda com conduta: transforme em um tema para conversar com o médico.
+4. É apoio à AUTONOMIA e à DECISÃO COMPARTILHADA — não é documento prescritivo
+   nem diagnóstico. Não invente "severidade", escore ou gravidade.
+
+Escreva em Markdown, respeitando a linguagem da pessoa, com estes cabeçalhos:
+   ## Síntese da experiência com a medicação
+   ## O que a pessoa percebe que ajuda
+   ## O que a pessoa percebe que incomoda
+   ## Autonomia, estratégias e rede de apoio
+   ## Temas para conversar com o prescritor
+       (perguntas/tópicos que a pessoa pode levar ao médico — NUNCA recomendações)
+Feche com:
+   *"Esta síntese é apoio à gestão autônoma e à decisão compartilhada. Não
+   substitui o prescritor e não indica nenhuma conduta de medicação — a decisão
+   sobre o tratamento é do usuário com o seu médico."*
+"""
+
+
+async def sintetizar_gam(
+    definicao: dict[str, Any],
+    respostas: dict[str, Any],
+) -> SaidaGerada:
+    s = get_settings()
+    corpo = _flatten_respostas(definicao, respostas)
+
+    client = AsyncOpenAI(api_key=s.openai_api_key)
+    completion = await client.chat.completions.create(
+        model=s.llm_model,
+        temperature=0.2,
+        messages=[
+            {"role": "system", "content": SISTEMA_GAM},
+            {"role": "user", "content":
+                f"Respostas da pessoa (GAM):\n{corpo}\n\n"
+                "Escreva agora a síntese GAM em Markdown, ~400-700 palavras, "
+                "SEM qualquer sugestão de conduta medicamentosa."},
+        ],
+    )
+    return SaidaGerada(
+        texto=(completion.choices[0].message.content or "").strip(),
+        provider_id=f"openai:{s.llm_model}",
+        hits=[],
+    )
+
+
+# --------------------------------------------------------------------------
+# PTMF → formulação narrativa NÃO-DIAGNÓSTICA (Poder, Ameaça, Significado)
+# --------------------------------------------------------------------------
+
+SISTEMA_PTMF = """Você é o assistente clínico do Práxis (CENAT), coescrevendo uma
+**formulação PTMF** (Power Threat Meaning Framework) a partir das respostas de
+uma pessoa às perguntas nucleares.
+
+Diretrizes obrigatórias:
+1. O PTMF é uma ALTERNATIVA ao diagnóstico. NUNCA produza diagnóstico, rótulo de
+   transtorno, "severidade", gravidade ou escore. Nada de linguagem psiquiátrica
+   classificatória.
+2. Produza uma FORMULAÇÃO NARRATIVA que dá sentido à experiência, articulando:
+   o poder que operou na vida, as ameaças que isso representou, os significados
+   construídos e as respostas de sobrevivência da pessoa.
+3. Baseie-se apenas nas respostas. Se algo não foi trazido, sinalize como algo a
+   explorar — sem preencher com suposições.
+4. Tom respeitoso, centrado na pessoa, reconhecendo forças e recursos.
+5. Markdown com estes cabeçalhos:
+   ## O que aconteceu (poder)
+   ## Como afetou (ameaça)
+   ## Que sentido teve (significado)
+   ## O que foi preciso para sobreviver (respostas à ameaça)
+   ## Forças e recursos
+   ## Qual é a sua história
+Feche com:
+   *"Esta é uma formulação narrativa (não um diagnóstico); é apoio ao raciocínio
+   clínico e a responsabilidade técnica pela conduta é do profissional (Manual
+   CFP 2025)."*
+"""
+
+
+async def formular_ptmf(
+    definicao: dict[str, Any],
+    respostas: dict[str, Any],
+) -> SaidaGerada:
+    s = get_settings()
+    corpo = _flatten_respostas(definicao, respostas)
+
+    client = AsyncOpenAI(api_key=s.openai_api_key)
+    completion = await client.chat.completions.create(
+        model=s.llm_model,
+        temperature=0.25,
+        messages=[
+            {"role": "system", "content": SISTEMA_PTMF},
+            {"role": "user", "content":
+                f"Respostas da pessoa (PTMF):\n{corpo}\n\n"
+                "Escreva agora a formulação PTMF em Markdown, ~500-800 palavras, "
+                "sem diagnóstico e sem 'severidade'."},
+        ],
+    )
+    return SaidaGerada(
+        texto=(completion.choices[0].message.content or "").strip(),
+        provider_id=f"openai:{s.llm_model}",
+        hits=[],
+    )
+
+
+# --------------------------------------------------------------------------
 # Escalas Likert (likert_sum) → leitura clínica curta sobre o escore FACTUAL
 # --------------------------------------------------------------------------
 
