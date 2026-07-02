@@ -8,6 +8,8 @@ import { api, ApiError } from "@/lib/api";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Drawer } from "@/components/ui/Drawer";
+import { Field } from "@/components/ui/Field";
 
 type Consentimento = { id: string; tipo: string; aceito_por: string; aceito_em: string };
 type IaLogItem = { acao: string; recurso: string; ts: string | null; entidade: string; entidade_id: string | null };
@@ -22,6 +24,10 @@ export function ConformidadeIaCard({
 }) {
   const [consentimentos, setConsentimentos] = useState<Consentimento[] | null>(null);
   const [iaLog, setIaLog] = useState<IaLogItem[] | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [tcle, setTcle] = useState<Tcle | null>(null);
+  const [loadingTcle, setLoadingTcle] = useState(false);
+  const [aceitoPor, setAceitoPor] = useState(pacienteNome);
   const [busy, setBusy] = useState(false);
 
   const carregar = useCallback(async () => {
@@ -42,20 +48,35 @@ export function ConformidadeIaCard({
 
   const usoIa = consentimentos?.find((c) => c.tipo === "uso_ia") ?? null;
 
+  async function abrirDrawer() {
+    setAceitoPor(pacienteNome);
+    setDrawerOpen(true);
+    if (tcle) return;
+    setLoadingTcle(true);
+    try {
+      setTcle(await api<Tcle>("/consentimentos/tcle-ia"));
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Falha ao carregar o termo");
+    } finally {
+      setLoadingTcle(false);
+    }
+  }
+
   async function registrar() {
+    if (!tcle || aceitoPor.trim().length < 1) return;
     setBusy(true);
     try {
-      const tcle = await api<Tcle>("/consentimentos/tcle-ia");
       await api("/consentimentos", {
         method: "POST",
         body: JSON.stringify({
           paciente_id: pacienteId,
           tipo: "uso_ia",
           texto_aceito: tcle.texto,
-          aceito_por: pacienteNome,
+          aceito_por: aceitoPor.trim(),
         }),
       });
       toast.success("Consentimento de uso de IA registrado.");
+      setDrawerOpen(false);
       await carregar();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Falha ao registrar consentimento");
@@ -92,7 +113,7 @@ export function ConformidadeIaCard({
                 <span style={{ fontSize: 13, color: "var(--muted)" }}>
                   Consentimento de uso de IA ainda não registrado para este paciente.
                 </span>
-                <Button variant="primary" onClick={registrar} loading={busy} loadingLabel="Registrando…">Registrar TCLE de IA</Button>
+                <Button variant="primary" onClick={abrirDrawer}>Registrar TCLE de IA</Button>
               </div>
             )}
           </div>
@@ -124,6 +145,52 @@ export function ConformidadeIaCard({
           </p>
         </>
       )}
+
+      <Drawer
+        open={drawerOpen}
+        title="Consentimento de uso de IA"
+        onClose={() => { if (!busy) setDrawerOpen(false); }}
+      >
+        <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+          Leia o termo com o paciente antes de registrar o aceite. O texto é gravado
+          junto do consentimento (Res. CFP 09/2024).
+        </p>
+
+        {loadingTcle || !tcle ? (
+          <div style={{ display: "grid", gap: 8 }}>
+            <Skeleton width="100%" height={14} />
+            <Skeleton width="92%" height={14} />
+            <Skeleton width="96%" height={14} />
+            <Skeleton width="70%" height={14} />
+          </div>
+        ) : (
+          <>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--text)", fontStyle: "italic", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>
+              “{tcle.texto}”
+            </p>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--muted)" }}>
+              versão {tcle.versao}
+            </span>
+            <Field label="Aceito por">
+              <input
+                className="input"
+                value={aceitoPor}
+                onChange={(e) => setAceitoPor(e.target.value)}
+                placeholder="Nome de quem consente"
+              />
+            </Field>
+            <Button
+              variant="primary"
+              onClick={registrar}
+              loading={busy}
+              loadingLabel="Registrando…"
+              disabled={aceitoPor.trim().length < 1}
+            >
+              <ShieldCheck size={16} /> Registrar consentimento
+            </Button>
+          </>
+        )}
+      </Drawer>
     </Card>
   );
 }

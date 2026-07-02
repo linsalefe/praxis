@@ -41,7 +41,7 @@ export function GraficoTrajetoria({ serie }: { serie: SerieTrajetoria }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
         <span style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 14 }}>{serie.titulo}</span>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--warm-500)" }}>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--muted)" }}>
           {pontos.length} {pontos.length === 1 ? "registro" : "registros"}
         </span>
       </div>
@@ -70,8 +70,8 @@ export function GraficoTrajetoria({ serie }: { serie: SerieTrajetoria }) {
         })}
 
         {/* Eixo Y: min/max */}
-        <text x={padL - 6} y={yScale(ymax) + 3} textAnchor="end" fontSize={9} fill="var(--warm-500)" fontFamily="var(--font-mono)">{ymax}</text>
-        <text x={padL - 6} y={yScale(ymin) + 3} textAnchor="end" fontSize={9} fill="var(--warm-500)" fontFamily="var(--font-mono)">{ymin}</text>
+        <text x={padL - 6} y={yScale(ymax) + 3} textAnchor="end" fontSize={9} fill="var(--muted)" fontFamily="var(--font-mono)">{ymax}</text>
+        <text x={padL - 6} y={yScale(ymin) + 3} textAnchor="end" fontSize={9} fill="var(--muted)" fontFamily="var(--font-mono)">{ymin}</text>
 
         {/* Linha entre pontos (≥2) */}
         {!um && <polyline points={linha} fill="none" stroke="var(--ink-800)" strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" opacity={0.55} />}
@@ -91,11 +91,11 @@ export function GraficoTrajetoria({ serie }: { serie: SerieTrajetoria }) {
         })}
 
         {/* Eixo X: primeira/última data */}
-        <text x={padL} y={H - 8} textAnchor="start" fontSize={9} fill="var(--warm-500)" fontFamily="var(--font-mono)">{fmtData(pontos[0].data)}</text>
-        {!um && <text x={W - padR} y={H - 8} textAnchor="end" fontSize={9} fill="var(--warm-500)" fontFamily="var(--font-mono)">{fmtData(ultimo.data)}</text>}
+        <text x={padL} y={H - 8} textAnchor="start" fontSize={9} fill="var(--muted)" fontFamily="var(--font-mono)">{fmtData(pontos[0].data)}</text>
+        {!um && <text x={W - padR} y={H - 8} textAnchor="end" fontSize={9} fill="var(--muted)" fontFamily="var(--font-mono)">{fmtData(ultimo.data)}</text>}
       </svg>
 
-      <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--warm-500)" }}>
+      <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--muted)" }}>
         escores registrados · último: <span style={{ color: "var(--text)" }}>{ultimo.escore}</span>
         {ultimo.faixa && ` (${ultimo.faixa})`}
       </div>

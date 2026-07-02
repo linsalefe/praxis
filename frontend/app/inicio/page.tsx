@@ -7,8 +7,8 @@ import { toast } from "sonner";
 import { CalendarClock, FileSignature, FileText, ClipboardList, UserPlus, RotateCcw, ArrowRight } from "lucide-react";
 import { api, ApiError, getScope, getToken } from "@/lib/api";
 import { dataRelativa } from "@/lib/date";
-import { modalidadeLabel } from "@/lib/labels";
-import { formatNome } from "@/lib/format";
+import { modalidadeLabel, docTipoLabel } from "@/lib/labels";
+import { formatNome, plural } from "@/lib/format";
 import { Topbar } from "@/components/Topbar";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -54,7 +54,7 @@ function Bloco({
       <h2 style={{ fontSize: 15, margin: 0, display: "flex", alignItems: "baseline", gap: 8 }}>
         {titulo}
         {contador != null && contador > 0 && (
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--warm-500)" }}>· {contador}</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--muted)" }}>· {contador}</span>
         )}
       </h2>
       {children}
@@ -131,7 +131,7 @@ export default function InicioPage() {
       const n = ev.length;
       return {
         icon: <FileSignature size={22} color="var(--brand)" />,
-        texto: `Você tem ${n} evolução${n > 1 ? "ões" : ""} aguardando assinatura`,
+        texto: `Você tem ${plural(n, "evolução", "evoluções")} aguardando assinatura`,
         href: `/evolucoes/${ev[0].evolucao_id}`,
         cta: n > 1 ? "Revisar a primeira" : "Revisar",
       };
@@ -141,7 +141,7 @@ export default function InicioPage() {
       const n = ins.length;
       return {
         icon: <ClipboardList size={22} color="var(--brand)" />,
-        texto: `${n} instrumento${n > 1 ? "s" : ""} aguardando sua interpretação`,
+        texto: `${plural(n, "instrumento", "instrumentos")} aguardando sua interpretação`,
         href: `/instrumentos/${ins[0].resposta_id}`,
         cta: n > 1 ? "Interpretar o primeiro" : "Interpretar",
       };
@@ -269,8 +269,8 @@ export default function InicioPage() {
                     {dados.documentos_rascunho.map((d) => (
                       <ItemLink key={d.documento_id} href={`/documentos/${d.documento_id}`}>
                         <FileText size={16} color="var(--brand-2)" style={{ flex: "none" }} />
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textTransform: "capitalize" }}>
-                          {d.tipo} — {formatNome(d.paciente_nome)}
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {docTipoLabel(d.tipo)} — {formatNome(d.paciente_nome)}
                         </span>
                       </ItemLink>
                     ))}

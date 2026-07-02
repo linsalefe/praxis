@@ -129,3 +129,17 @@ export function formaPagamentoLabel(f: string | null | undefined): string {
   if (!f) return "—";
   return FORMA_LABEL[f] ?? humanizar(f);
 }
+
+// --- Tipo de documento (CFP) ---
+const DOC_TIPO_LABEL: Record<string, string> = {
+  declaracao: "Declaração",
+  atestado: "Atestado",
+  relatorio: "Relatório",
+  laudo: "Laudo",
+  encaminhamento: "Encaminhamento",
+};
+
+export function docTipoLabel(tipo: string | null | undefined): string {
+  if (!tipo) return "—";
+  return DOC_TIPO_LABEL[tipo] ?? humanizar(tipo);
+}

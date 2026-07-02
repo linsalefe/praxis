@@ -71,7 +71,7 @@ export function InstrumentoModal({ pacienteId, onClose }: { pacienteId: string; 
               <div style={{ textAlign: "left" }}>
                 <div style={{ fontWeight: 600 }}>
                   {i.titulo}
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--warm-500)" }}> · {i.versao}</span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--muted)" }}> · {i.versao}</span>
                 </div>
                 {i.descricao && (
                   <div style={{ color: "var(--muted)", fontSize: 12 }}>{i.descricao}</div>

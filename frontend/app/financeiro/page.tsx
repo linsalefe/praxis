@@ -7,7 +7,7 @@ import { Wallet, Receipt, Download } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { formatCentavos } from "@/lib/money";
 import { formaPagamentoLabel } from "@/lib/labels";
-import { formatNome } from "@/lib/format";
+import { formatNome, plural } from "@/lib/format";
 import { Topbar } from "@/components/Topbar";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { SkeletonCard } from "@/components/ui/Skeleton";
@@ -175,12 +175,12 @@ export default function FinanceiroPage() {
             <Card>
               <div style={{ color: "var(--muted)", fontSize: 12 }}>A receber (pendente)</div>
               <div style={{ fontFamily: "var(--font-mono)", fontSize: 24, color: "var(--warn-fg)" }}>{formatCentavos(totalPendente)}</div>
-              <div style={{ color: "var(--muted)", fontSize: 11 }}>{pendentes.length} sessão(ões)</div>
+              <div style={{ color: "var(--muted)", fontSize: 11 }}>{plural(pendentes.length, "sessão", "sessões")}</div>
             </Card>
             <Card>
               <div style={{ color: "var(--muted)", fontSize: 12 }}>Recebido no período</div>
               <div style={{ fontFamily: "var(--font-mono)", fontSize: 24, color: "var(--ok)" }}>{formatCentavos(totalPago)}</div>
-              <div style={{ color: "var(--muted)", fontSize: 11 }}>{pagos.length} pagamento(s)</div>
+              <div style={{ color: "var(--muted)", fontSize: 11 }}>{plural(pagos.length, "pagamento", "pagamentos")}</div>
             </Card>
           </div>
         )}
@@ -197,8 +197,7 @@ export default function FinanceiroPage() {
               Pendências
               {pendentes.length > 0 && (
                 <span style={{ marginLeft: 8, color: "var(--text)" }}>
-                  {pendentes.length} sessão{pendentes.length > 1 ? "es" : ""} pendente
-                  {pendentes.length > 1 ? "s" : ""} · {formatCentavos(totalPendente)}
+                  {plural(pendentes.length, "sessão pendente", "sessões pendentes")} · {formatCentavos(totalPendente)}
                 </span>
               )}
             </h2>

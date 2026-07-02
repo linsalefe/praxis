@@ -88,7 +88,7 @@ function PageInner() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
             <PresenceMark size={26} />
             <h1 style={{ margin: 0, fontSize: 22 }}>Sofia</h1>
-            <span className="badge">acervo CENAT · RAG</span>
+            <span className="badge">respostas com fonte do acervo CENAT</span>
             <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
               <Button variant="ghost" onClick={abrirHistorico}>
                 <History size={15} /> Histórico
