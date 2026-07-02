@@ -7,6 +7,7 @@ import { Compass, Copy, Quote, Trash2 } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Modal } from "@/components/ui/Modal";
 import { BreadcrumbPaciente } from "@/components/ui/BreadcrumbPaciente";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -149,28 +150,21 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         </p>
 
         {drawer && (
-          <div
-            role="dialog" aria-modal="true"
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 40 }}
-            onClick={() => setDrawer(null)}
-          >
-            <Card style={{ maxWidth: 640, width: "92%" }} onClick={(ev) => ev.stopPropagation()}>
-              <h3 style={{ marginTop: 0 }}>{drawer.titulo}</h3>
-              <p style={{ color: "var(--muted)", margin: "4px 0" }}>{drawer.autor}</p>
-              <p style={{ margin: "4px 0" }}>
-                <span className="badge">cap. {drawer.capitulo || "n/d"}</span>{" "}
-                <span className="badge">
-                  {drawer.pagina_inicio ? `pp. ${drawer.pagina_inicio}${drawer.pagina_fim && drawer.pagina_fim !== drawer.pagina_inicio ? `-${drawer.pagina_fim}` : ""}` : "p. n/d"}
-                </span>{" "}
-                {drawer.is_terceiro && <span className="badge" style={{ color: "var(--brand-2)" }}>terceiro — paráfrase</span>}
-              </p>
-              <hr className="divider" />
-              <p style={{ whiteSpace: "pre-wrap" }}>{drawer.snippet}</p>
-              <div style={{ textAlign: "right", marginTop: 12 }}>
-                <Button onClick={() => setDrawer(null)}>Fechar</Button>
-              </div>
-            </Card>
-          </div>
+          <Modal open title={drawer.titulo} maxWidth={640} onClose={() => setDrawer(null)}>
+            <p style={{ color: "var(--muted)", margin: "4px 0" }}>{drawer.autor}</p>
+            <p style={{ margin: "4px 0" }}>
+              <span className="badge">cap. {drawer.capitulo || "n/d"}</span>{" "}
+              <span className="badge">
+                {drawer.pagina_inicio ? `pp. ${drawer.pagina_inicio}${drawer.pagina_fim && drawer.pagina_fim !== drawer.pagina_inicio ? `-${drawer.pagina_fim}` : ""}` : "p. n/d"}
+              </span>{" "}
+              {drawer.is_terceiro && <span className="badge" style={{ color: "var(--brand-2)" }}>terceiro — paráfrase</span>}
+            </p>
+            <hr className="divider" />
+            <p style={{ whiteSpace: "pre-wrap" }}>{drawer.snippet}</p>
+            <div style={{ textAlign: "right", marginTop: 12 }}>
+              <Button onClick={() => setDrawer(null)}>Fechar</Button>
+            </div>
+          </Modal>
         )}
       </main>
       <ConfirmDialog

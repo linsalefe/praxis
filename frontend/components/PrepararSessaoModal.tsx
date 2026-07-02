@@ -7,7 +7,7 @@ import { api, ApiError } from "@/lib/api";
 import { modalidadeLabel, statusLabel } from "@/lib/labels";
 import { plural } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 
 type Citacao = {
   n: number; titulo: string; autor: string; is_terceiro: boolean;
@@ -91,19 +91,7 @@ export function PrepararSessaoModal({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)",
-        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50,
-      }}
-      onClick={busy ? undefined : onClose}
-    >
-      <Card
-        style={{ width: "94%", maxWidth: 820, maxHeight: "88vh", overflow: "hidden", display: "flex", flexDirection: "column" }}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal open maxWidth={820} busy={!!busy} onClose={onClose}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <ClipboardCheck size={18} color="var(--brand-2)" /> Preparação de sessão
@@ -204,7 +192,6 @@ export function PrepararSessaoModal({
             </p>
           </>
         )}
-      </Card>
-    </div>
+    </Modal>
   );
 }

@@ -8,7 +8,7 @@ import { getToken, ApiError } from "@/lib/api";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
@@ -193,19 +193,7 @@ export function ScribeModal({
 
   return (
     <>
-    <div
-      role="dialog"
-      aria-modal="true"
-      style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
-        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50,
-      }}
-      onClick={busy ? undefined : tentarFechar}
-    >
-      <Card
-        style={{ width: "92%", maxWidth: 640, background: "var(--surface)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal open maxWidth={640} busy={!!busy} onClose={tentarFechar}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <PresenceMark size={18} /> Gerar evolução
@@ -345,8 +333,7 @@ export function ScribeModal({
         <p style={{ marginTop: 12, color: "var(--muted)", fontSize: 11 }}>
           Rascunho é editável. Assinatura permanece manual — a responsabilidade técnica é do profissional (Manual CFP 2025).
         </p>
-      </Card>
-    </div>
+    </Modal>
 
     <ConfirmDialog
       open={confirmarFechar}

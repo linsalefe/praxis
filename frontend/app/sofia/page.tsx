@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Send, BookOpen, MessageSquarePlus, History, Trash2, X } from "lucide-react";
+import { Send, BookOpen, MessageSquarePlus, History, Trash2 } from "lucide-react";
 import { getToken } from "@/lib/api";
 import { useSofiaChat, type Citacao } from "@/lib/useSofiaChat";
 import { Topbar } from "@/components/Topbar";
@@ -11,6 +11,8 @@ import { PresenceMark } from "@/components/ui/PresenceMark";
 import { SofiaOrientacao } from "@/components/ui/SofiaOrientacao";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
+import { Drawer } from "@/components/ui/Drawer";
 import { PrepararSessaoModal } from "@/components/PrepararSessaoModal";
 
 function PageInner() {
@@ -175,41 +177,27 @@ function PageInner() {
           </div>
 
         {drawer && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            style={{
-              position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)",
-              display: "flex", alignItems: "center", justifyContent: "center", zIndex: 40,
-            }}
-            onClick={() => setDrawer(null)}
-          >
-            <Card
-              style={{ maxWidth: 640, width: "92%", background: "var(--surface)" }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 style={{ marginTop: 0 }}>{drawer.titulo}</h3>
-              <p style={{ color: "var(--muted)", margin: "4px 0" }}>
-                {drawer.autor}{drawer.editora ? ` · ${drawer.editora}` : ""}
-              </p>
-              <p style={{ margin: "4px 0" }}>
-                {drawer.capitulo && <><span className="badge">cap. {drawer.capitulo}</span>{" "}</>}
-                {drawer.pagina_inicio && (
-                  <><span className="badge">
-                    pp. {drawer.pagina_inicio}{drawer.pagina_fim && drawer.pagina_fim !== drawer.pagina_inicio ? `-${drawer.pagina_fim}` : ""}
-                  </span>{" "}</>
-                )}
-                {drawer.is_terceiro && (
-                  <span className="badge" style={{ color: "var(--brand-2)" }}>obra de terceiro — paráfrase</span>
-                )}
-              </p>
-              <hr className="divider" />
-              <p style={{ whiteSpace: "pre-wrap" }}>{drawer.snippet}</p>
-              <div style={{ textAlign: "right", marginTop: 12 }}>
-                <Button onClick={() => setDrawer(null)}>Fechar</Button>
-              </div>
-            </Card>
-          </div>
+          <Modal open title={drawer.titulo} maxWidth={640} onClose={() => setDrawer(null)}>
+            <p style={{ color: "var(--muted)", margin: "4px 0" }}>
+              {drawer.autor}{drawer.editora ? ` · ${drawer.editora}` : ""}
+            </p>
+            <p style={{ margin: "4px 0" }}>
+              {drawer.capitulo && <><span className="badge">cap. {drawer.capitulo}</span>{" "}</>}
+              {drawer.pagina_inicio && (
+                <><span className="badge">
+                  pp. {drawer.pagina_inicio}{drawer.pagina_fim && drawer.pagina_fim !== drawer.pagina_inicio ? `-${drawer.pagina_fim}` : ""}
+                </span>{" "}</>
+              )}
+              {drawer.is_terceiro && (
+                <span className="badge" style={{ color: "var(--brand-2)" }}>obra de terceiro — paráfrase</span>
+              )}
+            </p>
+            <hr className="divider" />
+            <p style={{ whiteSpace: "pre-wrap" }}>{drawer.snippet}</p>
+            <div style={{ textAlign: "right", marginTop: 12 }}>
+              <Button onClick={() => setDrawer(null)}>Fechar</Button>
+            </div>
+          </Modal>
         )}
 
         {prep !== null && pacienteId && (
@@ -221,29 +209,7 @@ function PageInner() {
         )}
 
         {showHist && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            style={{
-              position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)",
-              display: "flex", justifyContent: "flex-end", zIndex: 45,
-            }}
-            onClick={() => setShowHist(false)}
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                width: "min(420px, 92%)", height: "100%", background: "var(--surface)",
-                borderLeft: "1px solid var(--border)", padding: 20, overflowY: "auto",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                <History size={18} color="var(--brand-2)" />
-                <h2 style={{ margin: 0, fontSize: 18 }}>Histórico</h2>
-                <Button variant="ghost" onClick={() => setShowHist(false)} style={{ marginLeft: "auto" }} aria-label="Fechar">
-                  <X size={16} />
-                </Button>
-              </div>
+          <Drawer open title="Histórico" onClose={() => setShowHist(false)}>
               {historico === null ? (
                 <p style={{ color: "var(--muted)" }}>Carregando…</p>
               ) : historico.length === 0 ? (
@@ -282,8 +248,7 @@ function PageInner() {
                   ))}
                 </div>
               )}
-            </div>
-          </div>
+          </Drawer>
         )}
         </main>
       </div>

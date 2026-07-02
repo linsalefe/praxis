@@ -19,7 +19,7 @@ import { instrumentoTipoLabel } from "@/lib/labels";
 import { useSofiaChat, type Citacao, type ConversaResumo } from "@/lib/useSofiaChat";
 import { Drawer } from "@/components/ui/Drawer";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { SofiaOrientacao } from "@/components/ui/SofiaOrientacao";
 
@@ -222,41 +222,27 @@ export function SofiaPainelProntuario({
 
       {/* Modal de citação — acima do drawer */}
       {citacao && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)",
-            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70,
-          }}
-          onClick={() => setCitacao(null)}
-        >
-          <Card
-            style={{ maxWidth: 640, width: "92%", background: "var(--surface)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ marginTop: 0 }}>{citacao.titulo}</h3>
-            <p style={{ color: "var(--muted)", margin: "4px 0" }}>
-              {citacao.autor}{citacao.editora ? ` · ${citacao.editora}` : ""}
-            </p>
-            <p style={{ margin: "4px 0" }}>
-              {citacao.capitulo && <><span className="badge">cap. {citacao.capitulo}</span>{" "}</>}
-              {citacao.pagina_inicio && (
-                <><span className="badge">
-                  pp. {citacao.pagina_inicio}{citacao.pagina_fim && citacao.pagina_fim !== citacao.pagina_inicio ? `-${citacao.pagina_fim}` : ""}
-                </span>{" "}</>
-              )}
-              {citacao.is_terceiro && (
-                <span className="badge" style={{ color: "var(--brand-2)" }}>obra de terceiro — paráfrase</span>
-              )}
-            </p>
-            <hr className="divider" />
-            <p style={{ whiteSpace: "pre-wrap" }}>{citacao.snippet}</p>
-            <div style={{ textAlign: "right", marginTop: 12 }}>
-              <Button onClick={() => setCitacao(null)}>Fechar</Button>
-            </div>
-          </Card>
-        </div>
+        <Modal open title={citacao.titulo} maxWidth={640} elevated onClose={() => setCitacao(null)}>
+          <p style={{ color: "var(--muted)", margin: "4px 0" }}>
+            {citacao.autor}{citacao.editora ? ` · ${citacao.editora}` : ""}
+          </p>
+          <p style={{ margin: "4px 0" }}>
+            {citacao.capitulo && <><span className="badge">cap. {citacao.capitulo}</span>{" "}</>}
+            {citacao.pagina_inicio && (
+              <><span className="badge">
+                pp. {citacao.pagina_inicio}{citacao.pagina_fim && citacao.pagina_fim !== citacao.pagina_inicio ? `-${citacao.pagina_fim}` : ""}
+              </span>{" "}</>
+            )}
+            {citacao.is_terceiro && (
+              <span className="badge" style={{ color: "var(--brand-2)" }}>obra de terceiro — paráfrase</span>
+            )}
+          </p>
+          <hr className="divider" />
+          <p style={{ whiteSpace: "pre-wrap" }}>{citacao.snippet}</p>
+          <div style={{ textAlign: "right", marginTop: 12 }}>
+            <Button onClick={() => setCitacao(null)}>Fechar</Button>
+          </div>
+        </Modal>
       )}
     </Drawer>
   );
