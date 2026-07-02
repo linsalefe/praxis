@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Mic, Upload, FileText, Square, X } from "lucide-react";
 import { getToken, ApiError } from "@/lib/api";
 import { PresenceMark } from "@/components/ui/PresenceMark";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
@@ -27,13 +28,49 @@ export function ScribeModal({
   const [gravando, setGravando] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [duracao, setDuracao] = useState(0);
+  const [nivel, setNivel] = useState(0);            // U5: nível do mic (0..1)
+  const [confirmarFechar, setConfirmarFechar] = useState(false);  // U4
   const mrRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const stepTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   // Upload
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // U4: impede fechar a aba/janela com gravação em andamento ou áudio não enviado.
+  const temAudioPendente = gravando || !!audioBlob;
+  useEffect(() => {
+    if (!temAudioPendente) return;
+    const h = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [temAudioPendente]);
+
+  // Limpa recursos de áudio ao desmontar.
+  useEffect(() => () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    audioCtxRef.current?.close().catch(() => {});
+    stepTimersRef.current.forEach(clearTimeout);
+  }, []);
+
+  // U6: sequência estimada de etapas no cliente (a chamada de áudio faz
+  // transcrição + estruturação no servidor numa única requisição).
+  function iniciarEtapas(etapas: [string, number][]) {
+    stepTimersRef.current.forEach(clearTimeout);
+    stepTimersRef.current = [];
+    etapas.forEach(([label, delay]) => {
+      stepTimersRef.current.push(setTimeout(() => setBusy(label), delay));
+    });
+  }
+  function pararEtapas() {
+    stepTimersRef.current.forEach(clearTimeout);
+    stepTimersRef.current = [];
+  }
 
   async function iniciarGravacao() {
     try {
@@ -56,6 +93,24 @@ export function ScribeModal({
       setGravando(true);
       setDuracao(0);
       timerRef.current = setInterval(() => setDuracao((d) => d + 1), 1000);
+
+      // U5: medidor de nível via Web Audio.
+      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const ctx = new Ctx();
+      audioCtxRef.current = ctx;
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      ctx.createMediaStreamSource(stream).connect(analyser);
+      analyserRef.current = analyser;
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        analyser.getByteTimeDomainData(buf);
+        let pico = 0;
+        for (let i = 0; i < buf.length; i++) pico = Math.max(pico, Math.abs(buf[i] - 128));
+        setNivel(Math.min(1, pico / 90));
+        rafRef.current = requestAnimationFrame(tick);
+      };
+      tick();
     } catch (err) {
       toast.error("Permissão de microfone negada ou indisponível.");
     }
@@ -65,6 +120,10 @@ export function ScribeModal({
     mrRef.current?.stop();
     setGravando(false);
     if (timerRef.current) clearInterval(timerRef.current);
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
+    setNivel(0);
   }
 
   async function enviarResumo() {
@@ -94,7 +153,9 @@ export function ScribeModal({
   }
 
   async function enviarAudio(blob: Blob, filename: string) {
-    setBusy("Transcrevendo áudio…");
+    // U6: etapas estimadas no cliente (a única requisição faz as duas fases no servidor).
+    setBusy("Enviando áudio…");
+    iniciarEtapas([["Transcrevendo…", 1500], ["Estruturando evolução…", 6000]]);
     try {
       const form = new FormData();
       form.append("file", blob, filename);
@@ -111,11 +172,25 @@ export function ScribeModal({
       const msg = err instanceof ApiError ? err.message : "Falha ao processar áudio";
       toast.error(msg);
     } finally {
+      pararEtapas();
       setBusy(null);
     }
   }
 
+  function tentarFechar() {
+    if (busy) return;
+    if (temAudioPendente) { setConfirmarFechar(true); return; }
+    onClose();
+  }
+  function descartarEFechar() {
+    if (gravando) pararGravacao();
+    setAudioBlob(null);
+    setConfirmarFechar(false);
+    onClose();
+  }
+
   return (
+    <>
     <div
       role="dialog"
       aria-modal="true"
@@ -123,7 +198,7 @@ export function ScribeModal({
         position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
         display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50,
       }}
-      onClick={busy ? undefined : onClose}
+      onClick={busy ? undefined : tentarFechar}
     >
       <div
         className="card"
@@ -134,7 +209,7 @@ export function ScribeModal({
           <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <PresenceMark size={18} /> Gerar evolução
           </h3>
-          <button className="btn" onClick={onClose} disabled={!!busy} aria-label="Fechar">
+          <button className="btn" onClick={tentarFechar} disabled={!!busy} aria-label="Fechar">
             <X size={14} />
           </button>
         </div>
@@ -227,9 +302,19 @@ export function ScribeModal({
                   </button>
                 )}
                 {gravando && (
-                  <button className="btn btn-danger" onClick={pararGravacao}>
-                    <Square size={16} /> Parar ({duracao}s)
-                  </button>
+                  <>
+                    <button className="btn btn-danger" onClick={pararGravacao}>
+                      <Square size={16} /> Parar ({duracao}s)
+                    </button>
+                    <span aria-live="polite" style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--danger)", fontSize: 13 }}>
+                      <span className="rec-dot" aria-hidden style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--danger)", display: "inline-block" }} />
+                      gravando
+                    </span>
+                    {/* U5: nível do microfone */}
+                    <span aria-hidden style={{ flex: 1, minWidth: 80, height: 8, background: "var(--sand-100)", borderRadius: 4, overflow: "hidden" }}>
+                      <span style={{ display: "block", height: "100%", width: `${Math.round(nivel * 100)}%`, background: "var(--brand-2)", transition: "width 80ms linear" }} />
+                    </span>
+                  </>
                 )}
                 {audioBlob && !gravando && (
                   <>
@@ -261,5 +346,18 @@ export function ScribeModal({
         </p>
       </div>
     </div>
+
+    <ConfirmDialog
+      open={confirmarFechar}
+      title={gravando ? "Descartar gravação?" : "Descartar áudio?"}
+      description={gravando
+        ? "Há uma gravação em andamento. Se fechar agora, o áudio será perdido."
+        : "Há um áudio gravado ainda não enviado. Se fechar agora, ele será perdido."}
+      confirmLabel="Descartar e fechar"
+      cancelLabel="Continuar"
+      onConfirm={descartarEFechar}
+      onCancel={() => setConfirmarFechar(false)}
+    />
+    </>
   );
 }

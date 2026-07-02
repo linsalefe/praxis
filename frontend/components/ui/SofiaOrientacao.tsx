@@ -2,6 +2,7 @@
 
 import { BookOpen, Quote } from "lucide-react";
 import { PresenceMark } from "@/components/ui/PresenceMark";
+import { CopiarBtn } from "@/components/ui/CopiarBtn";
 
 /**
  * SofiaOrientacao — a assinatura da Sofia.
@@ -86,6 +87,11 @@ export function SofiaOrientacao<C extends SofiaCitacaoBase>({
               Copiloto clínico
             </div>
           </div>
+          {resposta && (
+            <div style={{ marginLeft: "auto" }}>
+              <CopiarBtn texto={resposta.resposta} className="btn btn-ghost" label="Copiar" />
+            </div>
+          )}
         </div>
 
         {/* Estado: carregando — respiração, não spinner */}

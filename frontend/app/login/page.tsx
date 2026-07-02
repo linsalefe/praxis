@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { LogIn, ShieldCheck } from "lucide-react";
+import { Info, LogIn, ShieldCheck } from "lucide-react";
 import { api, saveToken, ApiError } from "@/lib/api";
 
 type LoginResp = { access_token: string; mfa_required: boolean; scope: string };
@@ -14,10 +14,18 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [expirada, setExpirada] = useState(false);
+
+  // U3: aviso de sessão expirada vindo do interceptor 401 (?expirada=1).
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("expirada") === "1") setExpirada(true);
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setErro(null);
     try {
       const data = await api<LoginResp>("/auth/login", {
         method: "POST",
@@ -31,8 +39,9 @@ export default function LoginPage() {
         router.replace("/pacientes");
       }
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Falha no login";
-      toast.error(msg);
+      // Credenciais/validação → erro inline; falha de rede → toast.
+      if (err instanceof ApiError) setErro("E-mail ou senha incorretos.");
+      else toast.error("Falha de conexão. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -48,12 +57,17 @@ export default function LoginPage() {
         <p style={{ color: "var(--muted)", margin: "0 0 20px" }}>
           Entre com sua conta profissional.
         </p>
-        <form onSubmit={onSubmit}>
+        {expirada && (
+          <div className="badge badge-warn" role="status" style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16, padding: "8px 12px" }}>
+            <Info size={14} /> Sua sessão expirou. Entre novamente.
+          </div>
+        )}
+        <form onSubmit={onSubmit} noValidate>
           <label className="label" htmlFor="email">Email</label>
           <input
             id="email" className="input" type="email" required
             value={email} onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
+            autoComplete="email" aria-invalid={erro ? true : undefined}
           />
           <div style={{ height: 12 }} />
           <label className="label" htmlFor="senha">Senha</label>
@@ -61,7 +75,11 @@ export default function LoginPage() {
             id="senha" className="input" type="password" required
             value={senha} onChange={(e) => setSenha(e.target.value)}
             autoComplete="current-password" minLength={8}
+            aria-invalid={erro ? true : undefined}
           />
+          {erro && (
+            <p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: "8px 0 0" }}>{erro}</p>
+          )}
           <div style={{ height: 20 }} />
           <button className="btn btn-primary" type="submit" disabled={loading}>
             <LogIn size={16} /> {loading ? "Entrando…" : "Entrar"}

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { CalendarClock, FileSignature, FileText, ClipboardList, UserPlus, RotateCcw, ArrowRight } from "lucide-react";
 import { api, ApiError, getScope, getToken } from "@/lib/api";
+import { dataRelativa } from "@/lib/date";
 import { Topbar } from "@/components/Topbar";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -34,7 +35,7 @@ type UltimoPaciente = { id: string; nome: string };
 
 const hora = (iso: string) =>
   new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-const dataCurta = (iso: string) => new Date(iso).toLocaleDateString("pt-BR");
+const dataCurta = (iso: string) => dataRelativa(iso);
 
 function Bloco({
   titulo,

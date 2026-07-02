@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { PlusCircle, Search, X } from "lucide-react";
 import { api, ApiError, getScope, getToken } from "@/lib/api";
+import { dataRelativa } from "@/lib/date";
 import { Topbar } from "@/components/Topbar";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -24,7 +25,25 @@ export default function PacientesPage() {
   const [creating, setCreating] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const [busca, setBusca] = useState("");
+  const [erroCriar, setErroCriar] = useState<string | null>(null);
   const [form, setForm] = useState({ nome: "", contato: "", nascimento: "", documento: "", sexo: "" });
+  const buscaRef = useRef<HTMLInputElement>(null);
+
+  // U12: "/" foca a busca (fora de campos de texto); Esc limpa.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const alvo = e.target as HTMLElement | null;
+      const digitando = alvo && (alvo.tagName === "INPUT" || alvo.tagName === "TEXTAREA" || alvo.tagName === "SELECT" || alvo.isContentEditable);
+      if (e.key === "/" && !digitando) {
+        e.preventDefault();
+        buscaRef.current?.focus();
+      } else if (e.key === "Escape" && alvo === buscaRef.current) {
+        setBusca("");
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     const t = getToken();
@@ -55,6 +74,7 @@ export default function PacientesPage() {
   async function criar(e: React.FormEvent) {
     e.preventDefault();
     setCreating(true);
+    setErroCriar(null);
     try {
       const p = await api<Paciente>("/pacientes", {
         method: "POST",
@@ -71,7 +91,8 @@ export default function PacientesPage() {
       setDrawer(false);
       toast.success("Paciente criado.");
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Falha ao criar");
+      if (err instanceof ApiError) setErroCriar(err.message);
+      else toast.error("Falha de conexão. Tente novamente.");
     } finally {
       setCreating(false);
     }
@@ -92,9 +113,10 @@ export default function PacientesPage() {
         <div style={{ position: "relative", marginBottom: 16, maxWidth: 420 }}>
           <Search size={16} color="var(--muted)" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
           <input
+            ref={buscaRef}
             className="input"
             style={{ paddingLeft: 36 }}
-            placeholder="Buscar por nome ou contato…"
+            placeholder="Buscar por nome ou contato…  ( / )"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
           />
@@ -128,7 +150,7 @@ export default function PacientesPage() {
                     <td style={{ padding: 12 }}>{p.contato || "—"}</td>
                     <td style={{ padding: 12 }}>{p.nascimento || "—"}</td>
                     <td style={{ padding: 12, color: "var(--muted)" }}>
-                      {new Date(p.criado_em).toLocaleString("pt-BR")}
+                      {dataRelativa(p.criado_em)}
                     </td>
                   </tr>
                 ))}
@@ -161,7 +183,10 @@ export default function PacientesPage() {
             </div>
             <form onSubmit={criar} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div><label className="label">Nome *</label>
-                <input className="input" required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
+                <input className="input" required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                  aria-invalid={erroCriar ? true : undefined} />
+                {erroCriar && <p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: "6px 0 0" }}>{erroCriar}</p>}
+              </div>
               <div><label className="label">Contato</label>
                 <input className="input" value={form.contato} onChange={(e) => setForm({ ...form, contato: e.target.value })} /></div>
               <div><label className="label">Nascimento</label>

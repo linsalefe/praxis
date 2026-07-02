@@ -47,6 +47,18 @@ export async function api<T = unknown>(
   if (tok) headers.Authorization = `Bearer ${tok}`;
 
   const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+
+  // Interceptor global de sessão expirada: 401 ⇒ limpa token e manda ao login.
+  // Cobre todas as chamadas via api(). Evita loop na própria rota de login.
+  if (res.status === 401 && typeof window !== "undefined") {
+    const emLogin = window.location.pathname.startsWith("/login");
+    clearToken();
+    if (!emLogin) {
+      handle401();
+      throw new ApiError(401, "Sessão expirada");
+    }
+  }
+
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
   if (!res.ok) {
@@ -54,4 +66,16 @@ export async function api<T = unknown>(
     throw new ApiError(res.status, typeof detail === "string" ? detail : JSON.stringify(detail));
   }
   return data as T;
+}
+
+let _handling401 = false;
+
+/** Aviso + redirect uma única vez (evita toasts/redirects em rajada). */
+function handle401(): void {
+  if (_handling401) return;
+  _handling401 = true;
+  import("sonner")
+    .then((m) => m.toast.error("Sessão expirada, entre novamente."))
+    .catch(() => {});
+  window.location.assign("/login?expirada=1");
 }

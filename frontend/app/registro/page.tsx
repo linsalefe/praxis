@@ -24,14 +24,18 @@ export default function RegisterPage() {
     abordagem: "dialogo_aberto", tenant_tipo: "solo", tenant_nome: "",
   });
   const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
   function upd<K extends keyof typeof form>(k: K, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
   }
 
+  const emailInvalido = !!erro && /e-?mail/i.test(erro);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setErro(null);
     try {
       const data = await api<{ access_token: string; scope: string }>("/auth/register", {
         method: "POST",
@@ -41,7 +45,8 @@ export default function RegisterPage() {
       toast.success("Cadastro concluído.");
       router.replace("/pacientes");
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Falha no cadastro");
+      if (err instanceof ApiError) setErro(err.message);
+      else toast.error("Falha de conexão. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -69,7 +74,7 @@ export default function RegisterPage() {
             </div>
             <div>
               <label className="label">Email</label>
-              <input className="input" type="email" required value={form.email} onChange={(e) => upd("email", e.target.value)} />
+              <input className="input" type="email" required value={form.email} onChange={(e) => upd("email", e.target.value)} aria-invalid={emailInvalido || undefined} />
             </div>
             <div>
               <label className="label">Senha (mín. 8)</label>
@@ -103,6 +108,9 @@ export default function RegisterPage() {
               <input className="input" required value={form.tenant_nome} onChange={(e) => upd("tenant_nome", e.target.value)} />
             </div>
           </div>
+          {erro && (
+            <p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: "12px 0 0" }}>{erro}</p>
+          )}
           <div style={{ height: 16 }} />
           <button className="btn btn-primary" type="submit" disabled={loading}>
             {loading ? "Cadastrando…" : "Cadastrar"}
