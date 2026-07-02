@@ -6,19 +6,13 @@ atribuição e SHA-256 no rodapé.
 """
 from __future__ import annotations
 
-import hashlib
 import html
-import io
 import re
 from datetime import datetime, timezone
 from typing import Any
 
-import fitz  # PyMuPDF
-
+from app.pdfutils import render_html_to_pdf
 from app.pdftimbre import TIMBRE_CSS, Timbre, timbre_header_html
-
-MEDIABOX = fitz.paper_rect("a4")
-CONTENT_RECT = MEDIABOX + (42, 42, -42, -60)  # deixa espaço p/ rodapé
 
 
 def _esc(x: str) -> str:
@@ -199,34 +193,7 @@ def render_instrumento_pdf(
         f'<p class="muted">{fonte_txt}</p>'
     )
 
-    # Passo 1: gera PDF de conteúdo com Story (multi-página automático).
-    buf = io.BytesIO()
-    writer = fitz.DocumentWriter(buf)
-    story = fitz.Story(html=html_doc, user_css=CSS + TIMBRE_CSS)
-
-    def rectfn(_rect_num, _filled):
-        return MEDIABOX, CONTENT_RECT, None
-
-    story.write(writer, rectfn)
-    writer.close()
-    provisional = buf.getvalue()
-
-    # Passo 2: reabre para adicionar rodapé com paginação + hash de integridade.
-    doc = fitz.open(stream=provisional, filetype="pdf")
-    prov_sha = hashlib.sha256(provisional).hexdigest()
-    total = doc.page_count
-    for i, pg in enumerate(doc, start=1):
-        footer = f"Práxis · CENAT · pág. {i}/{total} · SHA-256: {prov_sha[:16]}…"
-        pg.insert_text(
-            (42, MEDIABOX.height - 32),
-            footer,
-            fontname="helv",
-            fontsize=7,
-            color=(0.4, 0.4, 0.45),
-        )
-    out = io.BytesIO()
-    doc.save(out)
-    doc.close()
-    pdf_bytes = out.getvalue()
-    final_sha = hashlib.sha256(pdf_bytes).hexdigest()
-    return pdf_bytes, final_sha
+    # Renderização consolidada no scaffold compartilhado (pdfutils): mesmo
+    # rodapé (paginação + SHA-256 do provisório) e mesma geometria de antes.
+    footer = "Práxis · CENAT · pág. {PAGINA}/{TOTAL} · SHA-256: {SHA16}…"
+    return render_html_to_pdf(html_doc, CSS + TIMBRE_CSS, footer)
