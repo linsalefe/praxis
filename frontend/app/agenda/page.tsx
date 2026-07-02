@@ -6,7 +6,9 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { CalendarPlus, ChevronLeft, ChevronRight, Clock, Video } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
+import { statusLabel, modalidadeLabel } from "@/lib/labels";
 import { Topbar } from "@/components/Topbar";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -20,13 +22,6 @@ type Sessao = {
   data: string; modalidade: string; status: string;
 };
 type PacienteLite = { id: string; nome: string };
-
-const STATUS_BADGE: Record<string, string> = {
-  agendada: "badge-info", realizada: "badge-pos", falta: "badge-warn", cancelada: "badge-neutral",
-};
-const STATUS_LABEL: Record<string, string> = {
-  agendada: "agendada", realizada: "realizada", falta: "falta", cancelada: "cancelada",
-};
 
 // --- helpers de data (locais, sem UTC surpresa) ---
 const p2 = (n: number) => String(n).padStart(2, "0");
@@ -86,7 +81,7 @@ export default function AgendaPage() {
   async function mudarStatus(s: Sessao, status: string) {
     try {
       await api(`/sessoes/${s.id}`, { method: "PATCH", body: JSON.stringify({ status }) });
-      toast.success(`Sessão marcada como ${STATUS_LABEL[status]}.`);
+      toast.success(`Sessão marcada como ${statusLabel(status).toLowerCase()}.`);
       carregar();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Falha ao atualizar");
@@ -248,8 +243,8 @@ function SessaoRow({
       <div style={{ flex: 1, minWidth: 0 }}>
         <Link href={`/pacientes/${s.paciente_id}`} className="link" style={{ fontWeight: 500 }}>{s.paciente_nome}</Link>
         <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 2 }}>
-          <span className="badge">{s.modalidade}</span>
-          <span className={`badge ${STATUS_BADGE[s.status] ?? ""}`}>{STATUS_LABEL[s.status] ?? s.status}</span>
+          <span className="badge">{modalidadeLabel(s.modalidade)}</span>
+          <StatusBadge status={s.status} />
           {pendente && <span style={{ fontSize: 11, color: "var(--warn-fg)", fontFamily: "var(--font-mono)" }}>pendente de baixa</span>}
         </div>
       </div>

@@ -98,6 +98,24 @@ export function modalidadeLabel(m: string | null | undefined): string {
   return MODALIDADE_LABEL[m] ?? humanizar(m);
 }
 
+// --- Tipo de instrumento (rótulo curto do catálogo; preserva siglas) ---
+const INSTRUMENTO_LABEL: Record<string, string> = {
+  gad7: "GAD-7",
+  phq9: "PHQ-9",
+  dass21: "DASS-21",
+  gam: "GAM",
+  maastricht: "Entrevista de Maastricht",
+  ptmf: "PTMF",
+  srq20: "SRQ-20",
+  who5: "WHO-5",
+  wrap: "WRAP",
+};
+
+export function instrumentoTipoLabel(tipo: string | null | undefined): string {
+  if (!tipo) return "—";
+  return INSTRUMENTO_LABEL[tipo] ?? tipo.toUpperCase();
+}
+
 // --- Forma de pagamento (financeiro) ---
 const FORMA_LABEL: Record<string, string> = {
   pix: "Pix",

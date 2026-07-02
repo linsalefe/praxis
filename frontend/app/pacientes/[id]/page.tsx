@@ -8,7 +8,9 @@ import { Activity, CalendarClock, CalendarPlus, ClipboardCheck, ClipboardList, D
 import { api, ApiError, getToken } from "@/lib/api";
 import { formatCentavos, reaisParaCentavos } from "@/lib/money";
 import { dataRelativa } from "@/lib/date";
+import { instrumentoTipoLabel, modalidadeLabel } from "@/lib/labels";
 import { Topbar } from "@/components/Topbar";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ScribeModal } from "@/components/ScribeModal";
 import { TelessessaoModal } from "@/components/TelessessaoModal";
 import { ConformidadeIaCard } from "@/components/ConformidadeIaCard";
@@ -387,8 +389,8 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                   <div>
                     <div style={{ fontWeight: 500 }}>{dataRelativa(s.data)}</div>
                     <div style={{ color: "var(--muted)", fontSize: 13 }}>
-                      <span className="badge">{s.modalidade}</span>{" "}
-                      <span className="badge">{s.status}</span>
+                      <span className="badge">{modalidadeLabel(s.modalidade)}</span>{" "}
+                      <StatusBadge status={s.status} />
                       {s.valor_centavos != null && <> <span className="badge">{formatCentavos(s.valor_centavos)}</span></>}
                     </div>
                   </div>
@@ -422,9 +424,9 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
           ) : respostas.map((r) => (
             <Card key={r.id} className="row-stack" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <div style={{ fontWeight: 500 }}>{r.instrumento_tipo.toUpperCase()} · {r.instrumento_versao}</div>
+                <div style={{ fontWeight: 500 }}>{instrumentoTipoLabel(r.instrumento_tipo)} · {r.instrumento_versao}</div>
                 <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                  <span className="badge">{r.status}</span>{" "}
+                  <StatusBadge status={r.status} />{" "}
                   iniciado {dataRelativa(r.criado_em)}
                   {r.finalizado_em && ` · finalizado ${dataRelativa(r.finalizado_em)}`}
                 </div>
@@ -457,7 +459,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                 <div>
                   <div style={{ fontWeight: 500, textTransform: "capitalize" }}>{d.tipo}</div>
                   <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                    <span className="badge">{d.status}</span>{" "}
+                    <StatusBadge status={d.status} />{" "}
                     {d.finalidade.slice(0, 70)}{d.finalidade.length > 70 && "…"} · {dataRelativa(d.criado_em)}
                   </div>
                 </div>
@@ -587,8 +589,8 @@ function EventoLinha({ ev }: { ev: EventoTimeline }) {
     subescores?: { rotulo: string; escore: number; faixa?: string }[];
   };
   const badges: React.ReactNode[] = [];
-  if (m.assinada === true) badges.push(<span key="a" className="badge badge-pos">assinada</span>);
-  else if (typeof m.status === "string") badges.push(<span key="s" className="badge">{m.status}</span>);
+  if (m.assinada === true) badges.push(<StatusBadge key="a" status="assinada" />);
+  else if (typeof m.status === "string") badges.push(<StatusBadge key="s" status={m.status} />);
   if (typeof m.escore === "number") badges.push(<span key="e" className="badge">escore {m.escore}{m.faixa ? ` · ${m.faixa}` : ""}</span>);
   if (Array.isArray(m.subescores)) m.subescores.forEach((s, i) =>
     badges.push(<span key={`ss${i}`} className="badge">{s.rotulo} {s.escore}</span>));

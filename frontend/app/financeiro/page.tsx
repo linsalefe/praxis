@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Wallet, Receipt, Download } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { formatCentavos } from "@/lib/money";
+import { formaPagamentoLabel } from "@/lib/labels";
 import { Topbar } from "@/components/Topbar";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { SkeletonCard } from "@/components/ui/Skeleton";
@@ -199,7 +200,7 @@ export default function FinanceiroPage() {
                       <div style={{ fontWeight: 500 }}>{l.paciente_nome}</div>
                       <div style={{ color: "var(--muted)", fontSize: 13 }}>
                         {new Date(l.data).toLocaleDateString("pt-BR")} · {formatCentavos(l.valor_centavos)}
-                        {l.forma && <> · {l.forma}</>}
+                        {l.forma && <> · {formaPagamentoLabel(l.forma)}</>}
                       </div>
                     </div>
                     {l.recibo ? (

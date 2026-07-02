@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { CalendarClock, FileSignature, FileText, ClipboardList, UserPlus, RotateCcw, ArrowRight } from "lucide-react";
 import { api, ApiError, getScope, getToken } from "@/lib/api";
 import { dataRelativa } from "@/lib/date";
+import { modalidadeLabel } from "@/lib/labels";
 import { Topbar } from "@/components/Topbar";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -155,7 +156,7 @@ export default function InicioPage() {
                       <CalendarClock size={16} color="var(--brand-2)" style={{ flex: "none" }} />
                       <span style={{ fontFamily: "var(--font-mono)", color: "var(--text)" }}>{hora(s.data)}</span>
                       <strong style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.paciente_nome}</strong>
-                      <span className="badge badge-neutral">{s.modalidade}</span>
+                      <span className="badge badge-neutral">{modalidadeLabel(s.modalidade)}</span>
                     </ItemLink>
                   ))}
                 </div>
