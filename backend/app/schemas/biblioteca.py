@@ -1,8 +1,9 @@
 """Schemas da Biblioteca viva — navegação + busca semântica read-only.
 
-Nenhum schema aqui expõe texto integral de chunk: o índice é pura estrutura
-e os hits de busca carregam apenas `trecho` já cortado pelo guardrail da Sofia
-(SNIPPET_TERCEIRO / SNIPPET_PROPRIO).
+Obras próprias do CENAT (is_terceiro=False) expõem o texto integral das seções
+para leitura na página da obra. Obras de terceiros nunca expõem texto: o índice
+é pura estrutura e os hits de busca carregam apenas `trecho` já cortado pelo
+guardrail da Sofia (SNIPPET_TERCEIRO / SNIPPET_PROPRIO).
 """
 from __future__ import annotations
 
@@ -26,6 +27,7 @@ class IndiceItemOut(BaseModel):
     secao_titulo: str | None            # sempre null na ingestão atual; mantido por fidelidade
     pagina_inicio: int | None
     pagina_fim: int | None
+    texto: str | None = None            # texto integral da seção; só em obras próprias (terceiro=None)
 
 
 class ObraDetalheOut(BaseModel):
