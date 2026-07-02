@@ -2,19 +2,21 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 from sqlalchemy import select
 
 from app.db import current_request_ip, current_tenant_id, current_user_id
-from app.deps import Principal, SessionDep, get_current_user, get_principal
+from app.deps import Principal, SessionDep, _extract_token, get_current_user, get_principal
 from app.models.audit import AuditLog
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.schemas.auth import (
     LoginIn,
     MeOut,
+    PerfilUpdateIn,
     RegisterIn,
     TokenOut,
     TotpLoginIn,
@@ -22,11 +24,27 @@ from app.schemas.auth import (
     TotpVerifyIn,
 )
 from app.security.crypto import decrypt_str, encrypt_str
-from app.security.jwt import make_token
+from app.security.jwt import decode_token, make_token
 from app.security.password import hash_password, verify_password
 from app.security.totp import build_uri, generate_secret, qr_png_datauri, verify
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+# Sliding session: só renova a ≤15min do exp; teto absoluto de 12h a partir do
+# login (auth_at). Nada disso cria refresh token nem altera o TTL do access token.
+_JANELA_RENOVACAO_S = 15 * 60
+_TETO_SESSAO_S = 12 * 60 * 60
+
+
+def _me_out(user: User) -> MeOut:
+    return MeOut(
+        id=str(user.id), nome=user.nome, email=user.email, crp=user.crp,
+        abordagem=user.abordagem, papel=user.papel, totp_ativado=user.totp_ativado,
+        tenant_id=str(user.tenant_id),
+        nome_exibicao=user.nome_exibicao,
+        registro_profissional=user.registro_profissional,
+        contato_timbre=user.contato_timbre,
+    )
 
 
 async def _log(session, *, acao: str, entidade: str, entidade_id: str | None, tenant_id, user_id, ip, meta=None):
@@ -134,11 +152,7 @@ async def totp_verify(
     await _log(session, acao="ENABLE_2FA", entidade="User", entidade_id=str(user.id),
                tenant_id=user.tenant_id, user_id=user.id, ip=ip)
     await session.commit()
-    return MeOut(
-        id=str(user.id), nome=user.nome, email=user.email, crp=user.crp,
-        abordagem=user.abordagem, papel=user.papel, totp_ativado=True,
-        tenant_id=str(user.tenant_id),
-    )
+    return _me_out(user)
 
 
 @router.post("/2fa/login", response_model=TokenOut)
@@ -169,8 +183,71 @@ async def totp_login(
 
 @router.get("/me", response_model=MeOut)
 async def me(user: Annotated[User, Depends(get_current_user)]) -> MeOut:
-    return MeOut(
-        id=str(user.id), nome=user.nome, email=user.email, crp=user.crp,
-        abordagem=user.abordagem, papel=user.papel, totp_ativado=user.totp_ativado,
-        tenant_id=str(user.tenant_id),
+    return _me_out(user)
+
+
+@router.patch("/me", response_model=MeOut)
+async def atualizar_perfil(
+    body: PerfilUpdateIn,
+    request: Request,
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+) -> MeOut:
+    """Atualiza os campos de timbre do perfil. Só mexe no que veio no corpo;
+    string vazia limpa o campo (volta ao fallback nome/crp na geração de PDF)."""
+    campos = body.model_dump(exclude_unset=True)
+    for campo, valor in campos.items():
+        if isinstance(valor, str):
+            valor = valor.strip() or None
+        setattr(user, campo, valor)
+
+    ip = request.client.host if request.client else None
+    await _log(session, acao="PERFIL_ATUALIZADO", entidade="User", entidade_id=str(user.id),
+               tenant_id=user.tenant_id, user_id=user.id, ip=ip,
+               meta={"campos": sorted(campos.keys())})
+    await session.commit()
+    await session.refresh(user)
+    return _me_out(user)
+
+
+@router.post(
+    "/renovar",
+    response_model=TokenOut,
+    responses={204: {"description": "Fora da janela de renovação ou sessão no teto — manter o token atual"}},
+)
+async def renovar(
+    request: Request,
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+    authorization: Annotated[str | None, Header()] = None,
+):
+    """Renovação silenciosa de sessão (sliding session).
+
+    A dependência ``get_current_user`` já garante token válido, não expirado,
+    escopo ``session`` e MFA satisfeito — logo, token inválido/expirado/pré-2FA
+    cai em 401 antes daqui. Emite um novo access token (mesmos claims/escopo e
+    TTL padrão) apenas quando o atual está a ≤15min do ``exp`` e a sessão ainda
+    não passou do teto absoluto. Não cria refresh token nem estende o expirado.
+    """
+    payload = decode_token(_extract_token(authorization))  # já validado pela dependência
+    now = int(datetime.now(tz=timezone.utc).timestamp())
+
+    # Fora da janela final do TTL: no-op (cliente mantém o token atual).
+    if payload["exp"] - now > _JANELA_RENOVACAO_S:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    # Teto absoluto de sessão. Tokens emitidos antes deste deploy não têm
+    # auth_at → 204: a pessoa reloga uma vez (dentro do TTL) e passa a ter o claim.
+    auth_at = payload.get("auth_at")
+    if auth_at is None or now - int(auth_at) > _TETO_SESSAO_S:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    tok = make_token(
+        user_id=str(user.id), tenant_id=str(user.tenant_id),
+        mfa_verified=True, auth_at=int(auth_at),
     )
+    ip = request.client.host if request.client else None
+    await _log(session, acao="RENEW_SESSION", entidade="User", entidade_id=str(user.id),
+               tenant_id=user.tenant_id, user_id=user.id, ip=ip)
+    await session.commit()
+    return TokenOut(access_token=tok, mfa_required=False, scope="session")

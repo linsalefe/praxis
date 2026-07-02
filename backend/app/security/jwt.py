@@ -14,19 +14,26 @@ def make_token(
     mfa_verified: bool,
     scope: str = "session",
     ttl_minutes: int | None = None,
+    auth_at: int | None = None,
     extra: dict[str, Any] | None = None,
 ) -> str:
     s = get_settings()
     now = datetime.now(tz=timezone.utc)
     ttl = ttl_minutes if ttl_minutes is not None else s.jwt_ttl_minutes
+    iat = int(now.timestamp())
     payload: dict[str, Any] = {
         "sub": user_id,
         "tid": tenant_id,
         "mfa": mfa_verified,
         "scope": scope,
-        "iat": int(now.timestamp()),
+        "iat": iat,
         "exp": int((now + timedelta(minutes=ttl)).timestamp()),
     }
+    # auth_at fixa o momento do login (não o iat, que muda a cada renovação):
+    # é o âncora do teto absoluto de sessão. Emitido no login e copiado nas
+    # renovações. Só faz sentido em tokens de sessão.
+    if scope == "session":
+        payload["auth_at"] = int(auth_at) if auth_at is not None else iat
     if extra:
         payload.update(extra)
     return jwt.encode(payload, s.jwt_secret, algorithm=s.jwt_alg)

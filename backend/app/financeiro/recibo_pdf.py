@@ -8,6 +8,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from app.pdfutils import esc, render_html_to_pdf
+from app.pdftimbre import TIMBRE_CSS, Timbre, timbre_header_html
 
 _CSS = """
 * { font-family: sans-serif; color: #1a1a1a; }
@@ -36,6 +37,7 @@ def render_recibo_pdf(
     valor_centavos: int,
     data_sessao: datetime | None,
     emitido_em: datetime,
+    timbre: Timbre | None = None,
 ) -> tuple[bytes, str]:
     cpf = esc(paciente_cpf) if paciente_cpf else "não informado"
     crp = f"CRP {esc(profissional_crp)}" if profissional_crp else "CRP não informado"
@@ -44,8 +46,10 @@ def render_recibo_pdf(
         f"referente ao atendimento psicológico realizado em {data_sessao.strftime('%d/%m/%Y')}"
         if data_sessao else "referente a atendimento psicológico"
     )
+    tb = timbre or Timbre.fallback(profissional_nome, profissional_crp)
 
     html_doc = f"""
+    {timbre_header_html(tb)}
     <h1>Recibo de Atendimento Psicológico</h1>
     <p class="sub">Recibo nº {numero:04d} · Emitido em {data_str}</p>
 
@@ -64,4 +68,4 @@ def render_recibo_pdf(
     """
 
     footer = f"Práxis · CENAT · Recibo nº {numero:04d} · Documento não fiscal · pág. {{PAGINA}}/{{TOTAL}} · {{SHA16}}"
-    return render_html_to_pdf(html_doc, _CSS, footer)
+    return render_html_to_pdf(html_doc, _CSS + TIMBRE_CSS, footer)

@@ -23,6 +23,7 @@ from sqlalchemy import desc, select
 from app.deps import SessionDep, get_current_user
 from app.documentos.gerador import gerar_documento
 from app.documentos.pdf import render_documento_pdf
+from app.pdftimbre import Timbre
 from app.documentos.substituir import montar_valores, substituir_conteudo
 from app.documentos.templates import TEMPLATES
 from app.models.audit import AuditLog
@@ -298,6 +299,7 @@ async def assinar(
         profissional_nome=user.nome, profissional_crp=user.crp,
         paciente_nome=pac_nome, paciente_doc=pac_doc,
         data_emissao_str=data_str, hash_assinatura=d.hash_assinatura,
+        timbre=Timbre.from_user(user),
     )
 
     # 3) anexa ao prontuário
@@ -371,6 +373,7 @@ async def assinar_icp(
         conteudo=d.conteudo or {}, profissional_nome=user.nome, profissional_crp=user.crp,
         paciente_nome=pac_nome, paciente_doc=pac_doc,
         data_emissao_str=data_str, hash_assinatura=hash_conteudo,
+        timbre=Timbre.from_user(user),
     )
     # pyHanko é síncrono e usa o event loop internamente — roda em threadpool
     # (sem loop na thread) para não retornar coroutine nem bloquear o servidor.

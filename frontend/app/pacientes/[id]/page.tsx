@@ -18,6 +18,7 @@ import { ConformidadeIaCard } from "@/components/ConformidadeIaCard";
 import { InstrumentoModal } from "@/components/InstrumentoModal";
 import { PrepararSessaoModal } from "@/components/PrepararSessaoModal";
 import { DocumentoModal } from "@/components/DocumentoModal";
+import { SofiaPainelProntuario } from "@/components/SofiaPainelProntuario";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { PacienteCard } from "@/components/ui/PacienteCard";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -91,6 +92,8 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
   const [telessessao, setTelessessao] = useState<string | null>(null);
   const [instrModal, setInstrModal] = useState(false);
   const [prepModal, setPrepModal] = useState(false);
+  const [prepContexto, setPrepContexto] = useState<string | null>(null);
+  const [sofiaOpen, setSofiaOpen] = useState(false);
   const [docModal, setDocModal] = useState(false);
   const [respostas, setRespostas] = useState<RespInstr[]>([]);
   const [anexos, setAnexos] = useState<Anexo[]>([]);
@@ -259,9 +262,12 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
               <CalendarPlus size={16} /> Agendar sessão
             </Button>
           )}
+          <Button variant="ghost" onClick={() => setSofiaOpen(true)}>
+            <PresenceMark size={16} /> Sofia
+          </Button>
           <MenuAcoes
             secundarias={[
-              { label: "Perguntar à Sofia", icon: <PresenceMark size={16} />, onClick: () => router.push(`/sofia?paciente_id=${id}`) },
+              { label: "Perguntar à Sofia", icon: <PresenceMark size={16} />, onClick: () => setSofiaOpen(true) },
               { label: "Novo instrumento", icon: <ClipboardList size={16} />, onClick: () => setInstrModal(true) },
               { label: "Preparar sessão", icon: <ClipboardCheck size={16} />, onClick: () => setPrepModal(true) },
               { label: "Gerar documento", icon: <FileSignature size={16} />, onClick: () => setDocModal(true) },
@@ -553,12 +559,24 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
       {instrModal && (
         <InstrumentoModal pacienteId={id} onClose={() => setInstrModal(false)} />
       )}
-      {prepModal && (
-        <PrepararSessaoModal pacienteId={id} onClose={() => setPrepModal(false)} />
+      {(prepModal || prepContexto !== null) && (
+        <PrepararSessaoModal
+          pacienteId={id}
+          sofiaContexto={prepContexto ?? undefined}
+          onClose={() => { setPrepModal(false); setPrepContexto(null); }}
+        />
       )}
       {docModal && (
         <DocumentoModal pacienteId={id} onClose={() => setDocModal(false)} />
       )}
+      <SofiaPainelProntuario
+        open={sofiaOpen}
+        pacienteId={id}
+        respostas={respostas}
+        series={series}
+        onClose={() => setSofiaOpen(false)}
+        onUsarNaPreparacao={(contexto) => { setSofiaOpen(false); setPrepContexto(contexto); }}
+      />
       <ConfirmDialog
         open={confirmExport}
         title="Exportar dados (LGPD)"

@@ -21,6 +21,12 @@ class User(Base):
     nome: Mapped[str] = mapped_column(String(160), nullable=False)
     crp: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
+    # Timbre profissional dos PDFs (Sprint W1) — todos opcionais, com fallback
+    # para nome/crp quando vazios. Apenas apresentação nos documentos gerados.
+    nome_exibicao: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    registro_profissional: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    contato_timbre: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
     # 'dialogo_aberto' | 'ouvir_vozes' | 'gam' | 'ptmf' | 'wrap' | 'reducao_danos' | 'outros'
     abordagem: Mapped[str | None] = mapped_column(String(32), nullable=True)
 

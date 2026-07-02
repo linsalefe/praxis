@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from app.documentos.templates import TEMPLATES
 from app.pdfutils import esc, render_html_to_pdf
+from app.pdftimbre import TIMBRE_CSS, Timbre, timbre_header_html
 
 
 CSS = """
@@ -48,9 +49,11 @@ def render_documento_pdf(
     paciente_doc: str | None,
     data_emissao_str: str,
     hash_assinatura: str,
+    timbre: Timbre | None = None,
 ) -> tuple[bytes, str]:
     template = TEMPLATES[tipo]
     titulo = template["titulo"]
+    tb = timbre or Timbre.fallback(profissional_nome, profissional_crp)
 
     # blocos na ordem do template
     corpo_html_parts: list[str] = []
@@ -72,13 +75,7 @@ def render_documento_pdf(
     )
 
     doc_html = f"""
-    <div class="header">
-      <div class="brand">Práxis · CENAT — Documento psicológico</div>
-      <div class="prof">
-        {esc(profissional_nome)} · CRP {esc(profissional_crp or 'não informado')}<br/>
-        Emitido em {esc(data_emissao_str)}
-      </div>
-    </div>
+    {timbre_header_html(tb, subtitulo=f"Documento psicológico · Emitido em {esc(data_emissao_str)}")}
 
     <h1>{esc(titulo)}</h1>
 
@@ -101,4 +98,4 @@ def render_documento_pdf(
     """
 
     footer = f"Práxis · CENAT · {titulo} · pág. {{PAGINA}}/{{TOTAL}} · SHA-256 {{SHA16}}…"
-    return render_html_to_pdf(doc_html, user_css=CSS, footer_line=footer)
+    return render_html_to_pdf(doc_html, user_css=CSS + TIMBRE_CSS, footer_line=footer)

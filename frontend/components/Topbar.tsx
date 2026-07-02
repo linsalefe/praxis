@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
-  BookOpen, CalendarDays, ChevronDown, Compass, LayoutGrid, LogOut, Menu,
+  BookOpen, CalendarDays, ChevronDown, Compass, IdCard, LayoutGrid, LogOut, Menu,
   ShieldCheck, UserCog, Users, Wallet,
 } from "lucide-react";
 import { api, clearToken } from "@/lib/api";
@@ -146,6 +146,13 @@ export function Topbar({ meNome }: { meNome?: string }) {
                 padding: 6, zIndex: 50,
               }}
             >
+              <Link
+                href="/conta" role="menuitem" onClick={() => setConta(false)}
+                className="link"
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--radius-sm, 6px)", color: "var(--text)" }}
+              >
+                <IdCard size={15} /> Perfil / timbre
+              </Link>
               <Link
                 href="/conta/2fa" role="menuitem" onClick={() => setConta(false)}
                 className="link"
