@@ -187,6 +187,16 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 500; letter-spacing:
 
 .divider { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
 
+kbd {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 4px);
+  padding: 1px 5px;
+  color: var(--muted);
+}
+
 /* ==========================================================================
    Campos de formulário
    ========================================================================== */

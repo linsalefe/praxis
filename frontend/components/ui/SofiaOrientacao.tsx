@@ -94,6 +94,7 @@ export function SofiaOrientacao<C extends SofiaCitacaoBase>({
   loading,
   streaming,
   erro,
+  hora,
   onCitacao,
   onUsarNaPreparacao,
 }: {
@@ -102,15 +103,24 @@ export function SofiaOrientacao<C extends SofiaCitacaoBase>({
   loading?: boolean;
   streaming?: boolean;
   erro?: string;
+  hora?: string;
   onCitacao?: (c: C) => void;
   onUsarNaPreparacao?: () => void;
 }) {
   return (
     <div style={{ marginBottom: 24 }}>
-      {/* Pergunta do profissional */}
-      <div style={{ marginBottom: 10 }}>
-        <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 2 }}>Você</div>
-        <div>{pergunta}</div>
+      {/* Pergunta do profissional — bolha distinta, alinhada à direita */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+        <div style={{ maxWidth: "85%" }}>
+          <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 2, textAlign: "right" }}>Você</div>
+          <div style={{
+            background: "var(--surface-2)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-lg)",
+            padding: "8px 12px",
+            whiteSpace: "pre-wrap",
+          }}>{pergunta}</div>
+        </div>
       </div>
 
       {/* Moldura da orientação */}
@@ -148,7 +158,10 @@ export function SofiaOrientacao<C extends SofiaCitacaoBase>({
             </div>
           </div>
           {resposta && (
-            <div style={{ marginLeft: "auto" }}>
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+              {hora && (
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--warm-500)" }}>{hora}</span>
+              )}
               <CopiarBtn texto={resposta.resposta} className="btn btn-ghost" label="Copiar" />
             </div>
           )}
@@ -210,12 +223,9 @@ export function SofiaOrientacao<C extends SofiaCitacaoBase>({
                       onClick={() => onCitacao?.(c)}
                       className="badge"
                       style={{ cursor: onCitacao ? "pointer" : "default", maxWidth: "100%" }}
-                      title={`${c.titulo} — ${c.autor} · similaridade ${(c.similaridade * 100).toFixed(0)}%`}
+                      title={`${c.titulo} — ${c.autor}`}
                     >
-                      <Quote size={12} /> T{c.n} · {c.titulo.slice(0, 40)}
-                      <span style={{ fontFamily: "var(--font-mono)", color: "var(--warm-500)" }}>
-                        {(c.similaridade * 100).toFixed(0)}%
-                      </span>
+                      <Quote size={12} /> T{c.n} · {c.titulo.slice(0, 48)}
                       {c.is_terceiro && (
                         <span className="badge badge-warn" style={{ padding: "1px 7px" }}>
                           paráfrase obrigatória
