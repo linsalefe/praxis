@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Wallet, Receipt, Download } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { formatCentavos } from "@/lib/money";
+import { formaPagamentoLabel } from "@/lib/labels";
+import { formatNome } from "@/lib/format";
 import { Topbar } from "@/components/Topbar";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { SkeletonCard } from "@/components/ui/Skeleton";
@@ -13,6 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
@@ -31,6 +34,10 @@ const FORMAS = [
 function hojeISO() {
   return new Date().toISOString().slice(0, 10);
 }
+
+// Datas locais (sem surpresa de UTC) para os presets de período.
+const p2 = (n: number) => String(n).padStart(2, "0");
+const ymd = (d: Date) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
 
 /** Baixa um PDF autenticado (o api() só faz JSON) e abre em nova aba. */
 async function abrirPdf(path: string, method: "GET" | "POST", body?: unknown) {
@@ -86,6 +93,15 @@ export default function FinanceiroPage() {
   const pendentes = lancs.filter((l) => l.status === "pendente");
   const pagos = lancs.filter((l) => l.status === "pago");
   const totalPendente = pendentes.reduce((a, l) => a + l.valor_centavos, 0);
+  const totalPago = pagos.reduce((a, l) => a + l.valor_centavos, 0);
+
+  // FN1: presets de período. Alterar de/ate dispara o recarregamento (useEffect).
+  function preset(tipo: "mes" | "d30" | "ano") {
+    const hoje = new Date();
+    if (tipo === "mes") { setDe(ymd(new Date(hoje.getFullYear(), hoje.getMonth(), 1))); setAte(ymd(hoje)); }
+    else if (tipo === "d30") { const d = new Date(hoje); d.setDate(d.getDate() - 30); setDe(ymd(d)); setAte(ymd(hoje)); }
+    else { setDe(ymd(new Date(hoje.getFullYear(), 0, 1))); setAte(ymd(hoje)); }
+  }
 
   async function confirmarPagamento() {
     if (!pagar) return;
@@ -136,7 +152,7 @@ export default function FinanceiroPage() {
           de plano (não é nota fiscal).
         </p>
 
-        <div style={{ display: "flex", gap: 8, alignItems: "end", marginBottom: 18, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "end", marginBottom: 12, flexWrap: "wrap" }}>
           <Field label="De">
             <input className="input" type="date" value={de} onChange={(e) => setDe(e.target.value)} />
           </Field>
@@ -147,6 +163,27 @@ export default function FinanceiroPage() {
             <Button onClick={() => { setDe(""); setAte(""); }}>Limpar período</Button>
           )}
         </div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
+          <button className="badge" style={{ cursor: "pointer" }} onClick={() => preset("mes")}>Este mês</button>
+          <button className="badge" style={{ cursor: "pointer" }} onClick={() => preset("d30")}>Últimos 30 dias</button>
+          <button className="badge" style={{ cursor: "pointer" }} onClick={() => preset("ano")}>Este ano</button>
+        </div>
+
+        {/* FN3: KPIs do período — número grande + rótulo muted */}
+        {!loading && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 20 }}>
+            <Card>
+              <div style={{ color: "var(--muted)", fontSize: 12 }}>A receber (pendente)</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 24, color: "var(--warn-fg)" }}>{formatCentavos(totalPendente)}</div>
+              <div style={{ color: "var(--muted)", fontSize: 11 }}>{pendentes.length} sessão(ões)</div>
+            </Card>
+            <Card>
+              <div style={{ color: "var(--muted)", fontSize: 12 }}>Recebido no período</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 24, color: "var(--ok)" }}>{formatCentavos(totalPago)}</div>
+              <div style={{ color: "var(--muted)", fontSize: 11 }}>{pagos.length} pagamento(s)</div>
+            </Card>
+          </div>
+        )}
 
         {loading ? (
           <div style={{ display: "grid", gap: 12 }}>
@@ -174,9 +211,10 @@ export default function FinanceiroPage() {
                 {pendentes.map((l) => (
                   <Card key={l.sessao_id} className="row-stack" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                     <div>
-                      <div style={{ fontWeight: 500 }}>{l.paciente_nome}</div>
-                      <div style={{ color: "var(--muted)", fontSize: 13 }}>
+                      <div style={{ fontWeight: 500 }}>{formatNome(l.paciente_nome)}</div>
+                      <div style={{ color: "var(--muted)", fontSize: 13, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                         {new Date(l.data).toLocaleDateString("pt-BR")} · {formatCentavos(l.valor_centavos)}
+                        <StatusBadge status={l.status} />
                       </div>
                     </div>
                     <Button variant="primary" onClick={() => setPagar(l)}>Marcar pago</Button>
@@ -196,10 +234,11 @@ export default function FinanceiroPage() {
                 {pagos.map((l) => (
                   <Card key={l.sessao_id} className="row-stack" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                     <div>
-                      <div style={{ fontWeight: 500 }}>{l.paciente_nome}</div>
-                      <div style={{ color: "var(--muted)", fontSize: 13 }}>
+                      <div style={{ fontWeight: 500 }}>{formatNome(l.paciente_nome)}</div>
+                      <div style={{ color: "var(--muted)", fontSize: 13, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                         {new Date(l.data).toLocaleDateString("pt-BR")} · {formatCentavos(l.valor_centavos)}
-                        {l.forma && <> · {l.forma}</>}
+                        {l.forma && <>· {formaPagamentoLabel(l.forma)}</>}
+                        <StatusBadge status={l.status} />
                       </div>
                     </div>
                     {l.recibo ? (
@@ -229,7 +268,7 @@ export default function FinanceiroPage() {
           <Card style={{ maxWidth: 420, width: "92%", background: "var(--surface)" }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>Registrar pagamento</h3>
             <p style={{ color: "var(--muted)", margin: "4px 0 14px", fontSize: 14 }}>
-              {pagar.paciente_nome} · {formatCentavos(pagar.valor_centavos)}
+              {formatNome(pagar.paciente_nome)} · {formatCentavos(pagar.valor_centavos)}
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <Field label="Forma">
@@ -255,7 +294,7 @@ export default function FinanceiroPage() {
       <ConfirmDialog
         open={!!reciboDe}
         title="Emitir recibo"
-        description={reciboDe ? `Emitir recibo para ${reciboDe.paciente_nome} no valor de ${formatCentavos(reciboDe.valor_centavos)}? O número é sequencial e definitivo.` : ""}
+        description={reciboDe ? `Emitir recibo para ${formatNome(reciboDe.paciente_nome)} no valor de ${formatCentavos(reciboDe.valor_centavos)}? O número é sequencial e definitivo.` : ""}
         confirmLabel="Emitir e baixar PDF"
         busy={busy}
         onConfirm={confirmarRecibo}

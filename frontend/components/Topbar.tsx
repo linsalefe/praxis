@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
-  BookOpen, CalendarDays, Compass, LayoutGrid, LogOut, Menu,
+  BookOpen, CalendarDays, ChevronDown, Compass, LayoutGrid, LogOut, Menu,
   ShieldCheck, UserCog, Users, Wallet,
 } from "lucide-react";
-import { clearToken } from "@/lib/api";
+import { api, clearToken } from "@/lib/api";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { Drawer } from "@/components/ui/Drawer";
 import { Button } from "@/components/ui/Button";
@@ -25,20 +25,57 @@ const NAV: Item[] = [
   { href: "/conta/2fa", label: "Conta / 2FA", icon: <UserCog size={16} /> },
 ];
 
+// No desktop, "Conta / 2FA" sai da barra inline e vive no menu de conta (G5).
+const NAV_INLINE = NAV.filter((it) => it.href !== "/conta/2fa");
+
 function ehAtivo(pathname: string | null, href: string): boolean {
   if (!pathname) return false;
   return pathname === href || pathname.startsWith(href + "/");
+}
+
+function iniciais(nome: string): string {
+  const p = nome.trim().split(/\s+/).filter(Boolean);
+  if (p.length === 0) return "·";
+  if (p.length === 1) return p[0].slice(0, 2).toUpperCase();
+  return (p[0][0] + p[p.length - 1][0]).toUpperCase();
 }
 
 export function Topbar({ meNome }: { meNome?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const [menu, setMenu] = useState(false);
+  const [conta, setConta] = useState(false);
+  const [nome, setNome] = useState<string>(meNome ?? "");
+  const contaRef = useRef<HTMLDivElement>(null);
+
+  // Nome do profissional para o menu de conta (se não veio por prop).
+  useEffect(() => {
+    if (meNome) { setNome(meNome); return; }
+    let vivo = true;
+    api<{ nome: string }>("/auth/me")
+      .then((m) => { if (vivo) setNome(m.nome); })
+      .catch(() => { /* menu degrada para rótulo genérico */ });
+    return () => { vivo = false; };
+  }, [meNome]);
+
+  // Fecha o dropdown ao clicar fora / Esc.
+  useEffect(() => {
+    if (!conta) return;
+    const onDoc = (e: MouseEvent) => {
+      if (contaRef.current && !contaRef.current.contains(e.target as Node)) setConta(false);
+    };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") setConta(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onEsc);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onEsc); };
+  }, [conta]);
 
   function logout() {
     clearToken();
     router.replace("/login");
   }
+
+  const rotuloConta = nome || "Minha conta";
 
   return (
     <header
@@ -55,7 +92,7 @@ export function Topbar({ meNome }: { meNome?: string }) {
           <span className="badge">by CENAT</span>
         </Link>
         <nav className="topbar-links">
-          {NAV.map((it) => {
+          {NAV_INLINE.map((it) => {
             const ativo = ehAtivo(pathname, it.href);
             return (
               <Link
@@ -73,10 +110,60 @@ export function Topbar({ meNome }: { meNome?: string }) {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        {meNome && <span style={{ color: "var(--muted)", fontSize: 13 }}>{meNome}</span>}
-        <Button className="topbar-links" onClick={logout}>
-          <LogOut size={14} /> Sair
-        </Button>
+        {/* Menu de conta (desktop) — avatar/nome → dropdown */}
+        <div className="topbar-links" style={{ position: "relative" }} ref={contaRef}>
+          <button
+            type="button"
+            onClick={() => setConta((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={conta}
+            className="btn"
+            style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+          >
+            <span
+              aria-hidden
+              style={{
+                width: 24, height: 24, borderRadius: "var(--radius-full)",
+                background: "var(--teal-100)", color: "var(--teal-700)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 11, fontWeight: 600,
+              }}
+            >
+              {iniciais(rotuloConta)}
+            </span>
+            <span style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {rotuloConta}
+            </span>
+            <ChevronDown size={14} />
+          </button>
+          {conta && (
+            <div
+              role="menu"
+              style={{
+                position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 200,
+                background: "var(--surface)", border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)", boxShadow: "var(--shadow-md)",
+                padding: 6, zIndex: 50,
+              }}
+            >
+              <Link
+                href="/conta/2fa" role="menuitem" onClick={() => setConta(false)}
+                className="link"
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--radius-sm, 6px)", color: "var(--text)" }}
+              >
+                <UserCog size={15} /> Conta / 2FA
+              </Link>
+              <button
+                type="button" role="menuitem" onClick={() => { setConta(false); logout(); }}
+                className="link"
+                style={{ display: "flex", width: "100%", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--radius-sm, 6px)", background: "none", border: "none", cursor: "pointer", color: "var(--danger)", textAlign: "left" }}
+              >
+                <LogOut size={15} /> Sair
+              </button>
+            </div>
+          )}
+        </div>
+
         <Button
           className="topbar-burger"
           onClick={() => setMenu(true)}

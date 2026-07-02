@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Send, BookOpen } from "lucide-react";
+import { Send, BookOpen, MessageSquarePlus } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { PresenceMark } from "@/components/ui/PresenceMark";
@@ -45,6 +45,7 @@ type Turno = {
   loading: boolean;
   streaming?: boolean;
   erro?: string;
+  hora: string;
 };
 
 const RESP_VAZIA: Resp = {
@@ -72,14 +73,17 @@ function PageInner() {
   const [drawer, setDrawer] = useState<Citacao | null>(null);
   const [prep, setPrep] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const ultimoTurnoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!getToken()) router.replace("/login");
   }, [router]);
 
+  // Ao iniciar um novo turno, rola para o INÍCIO da última pergunta/resposta
+  // (não para o fundo) — o profissional acompanha a resposta de cima para baixo.
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [turnos]);
+    ultimoTurnoRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [turnos.length]);
 
   const enviando = turnos.some((t) => t.loading || t.streaming);
 
@@ -88,7 +92,8 @@ function PageInner() {
     const q = pergunta.trim();
     if (q.length < 3 || enviando) return;
     setPergunta("");
-    setTurnos((ts) => [...ts, { pergunta: q, resposta: null, loading: true }]);
+    const hora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    setTurnos((ts) => [...ts, { pergunta: q, resposta: null, loading: true, hora }]);
 
     const body: Record<string, unknown> = { pergunta: q };
     if (usarPaciente && pacienteId) body.paciente_id = pacienteId;
@@ -148,84 +153,103 @@ function PageInner() {
 
   return (
     <>
-      <Topbar />
-      <main className="container-praxis" style={{ maxWidth: 900 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-          <PresenceMark size={26} />
-          <h1 style={{ margin: 0, fontSize: 22 }}>Sofia</h1>
-          <span className="badge">acervo CENAT · RAG</span>
-        </div>
-        <p style={{ color: "var(--muted)", margin: "0 0 16px", fontSize: 14 }}>
-          Faça perguntas clínicas. As respostas são fundamentadas no acervo e trazem citação da fonte.
-          {pacienteId && (
-            <>
-              {" "}
-              <label style={{ marginLeft: 8 }}>
-                <input
-                  type="checkbox"
-                  checked={usarPaciente}
-                  onChange={(e) => setUsarPaciente(e.target.checked)}
-                />{" "}
-                marcar contexto deste paciente <span className="badge">nada de PII vai à IA</span>
-              </label>
-            </>
-          )}
-        </p>
-
-        <div
-          ref={scrollRef}
-          className="card"
-          style={{ minHeight: 360, maxHeight: "62vh", overflowY: "auto", padding: 16 }}
+      <div style={{ display: "flex", flexDirection: "column", height: "100dvh" }}>
+        <Topbar />
+        <main
+          style={{
+            flex: 1, minHeight: 0, width: "100%", maxWidth: 900,
+            margin: "0 auto", padding: "16px 24px 0",
+            display: "flex", flexDirection: "column",
+          }}
         >
-          {turnos.length === 0 && (
-            <p style={{ color: "var(--muted)" }}>
-              Ex.: “Como estruturar a primeira reunião de rede em Diálogo Aberto?”,
-              “O que a literatura diz sobre redução de danos com clozapina?”
-            </p>
+          {/* Cabeçalho fixo */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+            <PresenceMark size={26} />
+            <h1 style={{ margin: 0, fontSize: 22 }}>Sofia</h1>
+            <span className="badge">acervo CENAT · RAG</span>
+            {turnos.length > 0 && (
+              <Button
+                variant="ghost"
+                onClick={() => { setTurnos([]); setDrawer(null); }}
+                style={{ marginLeft: "auto" }}
+              >
+                <MessageSquarePlus size={15} /> Nova conversa
+              </Button>
+            )}
+          </div>
+          {pacienteId && (
+            <label style={{ fontSize: 13, color: "var(--muted)", marginBottom: 8, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <input
+                type="checkbox"
+                checked={usarPaciente}
+                onChange={(e) => setUsarPaciente(e.target.checked)}
+              />
+              marcar contexto deste paciente <span className="badge">nada de PII vai à IA</span>
+            </label>
           )}
-          {turnos.map((t, i) => (
-            <SofiaOrientacao
-              key={i}
-              pergunta={t.pergunta}
-              resposta={t.resposta}
-              loading={t.loading}
-              streaming={t.streaming}
-              erro={t.erro}
-              onCitacao={(c) => setDrawer(c)}
-              onUsarNaPreparacao={pacienteId ? () => setPrep(t.resposta?.resposta ?? "") : undefined}
-            />
-          ))}
-        </div>
 
-        <form onSubmit={enviar} style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "flex-end" }}>
-          <textarea
-            className="input"
-            placeholder="Pergunte à Sofia…  (Enter envia · Shift+Enter quebra linha)"
-            value={pergunta}
-            onChange={(e) => {
-              setPergunta(e.target.value);
-              e.target.style.height = "auto";
-              e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                if (!enviando) enviar(e);
-              }
-            }}
-            rows={1}
-            style={{ resize: "none", minHeight: 40, lineHeight: 1.5, overflowY: "auto" }}
-          />
-          <Button variant="primary" type="submit" disabled={enviando || pergunta.trim().length < 3}>
-            <Send size={16} /> Enviar
-          </Button>
-        </form>
+          {/* Mensagens — área rolável que ocupa a altura disponível */}
+          <div
+            ref={scrollRef}
+            style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px 2px" }}
+          >
+            {turnos.length === 0 && (
+              <p style={{ color: "var(--muted)" }}>
+                Faça perguntas clínicas — as respostas são fundamentadas no acervo, com citação da fonte. Ex.:
+                “Como estruturar a primeira reunião de rede em Diálogo Aberto?”,
+                “O que a literatura diz sobre redução de danos com clozapina?”
+              </p>
+            )}
+            {turnos.map((t, i) => (
+              <div key={i} ref={i === turnos.length - 1 ? ultimoTurnoRef : undefined} style={{ scrollMarginTop: 8 }}>
+                <SofiaOrientacao
+                  pergunta={t.pergunta}
+                  resposta={t.resposta}
+                  loading={t.loading}
+                  streaming={t.streaming}
+                  erro={t.erro}
+                  hora={t.hora}
+                  onCitacao={(c) => setDrawer(c)}
+                  onUsarNaPreparacao={pacienteId ? () => setPrep(t.resposta?.resposta ?? "") : undefined}
+                />
+              </div>
+            ))}
+          </div>
 
-        <p style={{ marginTop: 12, fontSize: 12, color: "var(--muted)" }}>
-          <Link className="link" href="/sofia/acervo">
-            <BookOpen size={12} style={{ display: "inline", verticalAlign: "middle" }} /> Ver acervo indexado
-          </Link>
-        </p>
+          {/* Composer fixo na base */}
+          <div style={{ paddingTop: 8, paddingBottom: 12, borderTop: "1px solid var(--border)" }}>
+            <form onSubmit={enviar} style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+              <textarea
+                className="input"
+                placeholder="Pergunte à Sofia…"
+                value={pergunta}
+                onChange={(e) => {
+                  setPergunta(e.target.value);
+                  e.target.style.height = "auto";
+                  e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!enviando) enviar(e);
+                  }
+                }}
+                rows={1}
+                style={{ resize: "none", minHeight: 40, lineHeight: 1.5, overflowY: "auto" }}
+              />
+              <Button variant="primary" type="submit" disabled={enviando || pergunta.trim().length < 3}>
+                <Send size={16} /> Enviar
+              </Button>
+            </form>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+              <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                <kbd>Enter</kbd> envia · <kbd>Shift+Enter</kbd> quebra linha
+              </span>
+              <Link className="link" href="/sofia/acervo" style={{ fontSize: 12 }}>
+                <BookOpen size={12} style={{ display: "inline", verticalAlign: "middle" }} /> Ver acervo indexado
+              </Link>
+            </div>
+          </div>
 
         {drawer && (
           <div
@@ -246,11 +270,12 @@ function PageInner() {
                 {drawer.autor}{drawer.editora ? ` · ${drawer.editora}` : ""}
               </p>
               <p style={{ margin: "4px 0" }}>
-                <span className="badge">cap. {drawer.capitulo || "n/d"}</span>{" "}
-                <span className="badge">
-                  {drawer.pagina_inicio ? `pp. ${drawer.pagina_inicio}${drawer.pagina_fim && drawer.pagina_fim !== drawer.pagina_inicio ? `-${drawer.pagina_fim}` : ""}` : "p. n/d"}
-                </span>{" "}
-                <span className="badge">sim {(drawer.similaridade * 100).toFixed(0)}%</span>
+                {drawer.capitulo && <><span className="badge">cap. {drawer.capitulo}</span>{" "}</>}
+                {drawer.pagina_inicio && (
+                  <><span className="badge">
+                    pp. {drawer.pagina_inicio}{drawer.pagina_fim && drawer.pagina_fim !== drawer.pagina_inicio ? `-${drawer.pagina_fim}` : ""}
+                  </span>{" "}</>
+                )}
                 {drawer.is_terceiro && (
                   <span className="badge" style={{ color: "var(--brand-2)" }}>obra de terceiro — paráfrase</span>
                 )}
@@ -271,7 +296,8 @@ function PageInner() {
             onClose={() => setPrep(null)}
           />
         )}
-      </main>
+        </main>
+      </div>
     </>
   );
 }

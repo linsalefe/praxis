@@ -6,7 +6,10 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { CalendarPlus, ChevronLeft, ChevronRight, Clock, Video } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
+import { statusLabel, modalidadeLabel } from "@/lib/labels";
+import { formatNome } from "@/lib/format";
 import { Topbar } from "@/components/Topbar";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -20,13 +23,6 @@ type Sessao = {
   data: string; modalidade: string; status: string;
 };
 type PacienteLite = { id: string; nome: string };
-
-const STATUS_BADGE: Record<string, string> = {
-  agendada: "badge-info", realizada: "badge-pos", falta: "badge-warn", cancelada: "badge-neutral",
-};
-const STATUS_LABEL: Record<string, string> = {
-  agendada: "agendada", realizada: "realizada", falta: "falta", cancelada: "cancelada",
-};
 
 // --- helpers de data (locais, sem UTC surpresa) ---
 const p2 = (n: number) => String(n).padStart(2, "0");
@@ -44,7 +40,7 @@ export default function AgendaPage() {
   const [sessoes, setSessoes] = useState<Sessao[]>([]);
   const [loading, setLoading] = useState(true);
   const [pacientes, setPacientes] = useState<PacienteLite[]>([]);
-  const [drawer, setDrawer] = useState<{ open: boolean; editar?: Sessao }>({ open: false });
+  const [drawer, setDrawer] = useState<{ open: boolean; editar?: Sessao; dataInicial?: Date }>({ open: false });
   const [cancelar, setCancelar] = useState<Sessao | null>(null);
   const [telessessao, setTelessessao] = useState<Sessao | null>(null);
 
@@ -83,10 +79,33 @@ export default function AgendaPage() {
 
   const passo = view === "dia" ? 1 : 7;
 
+  // A4: navegação por teclado — ←/→ mudam o período, "t" volta para hoje.
+  // Ignora quando há modal aberto ou o foco está num campo de formulário.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (drawer.open || cancelar || telessessao) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.key === "ArrowLeft") setAnchor((d) => addDays(d, -passo));
+      else if (e.key === "ArrowRight") setAnchor((d) => addDays(d, passo));
+      else if (e.key === "t" || e.key === "T") setAnchor(new Date());
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [passo, drawer.open, cancelar, telessessao]);
+
+  // A2: abre "Nova sessão" com a data pré-preenchida no dia clicado (09:00).
+  const novaNoDia = (d: Date) => {
+    const dt = new Date(d);
+    dt.setHours(9, 0, 0, 0);
+    setDrawer({ open: true, dataInicial: dt });
+  };
+  const ehHoje = (d: Date) => ymd(d) === ymd(new Date());
+
   async function mudarStatus(s: Sessao, status: string) {
     try {
       await api(`/sessoes/${s.id}`, { method: "PATCH", body: JSON.stringify({ status }) });
-      toast.success(`Sessão marcada como ${STATUS_LABEL[status]}.`);
+      toast.success(`Sessão marcada como ${statusLabel(status).toLowerCase()}.`);
       carregar();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Falha ao atualizar");
@@ -165,19 +184,40 @@ export default function AgendaPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: view === "dia" ? 8 : 18 }}>
             {dias.map((d) => {
               const lista = porDia.get(ymd(d)) ?? [];
+              const hoje = ehHoje(d);
+              const Cabecalho = view === "semana" ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <div style={{
+                    fontFamily: "var(--font-display)", fontWeight: hoje ? 700 : 500,
+                    textTransform: "capitalize", color: hoje ? "var(--brand)" : "var(--text)",
+                  }}>{diaLongo(d)}</div>
+                  {hoje && <span className="badge badge-info">hoje</span>}
+                  <button
+                    type="button" className="link" onClick={() => novaNoDia(d)}
+                    title="Nova sessão neste dia"
+                    style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13 }}
+                  >
+                    <CalendarPlus size={14} /> nova
+                  </button>
+                </div>
+              ) : null;
+
               if (view === "semana" && lista.length === 0) {
                 return (
-                  <div key={ymd(d)}>
-                    <div style={{ fontFamily: "var(--font-display)", fontWeight: 500, textTransform: "capitalize", marginBottom: 6 }}>{diaLongo(d)}</div>
-                    <div style={{ color: "var(--muted)", fontSize: 13, paddingLeft: 2 }}>sem sessões</div>
+                  <div key={ymd(d)} style={hoje ? { background: "var(--surface-2)", borderRadius: "var(--radius-md)", padding: "8px 10px" } : undefined}>
+                    {Cabecalho}
+                    <button
+                      type="button" onClick={() => novaNoDia(d)}
+                      style={{ width: "100%", textAlign: "left", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius-md)", color: "var(--muted)", fontSize: 13, padding: "10px 12px", cursor: "pointer" }}
+                    >
+                      sem sessões — clique para agendar
+                    </button>
                   </div>
                 );
               }
               return (
-                <div key={ymd(d)}>
-                  {view === "semana" && (
-                    <div style={{ fontFamily: "var(--font-display)", fontWeight: 500, textTransform: "capitalize", marginBottom: 6 }}>{diaLongo(d)}</div>
-                  )}
+                <div key={ymd(d)} style={hoje && view === "semana" ? { background: "var(--surface-2)", borderRadius: "var(--radius-md)", padding: "8px 10px" } : undefined}>
+                  {Cabecalho}
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {lista.map((s) => (
                       <SessaoRow key={s.id} s={s} onStatus={mudarStatus}
@@ -201,7 +241,7 @@ export default function AgendaPage() {
         <SessaoForm
           editar={drawer.editar}
           pacientes={pacientes}
-          anchor={anchor}
+          anchor={drawer.dataInicial ?? anchor}
           onSalvo={() => { setDrawer({ open: false }); carregar(); }}
         />
       </Drawer>
@@ -209,7 +249,7 @@ export default function AgendaPage() {
       <ConfirmDialog
         open={!!cancelar}
         title="Cancelar sessão"
-        description={cancelar ? `A sessão de ${cancelar.paciente_nome} em ${new Date(cancelar.data).toLocaleString("pt-BR")} será marcada como cancelada.` : ""}
+        description={cancelar ? `A sessão de ${formatNome(cancelar.paciente_nome)} em ${new Date(cancelar.data).toLocaleString("pt-BR")} será marcada como cancelada.` : ""}
         confirmLabel="Cancelar sessão"
         onConfirm={() => { if (cancelar) mudarStatus(cancelar, "cancelada"); setCancelar(null); }}
         onCancel={() => setCancelar(null)}
@@ -246,10 +286,10 @@ function SessaoRow({
         <Clock size={13} color="var(--muted)" /> {hora(s.data)}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <Link href={`/pacientes/${s.paciente_id}`} className="link" style={{ fontWeight: 500 }}>{s.paciente_nome}</Link>
+        <Link href={`/pacientes/${s.paciente_id}`} className="link" style={{ fontWeight: 500 }}>{formatNome(s.paciente_nome)}</Link>
         <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 2 }}>
-          <span className="badge">{s.modalidade}</span>
-          <span className={`badge ${STATUS_BADGE[s.status] ?? ""}`}>{STATUS_LABEL[s.status] ?? s.status}</span>
+          <span className="badge">{modalidadeLabel(s.modalidade)}</span>
+          <StatusBadge status={s.status} />
           {pendente && <span style={{ fontSize: 11, color: "var(--warn-fg)", fontFamily: "var(--font-mono)" }}>pendente de baixa</span>}
         </div>
       </div>
@@ -314,7 +354,7 @@ function SessaoForm({
         ) : (
           <select className="input" value={pacienteId} onChange={(e) => setPacienteId(e.target.value)} required>
             <option value="">Selecione…</option>
-            {pacientes.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            {pacientes.map((p) => <option key={p.id} value={p.id}>{formatNome(p.nome)}</option>)}
           </select>
         )}
       </Field>

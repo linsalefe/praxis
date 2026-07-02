@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Video, Link2, ShieldCheck, X } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
+import { formatNome } from "@/lib/format";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
@@ -136,7 +137,7 @@ export function TelessessaoModal({
           </div>
           <Button onClick={onClose} disabled={busy} aria-label="Fechar"><X size={16} /></Button>
         </div>
-        <p style={{ color: "var(--muted)", margin: "0 0 12px", fontSize: 13 }}>{pacienteNome}</p>
+        <p style={{ color: "var(--muted)", margin: "0 0 12px", fontSize: 13 }}>{formatNome(pacienteNome)}</p>
 
         <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "var(--surface-2)", borderRadius: "var(--radius-md)", padding: 10, marginBottom: 14 }}>
           <ShieldCheck size={16} color="var(--brand-2)" style={{ flexShrink: 0, marginTop: 1 }} />

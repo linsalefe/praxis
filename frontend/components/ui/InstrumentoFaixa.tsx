@@ -1,5 +1,7 @@
 "use client";
 
+import { statusLabel } from "@/lib/labels";
+
 /**
  * InstrumentoFaixa — faixa de progresso/estado de um instrumento.
  * Os instrumentos do Práxis (Maastricht, WRAP) são qualitativos: não há escore
@@ -36,7 +38,7 @@ export function InstrumentoFaixa({
           )}
         </div>
         <span className={`badge ${finalizado ? "badge-pos" : "badge-info"}`}>
-          {finalizado ? "finalizado" : "em andamento"}
+          {statusLabel(finalizado ? "finalizado" : "em_andamento")}
         </span>
       </div>
 

@@ -1,0 +1,4 @@
+
+# artefatos de build/tsc (ruído de versionamento)
+*.tsbuildinfo
+next-env.d.ts

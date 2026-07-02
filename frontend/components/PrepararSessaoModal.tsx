@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ClipboardCheck, Copy, Link2, Quote, X } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { modalidadeLabel, statusLabel } from "@/lib/labels";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
@@ -184,7 +185,7 @@ export function PrepararSessaoModal({
                   <option value="">— não vincular —</option>
                   {sessoes.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {new Date(s.data).toLocaleString("pt-BR")} · {s.modalidade} · {s.status}
+                      {new Date(s.data).toLocaleString("pt-BR")} · {modalidadeLabel(s.modalidade)} · {statusLabel(s.status)}
                     </option>
                   ))}
                 </select>
