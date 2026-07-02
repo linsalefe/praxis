@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { ClipboardList, X } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 
 type InstrumentoCatalogo = {
   id: string; tipo: string; versao: string; titulo: string;
@@ -43,13 +43,7 @@ export function InstrumentoModal({ pacienteId, onClose }: { pacienteId: string; 
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}
-      onClick={busy ? undefined : onClose}
-    >
-      <Card style={{ width: "92%", maxWidth: 520, maxHeight: "80vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+    <Modal open maxWidth={520} busy={busy} onClose={onClose}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <ClipboardList size={18} color="var(--brand-2)" /> Novo instrumento
@@ -80,7 +74,6 @@ export function InstrumentoModal({ pacienteId, onClose }: { pacienteId: string; 
             </Button>
           ))}
         </div>
-      </Card>
-    </div>
+    </Modal>
   );
 }

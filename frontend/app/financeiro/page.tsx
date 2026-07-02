@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Modal } from "@/components/ui/Modal";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
@@ -259,34 +260,27 @@ export default function FinanceiroPage() {
 
       {/* Modal: marcar pago (forma + data) */}
       {pagar && (
-        <div
-          role="dialog" aria-modal="true"
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 40 }}
-          onClick={() => !busy && setPagar(null)}
-        >
-          <Card style={{ maxWidth: 420, width: "92%", background: "var(--surface)" }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>Registrar pagamento</h3>
-            <p style={{ color: "var(--muted)", margin: "4px 0 14px", fontSize: 14 }}>
-              {formatNome(pagar.paciente_nome)} · {formatCentavos(pagar.valor_centavos)}
-            </p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <Field label="Forma">
-                <select className="input" value={forma} onChange={(e) => setForma(e.target.value)}>
-                  {FORMAS.map((f) => <option key={f.v} value={f.v}>{f.l}</option>)}
-                </select>
-              </Field>
-              <Field label="Pago em">
-                <input className="input" type="date" value={pagoEm} onChange={(e) => setPagoEm(e.target.value)} />
-              </Field>
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
-              <Button onClick={() => setPagar(null)} disabled={busy}>Cancelar</Button>
-              <Button variant="primary" onClick={confirmarPagamento} loading={busy}>
-                {busy ? "Salvando…" : "Confirmar pagamento"}
-              </Button>
-            </div>
-          </Card>
-        </div>
+        <Modal open title="Registrar pagamento" maxWidth={420} busy={busy} onClose={() => setPagar(null)}>
+          <p style={{ color: "var(--muted)", margin: "4px 0 14px", fontSize: 14 }}>
+            {formatNome(pagar.paciente_nome)} · {formatCentavos(pagar.valor_centavos)}
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <Field label="Forma">
+              <select className="input" value={forma} onChange={(e) => setForma(e.target.value)}>
+                {FORMAS.map((f) => <option key={f.v} value={f.v}>{f.l}</option>)}
+              </select>
+            </Field>
+            <Field label="Pago em">
+              <input className="input" type="date" value={pagoEm} onChange={(e) => setPagoEm(e.target.value)} />
+            </Field>
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+            <Button onClick={() => setPagar(null)} disabled={busy}>Cancelar</Button>
+            <Button variant="primary" onClick={confirmarPagamento} loading={busy}>
+              {busy ? "Salvando…" : "Confirmar pagamento"}
+            </Button>
+          </div>
+        </Modal>
       )}
 
       {/* Confirmação: emitir recibo (número sequencial e definitivo) */}

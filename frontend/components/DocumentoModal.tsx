@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { FileSignature, X } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 
 type Tipo = "declaracao" | "atestado" | "relatorio" | "laudo" | "encaminhamento";
 
@@ -60,12 +60,7 @@ export function DocumentoModal({
   const tplAtual = templates.find((t) => t.tipo === tipo);
 
   return (
-    <div
-      role="dialog" aria-modal="true"
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}
-      onClick={busy ? undefined : onClose}
-    >
-      <Card style={{ width: "92%", maxWidth: 620 }} onClick={(e) => e.stopPropagation()}>
+    <Modal open maxWidth={620} busy={!!busy} onClose={onClose}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <FileSignature size={18} color="var(--brand-2)" /> Gerar documento
@@ -134,7 +129,6 @@ export function DocumentoModal({
             <FileSignature size={16} /> {busy || "Gerar rascunho"}
           </Button>
         </div>
-      </Card>
-    </div>
+    </Modal>
   );
 }

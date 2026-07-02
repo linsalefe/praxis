@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { PlusCircle, Search, X } from "lucide-react";
+import { PlusCircle, Search } from "lucide-react";
 import { api, ApiError, getScope, getToken } from "@/lib/api";
 import { dataRelativa } from "@/lib/date";
 import { formatNome } from "@/lib/format";
@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
+import { Drawer } from "@/components/ui/Drawer";
 
 type Paciente = {
   id: string; nome: string; contato: string | null;
@@ -166,50 +167,31 @@ export default function PacientesPage() {
 
       {/* Drawer — Novo paciente */}
       {drawer && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Novo paciente"
-          onClick={() => !creating && setDrawer(false)}
-          style={{ position: "fixed", inset: 0, background: "rgba(42,38,32,0.38)", display: "flex", justifyContent: "flex-end", zIndex: 60 }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "min(440px, 100%)", height: "100%", background: "var(--surface)",
-              borderLeft: "1px solid var(--border)", boxShadow: "var(--shadow-lg)",
-              padding: 24, overflowY: "auto",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <h2 style={{ fontSize: 18, margin: 0 }}>Novo paciente</h2>
-              <Button variant="ghost" onClick={() => setDrawer(false)} aria-label="Fechar"><X size={18} /></Button>
+        <Drawer open title="Novo paciente" onClose={() => { if (!creating) setDrawer(false); }}>
+          <form onSubmit={criar} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <Field label="Nome *" error={erroCriar}>
+              <input className="input" required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
+            </Field>
+            <Field label="Contato">
+              <input className="input" value={form.contato} onChange={(e) => setForm({ ...form, contato: e.target.value })} />
+            </Field>
+            <Field label="Nascimento">
+              <input className="input" type="date" value={form.nascimento} onChange={(e) => setForm({ ...form, nascimento: e.target.value })} />
+            </Field>
+            <Field label="Documento">
+              <input className="input" value={form.documento} onChange={(e) => setForm({ ...form, documento: e.target.value })} />
+            </Field>
+            <Field label="Sexo">
+              <input className="input" value={form.sexo} onChange={(e) => setForm({ ...form, sexo: e.target.value })} />
+            </Field>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+              <Button type="button" onClick={() => setDrawer(false)} disabled={creating}>Cancelar</Button>
+              <Button type="submit" variant="primary" loading={creating}>
+                <PlusCircle size={16} /> {creating ? "Adicionando…" : "Adicionar"}
+              </Button>
             </div>
-            <form onSubmit={criar} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <Field label="Nome *" error={erroCriar}>
-                <input className="input" required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
-              </Field>
-              <Field label="Contato">
-                <input className="input" value={form.contato} onChange={(e) => setForm({ ...form, contato: e.target.value })} />
-              </Field>
-              <Field label="Nascimento">
-                <input className="input" type="date" value={form.nascimento} onChange={(e) => setForm({ ...form, nascimento: e.target.value })} />
-              </Field>
-              <Field label="Documento">
-                <input className="input" value={form.documento} onChange={(e) => setForm({ ...form, documento: e.target.value })} />
-              </Field>
-              <Field label="Sexo">
-                <input className="input" value={form.sexo} onChange={(e) => setForm({ ...form, sexo: e.target.value })} />
-              </Field>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
-                <Button type="button" onClick={() => setDrawer(false)} disabled={creating}>Cancelar</Button>
-                <Button type="submit" variant="primary" loading={creating}>
-                  <PlusCircle size={16} /> {creating ? "Adicionando…" : "Adicionar"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
+          </form>
+        </Drawer>
       )}
     </>
   );

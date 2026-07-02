@@ -9,7 +9,7 @@ import { formatNome } from "@/lib/format";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 import { Field } from "@/components/ui/Field";
 
 type SalaStatus = {
@@ -58,12 +58,6 @@ export function TelessessaoModal({
     if (!getToken()) return void router.replace("/login");
     carregar();
   }, [carregar, router]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !busy) onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [busy, onClose]);
 
   async function registrarConsentimento() {
     if (aceitoPor.trim().length < 1) return;
@@ -124,12 +118,7 @@ export function TelessessaoModal({
   const temConsentimento = status?.consentimento_teleatendimento === true;
 
   return (
-    <div
-      role="dialog" aria-modal="true"
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}
-      onClick={() => !busy && onClose()}
-    >
-      <Card style={{ maxWidth: 520, width: "94%", background: "var(--surface)" }} onClick={(e) => e.stopPropagation()}>
+    <Modal open maxWidth={520} busy={busy} onClose={onClose}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <PresenceMark size={20} />
@@ -181,7 +170,6 @@ export function TelessessaoModal({
             </Button>
           </div>
         )}
-      </Card>
-    </div>
+    </Modal>
   );
 }
