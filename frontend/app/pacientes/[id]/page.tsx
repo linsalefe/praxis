@@ -10,6 +10,7 @@ import { formatCentavos, reaisParaCentavos } from "@/lib/money";
 import { Topbar } from "@/components/Topbar";
 import { ScribeModal } from "@/components/ScribeModal";
 import { TelessessaoModal } from "@/components/TelessessaoModal";
+import { ConformidadeIaCard } from "@/components/ConformidadeIaCard";
 import { InstrumentoModal } from "@/components/InstrumentoModal";
 import { PrepararSessaoModal } from "@/components/PrepararSessaoModal";
 import { DocumentoModal } from "@/components/DocumentoModal";
@@ -439,6 +440,8 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
             ))}
           </div>
         )}
+
+        {pac && <ConformidadeIaCard pacienteId={pac.id} pacienteNome={pac.nome} />}
       </main>
       {scribeSessao && (
         <ScribeModal sessaoId={scribeSessao} onClose={() => setScribeSessao(null)} />

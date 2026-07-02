@@ -6,13 +6,22 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 
+from app.conformidade.ia_cfp import tcle_ia
 from app.deps import SessionDep, get_current_user
 from app.models.consentimento import Consentimento
 from app.models.paciente import Paciente
 from app.models.user import User
-from app.schemas.clinico import ConsentimentoCreate, ConsentimentoOut
+from app.schemas.clinico import ConsentimentoCreate, ConsentimentoOut, TcleIaOut
 
 router = APIRouter(prefix="/consentimentos", tags=["consentimentos"])
+
+
+@router.get("/tcle-ia", response_model=TcleIaOut)
+async def obter_tcle_ia(
+    _user: Annotated[User, Depends(get_current_user)],
+) -> TcleIaOut:
+    """Texto versionado do TCLE de uso de IA (Res. CFP 09/2024) para registro."""
+    return TcleIaOut(**tcle_ia())
 
 
 def _to_out(c: Consentimento) -> ConsentimentoOut:

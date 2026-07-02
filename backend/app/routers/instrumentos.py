@@ -277,7 +277,8 @@ async def gerar_saida(
     _log(session, tenant_id=user.tenant_id, user_id=user.id,
          ip=request.client.host if request.client else None,
          acao="INSTRUMENTO_SAIDA_GERADA", entidade="RespostaInstrumento", entidade_id=str(r.id),
-         meta={"tipo": instr.tipo, "provider": gerada.provider_id, "chunks_acervo": len(gerada.hits)})
+         meta={"tipo": instr.tipo, "provider": gerada.provider_id, "chunks_acervo": len(gerada.hits),
+               "paciente_id": str(r.paciente_id)})
     await session.commit()
     await session.refresh(r)
     return GerarSaidaOut(resposta_id=str(r.id), saida_texto=r.saida_texto or "", provider=gerada.provider_id)
