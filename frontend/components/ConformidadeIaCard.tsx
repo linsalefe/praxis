@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { ShieldCheck, Cpu, Check } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 
 type Consentimento = { id: string; tipo: string; aceito_por: string; aceito_em: string };
 type IaLogItem = { acao: string; recurso: string; ts: string | null; entidade: string; entidade_id: string | null };
@@ -65,7 +67,7 @@ export function ConformidadeIaCard({
   const loading = consentimentos === null || iaLog === null;
 
   return (
-    <div className="card" style={{ marginTop: 20 }}>
+    <Card style={{ marginTop: 20 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
         <ShieldCheck size={16} color="var(--brand-2)" />
         <h2 style={{ fontSize: 15, margin: 0 }}>Conformidade IA (Res. CFP 09/2024)</h2>
@@ -90,9 +92,7 @@ export function ConformidadeIaCard({
                 <span style={{ fontSize: 13, color: "var(--muted)" }}>
                   Consentimento de uso de IA ainda não registrado para este paciente.
                 </span>
-                <button className="btn btn-primary" onClick={registrar} disabled={busy}>
-                  {busy ? "Registrando…" : "Registrar TCLE de IA"}
-                </button>
+                <Button variant="primary" onClick={registrar} loading={busy} loadingLabel="Registrando…">Registrar TCLE de IA</Button>
               </div>
             )}
           </div>
@@ -124,6 +124,6 @@ export function ConformidadeIaCard({
           </p>
         </>
       )}
-    </div>
+    </Card>
   );
 }

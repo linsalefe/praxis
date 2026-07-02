@@ -1,5 +1,7 @@
 "use client";
 
+import { Card } from "@/components/ui/Card";
+
 /**
  * PacienteCard — cabeçalho do prontuário.
  * Avatar com iniciais, identificação e meta em mono. "Adesão" é factual, com
@@ -71,7 +73,7 @@ export function PacienteCard({
     .join(" · ");
 
   return (
-    <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+    <Card style={{ padding: 0, overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 16, padding: 20 }}>
         <div
           aria-hidden
@@ -119,6 +121,6 @@ export function PacienteCard({
         />
         <Meta rotulo="Adesão" valor={baseAdesao > 0 ? `${realizadas}/${baseAdesao}` : "—"} />
       </div>
-    </div>
+    </Card>
   );
 }

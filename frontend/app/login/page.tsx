@@ -6,6 +6,8 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Info, LogIn, ShieldCheck } from "lucide-react";
 import { api, saveToken, ApiError } from "@/lib/api";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 
 type LoginResp = { access_token: string; mfa_required: boolean; scope: string };
 
@@ -49,7 +51,7 @@ export default function LoginPage() {
 
   return (
     <main className="container-praxis" style={{ maxWidth: 460 }}>
-      <div className="card">
+      <Card>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
           <ShieldCheck size={22} color="var(--brand-2)" />
           <h1 style={{ margin: 0, fontSize: 20 }}>Práxis · CENAT</h1>
@@ -81,15 +83,15 @@ export default function LoginPage() {
             <p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: "8px 0 0" }}>{erro}</p>
           )}
           <div style={{ height: 20 }} />
-          <button className="btn btn-primary" type="submit" disabled={loading}>
+          <Button variant="primary" type="submit" loading={loading}>
             <LogIn size={16} /> {loading ? "Entrando…" : "Entrar"}
-          </button>
+          </Button>
         </form>
         <hr className="divider" />
         <p style={{ fontSize: 13, color: "var(--muted)" }}>
           Não tem conta? <Link className="link" href="/registro">Cadastre-se</Link>.
         </p>
-      </div>
+      </Card>
     </main>
   );
 }

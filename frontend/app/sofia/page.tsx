@@ -9,6 +9,8 @@ import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { SofiaOrientacao } from "@/components/ui/SofiaOrientacao";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 
 type Citacao = {
   n: number;
@@ -149,9 +151,9 @@ function PageInner() {
             rows={1}
             style={{ resize: "none", minHeight: 40, lineHeight: 1.5, overflowY: "auto" }}
           />
-          <button className="btn btn-primary" type="submit" disabled={enviando || pergunta.trim().length < 3}>
+          <Button variant="primary" type="submit" disabled={enviando || pergunta.trim().length < 3}>
             <Send size={16} /> Enviar
-          </button>
+          </Button>
         </form>
 
         <p style={{ marginTop: 12, fontSize: 12, color: "var(--muted)" }}>
@@ -170,8 +172,7 @@ function PageInner() {
             }}
             onClick={() => setDrawer(null)}
           >
-            <div
-              className="card"
+            <Card
               style={{ maxWidth: 640, width: "92%", background: "var(--surface)" }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -192,9 +193,9 @@ function PageInner() {
               <hr className="divider" />
               <p style={{ whiteSpace: "pre-wrap" }}>{drawer.snippet}</p>
               <div style={{ textAlign: "right", marginTop: 12 }}>
-                <button className="btn" onClick={() => setDrawer(null)}>Fechar</button>
+                <Button onClick={() => setDrawer(null)}>Fechar</Button>
               </div>
-            </div>
+            </Card>
           </div>
         )}
       </main>

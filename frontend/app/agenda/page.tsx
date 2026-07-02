@@ -8,6 +8,9 @@ import { CalendarPlus, ChevronLeft, ChevronRight, Clock, Video } from "lucide-re
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Field } from "@/components/ui/Field";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Drawer } from "@/components/ui/Drawer";
 import { TelessessaoModal } from "@/components/TelessessaoModal";
@@ -116,16 +119,16 @@ export default function AgendaPage() {
                   }}>{v}</button>
               ))}
             </div>
-            <button className="btn btn-primary" onClick={() => setDrawer({ open: true })}>
+            <Button variant="primary" onClick={() => setDrawer({ open: true })}>
               <CalendarPlus size={16} /> Nova sessão
-            </button>
+            </Button>
           </div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "14px 0" }}>
-          <button className="btn" onClick={() => setAnchor((d) => addDays(d, -passo))} aria-label="Anterior">
+          <Button onClick={() => setAnchor((d) => addDays(d, -passo))} aria-label="Anterior">
             <ChevronLeft size={16} /> Anterior
-          </button>
+          </Button>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}>
               {view === "dia"
@@ -134,9 +137,9 @@ export default function AgendaPage() {
             </div>
             <button className="link" style={{ fontSize: 12 }} onClick={() => setAnchor(new Date())}>hoje</button>
           </div>
-          <button className="btn" onClick={() => setAnchor((d) => addDays(d, passo))} aria-label="Próxima">
+          <Button onClick={() => setAnchor((d) => addDays(d, passo))} aria-label="Próxima">
             Próxima <ChevronRight size={16} />
-          </button>
+          </Button>
         </div>
 
         {loading ? (
@@ -146,12 +149,12 @@ export default function AgendaPage() {
             <Skeleton height={64} radius="var(--radius-lg)" />
           </div>
         ) : sessoes.length === 0 ? (
-          <div className="card" style={{ textAlign: "center", color: "var(--muted)", padding: 28 }}>
+          <Card style={{ textAlign: "center", color: "var(--muted)", padding: 28 }}>
             {view === "dia" ? "Nenhuma sessão neste dia." : "Nenhuma sessão nesta semana."}
             <div style={{ marginTop: 10 }}>
-              <button className="btn" onClick={() => setDrawer({ open: true })}><CalendarPlus size={15} /> Agendar</button>
+              <Button onClick={() => setDrawer({ open: true })}><CalendarPlus size={15} /> Agendar</Button>
             </div>
-          </div>
+          </Card>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: view === "dia" ? 8 : 18 }}>
             {dias.map((d) => {
@@ -229,7 +232,7 @@ function SessaoRow({
 }) {
   const pendente = s.status === "agendada" && new Date(s.data) < new Date();
   return (
-    <div className="card" style={{
+    <Card style={{
       display: "flex", alignItems: "center", gap: 12, padding: "12px 14px",
       borderLeft: pendente ? "3px solid var(--warn-line)" : undefined,
     }}>
@@ -246,20 +249,20 @@ function SessaoRow({
       </div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
         {s.modalidade === "online" && s.status !== "cancelada" && (
-          <button className="btn btn-primary" onClick={onSala} title="Telessessão"><Video size={15} /> Sala</button>
+          <Button variant="primary" onClick={onSala} title="Telessessão"><Video size={15} /> Sala</Button>
         )}
         {s.status === "agendada" ? (
           <>
-            <button className="btn" onClick={() => onStatus(s, "realizada")} title="Marcar comparecido">Realizada</button>
-            <button className="btn" onClick={() => onStatus(s, "falta")}>Falta</button>
-            <button className="btn btn-danger" onClick={onCancelar}>Cancelar</button>
+            <Button onClick={() => onStatus(s, "realizada")} title="Marcar comparecido">Realizada</Button>
+            <Button onClick={() => onStatus(s, "falta")}>Falta</Button>
+            <Button variant="danger" onClick={onCancelar}>Cancelar</Button>
           </>
         ) : (
-          <button className="btn" onClick={() => onStatus(s, "agendada")}>Reabrir</button>
+          <Button onClick={() => onStatus(s, "agendada")}>Reabrir</Button>
         )}
-        <button className="btn" onClick={onReagendar}>Reagendar</button>
+        <Button onClick={onReagendar}>Reagendar</Button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -299,8 +302,7 @@ function SessaoForm({
 
   return (
     <form onSubmit={salvar} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div>
-        <label className="label">Paciente</label>
+      <Field label="Paciente">
         {editar ? (
           <input className="input" value={editar.paciente_nome} disabled />
         ) : (
@@ -309,21 +311,19 @@ function SessaoForm({
             {pacientes.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
           </select>
         )}
-      </div>
-      <div>
-        <label className="label">Data e hora</label>
+      </Field>
+      <Field label="Data e hora">
         <input className="input" type="datetime-local" value={data} onChange={(e) => setData(e.target.value)} required />
-      </div>
-      <div>
-        <label className="label">Modalidade</label>
+      </Field>
+      <Field label="Modalidade">
         <select className="input" value={modalidade} onChange={(e) => setModalidade(e.target.value)}>
           <option value="presencial">Presencial</option>
           <option value="online">Online</option>
         </select>
-      </div>
-      <button className="btn btn-primary" disabled={busy} style={{ marginTop: 4 }}>
+      </Field>
+      <Button variant="primary" loading={busy} style={{ marginTop: 4 }}>
         <CalendarPlus size={16} /> {busy ? "Salvando…" : editar ? "Reagendar" : "Agendar"}
-      </button>
+      </Button>
     </form>
   );
 }

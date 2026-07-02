@@ -9,6 +9,8 @@ import { Topbar } from "@/components/Topbar";
 import { BreadcrumbPaciente } from "@/components/ui/BreadcrumbPaciente";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { InstrumentoFaixa, FaixaSeveridade, type FaixaDef } from "@/components/ui/InstrumentoFaixa";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
@@ -179,7 +181,7 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
       <Topbar />
       <main className="container-praxis" style={{ maxWidth: 900 }}>
         <BreadcrumbPaciente pacienteId={resp.paciente_id} />
-        <div className="card" style={{ marginTop: 8 }}>
+        <Card style={{ marginTop: 8 }}>
           <InstrumentoFaixa
             titulo={instr.titulo}
             versao={instr.versao}
@@ -195,10 +197,10 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
           {instr.descricao && (
             <p style={{ color: "var(--muted)", fontSize: 13, margin: "10px 0 0" }}>{instr.descricao}</p>
           )}
-        </div>
+        </Card>
 
         {!isSaidaStep && !isLikert && (
-          <div className="card" style={{ marginTop: 12 }}>
+          <Card style={{ marginTop: 12 }}>
             <h2 style={{ fontSize: 15, marginTop: 0 }}>{secoes[step].titulo}</h2>
             {secoes[step].descricao && (
               <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 0 }}>{secoes[step].descricao}</p>
@@ -214,12 +216,12 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
                 />
               ))}
             </div>
-          </div>
+          </Card>
         )}
 
         {!isSaidaStep && isLikert && instr.definicao && (
           <>
-            <div className="card" style={{ marginTop: 12 }}>
+            <Card style={{ marginTop: 12 }}>
               {instr.definicao.instrucoes && (
                 <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 0 }}>{instr.definicao.instrucoes}</p>
               )}
@@ -236,19 +238,19 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
                   />
                 ))}
               </div>
-            </div>
-            <div className="card" style={{ marginTop: 12 }}>
+            </Card>
+            <Card style={{ marginTop: 12 }}>
               <h2 style={{ fontSize: 15, marginTop: 0 }}>Escore (calculado)</h2>
               <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 12px" }}>
                 O escore e a faixa são calculados pelo servidor — factuais. A interpretação clínica é do profissional.
               </p>
               <PainelFaixa definicao={instr.definicao} pontuacao={resp.pontuacao} />
-            </div>
+            </Card>
           </>
         )}
 
         {isSaidaStep && (
-          <div className="card" style={{ marginTop: 12 }}>
+          <Card style={{ marginTop: 12 }}>
             <h2 style={{ fontSize: 15, marginTop: 0 }}>Saída — revise e finalize</h2>
             {instr.tipo === "gam" && (
               <div style={{ marginBottom: 12, padding: 10, borderRadius: "var(--radius-md)", background: "var(--surface-2)", display: "flex", gap: 8, alignItems: "flex-start" }}>
@@ -273,9 +275,9 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
               Enquanto não finalizar, permanece rascunho editável.
             </p>
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              <button className="btn" onClick={gerar} disabled={!!busy || finalizado}>
+              <Button onClick={gerar} disabled={!!busy || finalizado}>
                 <PresenceMark size={16} /> {busy || "Gerar rascunho"}
-              </button>
+              </Button>
               {resp.saida_provider && (
                 <span className="badge">{resp.saida_provider}</span>
               )}
@@ -295,21 +297,21 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
                 </a>
               )}
               {!finalizado && (
-                <button className="btn btn-primary" onClick={finalizar} disabled={!!busy}>
+                <Button variant="primary" onClick={finalizar} disabled={!!busy}>
                   <FileCheck2 size={16} /> {busy || "Finalizar e anexar PDF"}
-                </button>
+                </Button>
               )}
             </div>
-          </div>
+          </Card>
         )}
 
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16 }}>
-          <button className="btn" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
+          <Button onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
             <ChevronLeft size={16} /> Anterior
-          </button>
-          <button className="btn" onClick={() => setStep((s) => Math.min(passosItens, s + 1))} disabled={step >= passosItens}>
+          </Button>
+          <Button onClick={() => setStep((s) => Math.min(passosItens, s + 1))} disabled={step >= passosItens}>
             Próximo <ChevronRight size={16} />
-          </button>
+          </Button>
         </div>
 
         <p style={{ marginTop: 16, color: "var(--muted)", fontSize: 11 }}>

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useFocusTrap } from "@/lib/useFocusTrap";
+import { Button } from "@/components/ui/Button";
 
 /**
  * ConfirmDialog — confirmação para ações irreversíveis (dado clínico não some
@@ -69,12 +70,12 @@ export function ConfirmDialog({
           </p>
         )}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <button className="btn" onClick={onCancel} disabled={busy} type="button">
+          <Button onClick={onCancel} disabled={busy} type="button">
             {cancelLabel}
-          </button>
-          <button className="btn btn-danger" onClick={onConfirm} disabled={busy} type="button">
+          </Button>
+          <Button variant="danger" onClick={onConfirm} disabled={busy} type="button">
             {busy ? "Excluindo…" : confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ClipboardCheck, Copy, Link2, Quote, X } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 
 type Citacao = {
   n: number; titulo: string; autor: string; is_terceiro: boolean;
@@ -92,8 +94,7 @@ export function PrepararSessaoModal({
       }}
       onClick={busy ? undefined : onClose}
     >
-      <div
-        className="card"
+      <Card
         style={{ width: "94%", maxWidth: 820, maxHeight: "88vh", overflow: "hidden", display: "flex", flexDirection: "column" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -101,7 +102,7 @@ export function PrepararSessaoModal({
           <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <ClipboardCheck size={18} color="var(--brand-2)" /> Preparação de sessão
           </h3>
-          <button className="btn" onClick={onClose} disabled={!!busy}><X size={14} /></button>
+          <Button onClick={onClose} disabled={!!busy}><X size={14} /></Button>
         </div>
 
         {busy && (
@@ -168,13 +169,13 @@ export function PrepararSessaoModal({
                     </option>
                   ))}
                 </select>
-                <button className="btn" onClick={vincular} disabled={!!busy}>
+                <Button onClick={vincular} disabled={!!busy}>
                   Salvar vínculo
-                </button>
+                </Button>
               </div>
-              <button className="btn btn-primary" onClick={copiar} disabled={!!busy}>
+              <Button variant="primary" onClick={copiar} disabled={!!busy}>
                 <Copy size={14} /> Copiar
-              </button>
+              </Button>
             </div>
 
             <p style={{ marginTop: 10, color: "var(--muted)", fontSize: 11 }}>
@@ -182,7 +183,7 @@ export function PrepararSessaoModal({
             </p>
           </>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

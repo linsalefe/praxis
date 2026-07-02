@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { KeyRound } from "lucide-react";
 import { api, saveToken, ApiError } from "@/lib/api";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 
 type TokenResp = { access_token: string; scope: string };
 
@@ -33,7 +35,7 @@ export default function TwoFactorPage() {
 
   return (
     <main className="container-praxis" style={{ maxWidth: 420 }}>
-      <div className="card">
+      <Card>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
           <KeyRound size={22} color="var(--brand-2)" />
           <h1 style={{ margin: 0, fontSize: 20 }}>Verificação 2FA</h1>
@@ -54,11 +56,11 @@ export default function TwoFactorPage() {
             autoFocus
           />
           <div style={{ height: 16 }} />
-          <button className="btn btn-primary" type="submit" disabled={loading}>
+          <Button variant="primary" type="submit" loading={loading}>
             {loading ? "Verificando…" : "Verificar"}
-          </button>
+          </Button>
         </form>
-      </div>
+      </Card>
     </main>
   );
 }

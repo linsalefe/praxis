@@ -8,6 +8,9 @@ import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { SkeletonCard } from "@/components/ui/Skeleton";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { SectionTitle } from "@/components/ui/SectionTitle";
 
 type Obra = {
   id: string; slug: string; titulo: string; autor: string;
@@ -88,11 +91,11 @@ export default function BibliotecaPage() {
             onChange={(e) => setQ(e.target.value)}
             minLength={3}
           />
-          <button className="btn btn-primary" type="submit" disabled={buscando}>
+          <Button variant="primary" type="submit" loading={buscando}>
             <Search size={16} /> {buscando ? "Buscando…" : "Buscar"}
-          </button>
+          </Button>
           {hits !== null && (
-            <button className="btn" type="button" onClick={limpar}>Limpar</button>
+            <Button type="button" onClick={limpar}>Limpar</Button>
           )}
         </form>
 
@@ -106,17 +109,17 @@ export default function BibliotecaPage() {
 
         {!buscando && hits !== null && (
           <section style={{ marginBottom: 28 }}>
-            <h2 style={{ fontSize: 15, color: "var(--muted)", margin: "0 0 10px" }}>
+            <SectionTitle margin="0 0 10px">
               {hits.length > 0
                 ? `${hits.length} trecho${hits.length > 1 ? "s" : ""} no acervo`
                 : "Resultados"}
-            </h2>
+            </SectionTitle>
             {hits.length === 0 ? (
-              <div className="card">
+              <Card>
                 <p style={{ margin: 0, color: "var(--muted)" }}>
                   Nenhum trecho do acervo respondeu a esta busca. Tente outras palavras.
                 </p>
-              </div>
+              </Card>
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
                 {hits.map((h, i) => (
@@ -147,7 +150,7 @@ export default function BibliotecaPage() {
         )}
 
         {/* Grade das obras */}
-        <h2 style={{ fontSize: 15, color: "var(--muted)", margin: "0 0 10px" }}>Obras</h2>
+        <SectionTitle margin="0 0 10px">Obras</SectionTitle>
         {loading ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
             <SkeletonCard lines={2} />
@@ -155,9 +158,9 @@ export default function BibliotecaPage() {
             <SkeletonCard lines={2} />
           </div>
         ) : obras.length === 0 ? (
-          <div className="card">
+          <Card>
             <p style={{ margin: 0, color: "var(--muted)" }}>O acervo ainda não tem obras indexadas.</p>
-          </div>
+          </Card>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
             {obras.map((o) => (

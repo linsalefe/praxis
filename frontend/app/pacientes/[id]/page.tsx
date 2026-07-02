@@ -22,6 +22,10 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Drawer } from "@/components/ui/Drawer";
 import { MenuAcoes } from "@/components/ui/MenuAcoes";
 import { GraficoTrajetoria, type SerieTrajetoria } from "@/components/ui/GraficoTrajetoria";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { SectionTitle } from "@/components/ui/SectionTitle";
+import { Field } from "@/components/ui/Field";
 
 type TabKey = "visao" | "trajetoria" | "sessoes" | "instrumentos" | "documentos";
 const TABS: [TabKey, string][] = [
@@ -244,13 +248,13 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
         {/* Header de ação: 1 CTA primário contextual + menu "···" (secundárias e destrutivas separadas) */}
         <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", justifyContent: "flex-end", flexWrap: "wrap" }}>
           {sessaoHojeSemEvolucao ? (
-            <button className="btn btn-primary" onClick={() => novaEvolucao(sessaoHojeSemEvolucao.id)}>
+            <Button variant="primary" onClick={() => novaEvolucao(sessaoHojeSemEvolucao.id)}>
               <FilePlus size={16} /> Registrar evolução
-            </button>
+            </Button>
           ) : (
-            <button className="btn btn-primary" onClick={() => setAgendarOpen(true)}>
+            <Button variant="primary" onClick={() => setAgendarOpen(true)}>
               <CalendarPlus size={16} /> Agendar sessão
-            </button>
+            </Button>
           )}
           <MenuAcoes
             secundarias={[
@@ -299,7 +303,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
         <div role="tabpanel" id="panel-visao" aria-labelledby="tab-visao" hidden={tab !== "visao"}>
           {resumo && resumo.sessoes.total > 0 ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
-              <div className="card">
+              <Card>
                 <div style={{ color: "var(--muted)", fontSize: 12 }}>Sessões realizadas</div>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 20 }}>
                   {resumo.sessoes.realizadas}<span style={{ fontSize: 12, color: "var(--warm-500)" }}>/{resumo.sessoes.total}</span>
@@ -307,20 +311,20 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                 <div style={{ color: "var(--muted)", fontSize: 11 }}>
                   {resumo.sessoes.faltas} falta(s) · {resumo.sessoes.canceladas} cancel. · {resumo.sessoes.agendadas_futuras} agendada(s)
                 </div>
-              </div>
-              <div className="card">
+              </Card>
+              <Card>
                 <div style={{ color: "var(--muted)", fontSize: 12 }}>Adesão</div>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 20 }}>
                   {resumo.adesao.den > 0 ? `${resumo.adesao.num}/${resumo.adesao.den}` : "—"}
                 </div>
                 <div style={{ color: "var(--muted)", fontSize: 11 }}>{resumo.adesao.criterio}</div>
-              </div>
-              <div className="card">
+              </Card>
+              <Card>
                 <div style={{ color: "var(--muted)", fontSize: 12 }}>Evoluções</div>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 20 }}>{resumo.evolucoes.assinadas}</div>
                 <div style={{ color: "var(--muted)", fontSize: 11 }}>assinadas · {resumo.evolucoes.rascunho} rascunho</div>
-              </div>
-              <div className="card">
+              </Card>
+              <Card>
                 <div style={{ color: "var(--muted)", fontSize: 12 }}>Período de acompanhamento</div>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, marginTop: 4 }}>
                   {resumo.primeira_sessao ? new Date(resumo.primeira_sessao).toLocaleDateString("pt-BR") : "—"}
@@ -328,7 +332,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                   {resumo.ultima_sessao ? new Date(resumo.ultima_sessao).toLocaleDateString("pt-BR") : "—"}
                 </div>
                 <div style={{ color: "var(--muted)", fontSize: 11 }}>{resumo.instrumentos_aplicados} instrumento(s) aplicado(s)</div>
-              </div>
+              </Card>
             </div>
           ) : (
             <p style={{ color: "var(--muted)" }}>Sem números ainda — agende e registre sessões para ver o resumo factual.</p>
@@ -343,26 +347,22 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
           )}
           {series.length > 0 && (
             <>
-              <h2 style={{ fontSize: 15, margin: "0 0 8px", color: "var(--muted)" }}>
-                <Activity size={13} style={{ display: "inline", verticalAlign: "middle" }} /> Trajetória de escores
-              </h2>
+              <SectionTitle icon={<Activity size={13} style={{ display: "inline", verticalAlign: "middle" }} />} margin="0 0 8px">Trajetória de escores</SectionTitle>
               <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 12px" }}>
                 Escores registrados das escalas reaplicadas. Bandas = faixas de severidade. A leitura clínica é do profissional.
               </p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12 }}>
                 {series.map((s) => (
-                  <div key={s.tipo} className="card">
+                  <Card key={s.tipo}>
                     <GraficoTrajetoria serie={s} />
-                  </div>
+                  </Card>
                 ))}
               </div>
             </>
           )}
           {timeline.length > 0 && (
             <>
-              <h2 style={{ fontSize: 15, margin: "24px 0 8px", color: "var(--muted)" }}>
-                <CalendarClock size={13} style={{ display: "inline", verticalAlign: "middle" }} /> Linha do tempo
-              </h2>
+              <SectionTitle icon={<CalendarClock size={13} style={{ display: "inline", verticalAlign: "middle" }} />} margin="24px 0 8px">Linha do tempo</SectionTitle>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {timeline.map((ev) => (
                   <EventoLinha key={`${ev.tipo_evento}-${ev.ref_id}`} ev={ev} />
@@ -375,15 +375,15 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
         {/* ===== Sessões ===== */}
         <div role="tabpanel" id="panel-sessoes" aria-labelledby="tab-sessoes" hidden={tab !== "sessoes"}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 0 12px", gap: 8 }}>
-            <h2 style={{ fontSize: 15, margin: 0, color: "var(--muted)" }}>Timeline de sessões</h2>
-            <button className="btn" onClick={() => setAgendarOpen(true)}><CalendarPlus size={16} /> Agendar sessão</button>
+            <SectionTitle margin="0">Timeline de sessões</SectionTitle>
+            <Button onClick={() => setAgendarOpen(true)}><CalendarPlus size={16} /> Agendar sessão</Button>
           </div>
           {sessoes.length === 0 ? (
             <p style={{ color: "var(--muted)" }}>Nenhuma sessão registrada ainda — use “Agendar sessão”.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {sessoes.map((s) => (
-                <div key={s.id} className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Card key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div>
                     <div style={{ fontWeight: 500 }}>{dataRelativa(s.data)}</div>
                     <div style={{ color: "var(--muted)", fontSize: 13 }}>
@@ -394,18 +394,18 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     {s.modalidade === "online" && s.status !== "cancelada" && (
-                      <button className="btn btn-primary" onClick={() => setTelessessao(s.id)}>
+                      <Button variant="primary" onClick={() => setTelessessao(s.id)}>
                         <Video size={16} /> Sala
-                      </button>
+                      </Button>
                     )}
-                    <button className="btn" onClick={() => setScribeSessao(s.id)}>
+                    <Button onClick={() => setScribeSessao(s.id)}>
                       <PresenceMark size={16} /> Gerar evolução
-                    </button>
-                    <button className="btn" onClick={() => novaEvolucao(s.id)}>
+                    </Button>
+                    <Button onClick={() => novaEvolucao(s.id)}>
                       <FileText size={16} /> Em branco
-                    </button>
+                    </Button>
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
           )}
@@ -414,13 +414,13 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
         {/* ===== Instrumentos ===== */}
         <div role="tabpanel" id="panel-instrumentos" aria-labelledby="tab-instrumentos" hidden={tab !== "instrumentos"}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 0 12px", gap: 8 }}>
-            <h2 style={{ fontSize: 15, margin: 0, color: "var(--muted)" }}>Instrumentos</h2>
-            <button className="btn" onClick={() => setInstrModal(true)}><ClipboardList size={16} /> Novo instrumento</button>
+            <SectionTitle margin="0">Instrumentos</SectionTitle>
+            <Button onClick={() => setInstrModal(true)}><ClipboardList size={16} /> Novo instrumento</Button>
           </div>
           {respostas.length === 0 ? (
             <p style={{ color: "var(--muted)" }}>Nenhum instrumento aplicado ainda.</p>
           ) : respostas.map((r) => (
-            <div key={r.id} className="card" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <Card key={r.id} style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontWeight: 500 }}>{r.instrumento_tipo.toUpperCase()} · {r.instrumento_versao}</div>
                 <div style={{ color: "var(--muted)", fontSize: 12 }}>
@@ -439,21 +439,21 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                   </a>
                 )}
               </div>
-            </div>
+            </Card>
           ))}
         </div>
 
         {/* ===== Documentos (+ anexos do prontuário) ===== */}
         <div role="tabpanel" id="panel-documentos" aria-labelledby="tab-documentos" hidden={tab !== "documentos"}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 0 12px", gap: 8 }}>
-            <h2 style={{ fontSize: 15, margin: 0, color: "var(--muted)" }}>Documentos CFP</h2>
-            <button className="btn" onClick={() => setDocModal(true)}><FileSignature size={16} /> Gerar documento</button>
+            <SectionTitle margin="0">Documentos CFP</SectionTitle>
+            <Button onClick={() => setDocModal(true)}><FileSignature size={16} /> Gerar documento</Button>
           </div>
           {documentos.length === 0 ? (
             <p style={{ color: "var(--muted)" }}>Nenhum documento gerado ainda.</p>
           ) : (
             documentos.map((d) => (
-              <div key={d.id} className="card" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Card key={d.id} style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
                   <div style={{ fontWeight: 500, textTransform: "capitalize" }}>{d.tipo}</div>
                   <div style={{ color: "var(--muted)", fontSize: 12 }}>
@@ -471,15 +471,13 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                     </a>
                   )}
                 </div>
-              </div>
+              </Card>
             ))
           )}
           {anexos.length > 0 && (
             <>
-              <h2 style={{ fontSize: 15, margin: "24px 0 8px", color: "var(--muted)" }}>
-                <Paperclip size={13} style={{ display: "inline", verticalAlign: "middle" }} /> Anexos do prontuário
-              </h2>
-              <div className="card" style={{ padding: 0 }}>
+              <SectionTitle icon={<Paperclip size={13} style={{ display: "inline", verticalAlign: "middle" }} />} margin="24px 0 8px">Anexos do prontuário</SectionTitle>
+              <Card style={{ padding: 0 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12 }}>
@@ -504,40 +502,36 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </Card>
             </>
           )}
         </div>
       </main>
       <Drawer open={agendarOpen} title="Agendar sessão" onClose={() => setAgendarOpen(false)}>
         <form onSubmit={criarSessao} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div>
-            <label className="label">Data e hora</label>
+          <Field label="Data e hora">
             <input className="input" type="datetime-local" required
               value={newSes.data} onChange={(e) => setNewSes({ ...newSes, data: e.target.value })} />
-          </div>
-          <div>
-            <label className="label">Modalidade</label>
+          </Field>
+          <Field label="Modalidade">
             <select className="input" value={newSes.modalidade} onChange={(e) => setNewSes({ ...newSes, modalidade: e.target.value })}>
               <option value="presencial">Presencial</option>
               <option value="online">Online</option>
             </select>
-          </div>
-          <div>
-            <label className="label">Status</label>
+          </Field>
+          <Field label="Status">
             <select className="input" value={newSes.status} onChange={(e) => setNewSes({ ...newSes, status: e.target.value })}>
               <option value="agendada">Agendada</option>
               <option value="realizada">Realizada</option>
               <option value="cancelada">Cancelada</option>
               <option value="falta">Falta</option>
             </select>
-          </div>
-          <div>
-            <label className="label">Valor (R$)</label>
+          </Field>
+          <Field label="Valor (R$)">
             <input className="input" inputMode="decimal" placeholder="150,00"
               value={newSes.valor} onChange={(e) => setNewSes({ ...newSes, valor: e.target.value })} />
-          </div>
-          <button className="btn btn-primary" style={{ marginTop: 4 }}><CalendarPlus size={16} /> Agendar</button>
+          </Field>
+          <Button variant="primary" style={{ marginTop: 4 }}><CalendarPlus size={16} /> Agendar</Button>
         </form>
       </Drawer>
       {scribeSessao && (
@@ -600,7 +594,7 @@ function EventoLinha({ ev }: { ev: EventoTimeline }) {
     badges.push(<span key={`ss${i}`} className="badge">{s.rotulo} {s.escore}</span>));
 
   const inner = (
-    <div className="card" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px" }}>
+    <Card style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px" }}>
       <Icon size={16} color="var(--brand-2)" style={{ flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 500, fontSize: 14 }}>{ev.titulo}</div>
@@ -610,7 +604,7 @@ function EventoLinha({ ev }: { ev: EventoTimeline }) {
         </div>
       </div>
       {href && <span className="link" style={{ fontSize: 13, flexShrink: 0 }}>abrir →</span>}
-    </div>
+    </Card>
   );
   return href ? <Link href={href} style={{ textDecoration: "none", color: "inherit" }}>{inner}</Link> : inner;
 }

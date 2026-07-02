@@ -6,6 +6,9 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
 import { api, saveToken, ApiError } from "@/lib/api";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Field } from "@/components/ui/Field";
 
 const ABORDAGENS = [
   { v: "dialogo_aberto", l: "Diálogo Aberto" },
@@ -54,7 +57,7 @@ export default function RegisterPage() {
 
   return (
     <main className="container-praxis" style={{ maxWidth: 560 }}>
-      <div className="card">
+      <Card>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
           <UserPlus size={22} color="var(--brand-2)" />
           <h1 style={{ margin: 0, fontSize: 20 }}>Cadastro profissional</h1>
@@ -64,24 +67,19 @@ export default function RegisterPage() {
         </p>
         <form onSubmit={onSubmit}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <label className="label">Nome completo</label>
+            <Field label="Nome completo">
               <input className="input" required value={form.nome} onChange={(e) => upd("nome", e.target.value)} />
-            </div>
-            <div>
-              <label className="label">CRP</label>
+            </Field>
+            <Field label="CRP">
               <input className="input" placeholder="00/00000" value={form.crp} onChange={(e) => upd("crp", e.target.value)} />
-            </div>
-            <div>
-              <label className="label">Email</label>
+            </Field>
+            <Field label="Email">
               <input className="input" type="email" required value={form.email} onChange={(e) => upd("email", e.target.value)} aria-invalid={emailInvalido || undefined} />
-            </div>
-            <div>
-              <label className="label">Senha (mín. 8)</label>
+            </Field>
+            <Field label="Senha (mín. 8)">
               <input className="input" type="password" required minLength={8} value={form.senha} onChange={(e) => upd("senha", e.target.value)} />
-            </div>
-            <div>
-              <label className="label">Abordagem preferida</label>
+            </Field>
+            <Field label="Abordagem preferida">
               <select
                 className="input"
                 value={form.abordagem}
@@ -91,9 +89,8 @@ export default function RegisterPage() {
                   <option key={a.v} value={a.v}>{a.l}</option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="label">Tipo do tenant</label>
+            </Field>
+            <Field label="Tipo do tenant">
               <select
                 className="input"
                 value={form.tenant_tipo}
@@ -102,25 +99,24 @@ export default function RegisterPage() {
                 <option value="solo">Consultório individual</option>
                 <option value="clinica">Clínica</option>
               </select>
-            </div>
-            <div style={{ gridColumn: "1 / span 2" }}>
-              <label className="label">Nome do consultório/clínica</label>
+            </Field>
+            <Field label="Nome do consultório/clínica" style={{ gridColumn: "1 / span 2" }}>
               <input className="input" required value={form.tenant_nome} onChange={(e) => upd("tenant_nome", e.target.value)} />
-            </div>
+            </Field>
           </div>
           {erro && (
             <p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: "12px 0 0" }}>{erro}</p>
           )}
           <div style={{ height: 16 }} />
-          <button className="btn btn-primary" type="submit" disabled={loading}>
+          <Button variant="primary" type="submit" loading={loading}>
             {loading ? "Cadastrando…" : "Cadastrar"}
-          </button>
+          </Button>
         </form>
         <hr className="divider" />
         <p style={{ fontSize: 13, color: "var(--muted)" }}>
           Já tem conta? <Link className="link" href="/login">Entrar</Link>.
         </p>
-      </div>
+      </Card>
     </main>
   );
 }

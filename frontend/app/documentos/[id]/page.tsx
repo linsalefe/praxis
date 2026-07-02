@@ -10,6 +10,9 @@ import { Topbar } from "@/components/Topbar";
 import { Drawer } from "@/components/ui/Drawer";
 import { CopiarBtn } from "@/components/ui/CopiarBtn";
 import { BreadcrumbPaciente } from "@/components/ui/BreadcrumbPaciente";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Field } from "@/components/ui/Field";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
@@ -151,7 +154,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         </div>
         <p style={{ color: "var(--muted)", fontSize: 13, margin: "4px 0 12px" }}>{tpl.descricao}</p>
 
-        <div className="card">
+        <Card>
           <label className="label">Finalidade</label>
           <input
             className="input"
@@ -171,11 +174,11 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
               />
             </>
           )}
-        </div>
+        </Card>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
           {tpl.blocos.map((b) => (
-            <div key={b.id} className="card">
+            <Card key={b.id}>
               <label className="label" style={{ fontSize: 14, color: "var(--text)", marginBottom: 4 }}>
                 {b.label}
               </label>
@@ -191,7 +194,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                 }}
                 disabled={finalizado}
               />
-            </div>
+            </Card>
           ))}
         </div>
 
@@ -203,18 +206,18 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
           )}
           {!finalizado && (
             <>
-              <button className="btn" onClick={() => setIcpOpen(true)} disabled={!!busy}>
+              <Button onClick={() => setIcpOpen(true)} disabled={!!busy}>
                 <ShieldCheck size={16} /> Assinar com ICP-Brasil
-              </button>
-              <button className="btn btn-primary" onClick={assinar} disabled={!!busy}>
+              </Button>
+              <Button variant="primary" onClick={assinar} disabled={!!busy}>
                 <FileCheck2 size={16} /> {busy || "Assinar (simples)"}
-              </button>
+              </Button>
             </>
           )}
         </div>
 
         {verif && verif.assinado && (
-          <div className="card" style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <Card style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "flex-start" }}>
             <BadgeCheck size={20} color={verif.valido && verif.intacto ? "var(--pos-fg)" : "var(--warn-fg)"} style={{ flexShrink: 0, marginTop: 2 }} />
             <div>
               <div style={{ fontWeight: 500 }}>
@@ -227,7 +230,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                 <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 4 }}>{verif.nota}</div>
               )}
             </div>
-          </div>
+          </Card>
         )}
 
         {finalizado && doc.hash_assinatura && (
@@ -247,14 +250,13 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
           Requer um certificado A1 cadastrado em <Link className="link" href="/conta/2fa">Conta</Link>.
         </p>
         <form onSubmit={(e) => { e.preventDefault(); assinarIcp(); }} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div>
-            <label className="label">Senha do certificado</label>
+          <Field label="Senha do certificado">
             <input className="input" type="password" autoFocus value={senhaIcp}
               onChange={(e) => setSenhaIcp(e.target.value)} placeholder="••••••••" />
-          </div>
-          <button className="btn btn-primary" disabled={!!busy || !senhaIcp}>
+          </Field>
+          <Button variant="primary" disabled={!!busy || !senhaIcp}>
             <ShieldCheck size={16} /> {busy || "Assinar documento"}
-          </button>
+          </Button>
         </form>
       </Drawer>
     </>
