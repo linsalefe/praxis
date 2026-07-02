@@ -122,6 +122,43 @@ export default function InicioPage() {
   const c = dados?.contadores;
   const tudoEmDia = c && c.sessoes_hoje + c.evolucoes_rascunho + c.documentos_rascunho + c.instrumentos_pendentes === 0;
 
+  // I1: pendência mais urgente vira CTA hero no topo. Prioridade clínica/legal:
+  // evoluções a assinar → instrumentos a interpretar → documentos em rascunho.
+  const hero = (() => {
+    if (!dados) return null;
+    const ev = dados.evolucoes_rascunho;
+    if (ev.length) {
+      const n = ev.length;
+      return {
+        icon: <FileSignature size={22} color="var(--brand)" />,
+        texto: `Você tem ${n} evolução${n > 1 ? "ões" : ""} aguardando assinatura`,
+        href: `/evolucoes/${ev[0].evolucao_id}`,
+        cta: n > 1 ? "Revisar a primeira" : "Revisar",
+      };
+    }
+    const ins = dados.instrumentos_pendentes;
+    if (ins.length) {
+      const n = ins.length;
+      return {
+        icon: <ClipboardList size={22} color="var(--brand)" />,
+        texto: `${n} instrumento${n > 1 ? "s" : ""} aguardando sua interpretação`,
+        href: `/instrumentos/${ins[0].resposta_id}`,
+        cta: n > 1 ? "Interpretar o primeiro" : "Interpretar",
+      };
+    }
+    const doc = dados.documentos_rascunho;
+    if (doc.length) {
+      const n = doc.length;
+      return {
+        icon: <FileText size={22} color="var(--brand)" />,
+        texto: `${n} documento${n > 1 ? "s" : ""} em rascunho para concluir`,
+        href: `/documentos/${doc[0].documento_id}`,
+        cta: n > 1 ? "Abrir o primeiro" : "Abrir",
+      };
+    }
+    return null;
+  })();
+
   return (
     <>
       <Topbar meNome={me} />
@@ -148,6 +185,22 @@ export default function InicioPage() {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {/* I1: hero da pendência mais urgente do dia */}
+            {hero && (
+              <Card style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", borderLeft: "4px solid var(--brand)", background: "var(--teal-50)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                  {hero.icon}
+                  <div>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 600 }}>{hero.texto}</div>
+                    <div style={{ color: "var(--muted)", fontSize: 13 }}>Priorize isto antes do resto do dia.</div>
+                  </div>
+                </div>
+                <Link href={hero.href} className="btn btn-primary">
+                  {hero.cta} <ArrowRight size={16} />
+                </Link>
+              </Card>
+            )}
+
             {/* Sessões de hoje */}
             <Bloco titulo="Sessões de hoje" contador={c?.sessoes_hoje}>
               {dados && dados.sessoes_hoje.length > 0 ? (
@@ -193,23 +246,6 @@ export default function InicioPage() {
                 )}
               </Bloco>
 
-              <Bloco titulo="Documentos em rascunho" contador={c?.documentos_rascunho}>
-                {dados && dados.documentos_rascunho.length > 0 ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {dados.documentos_rascunho.map((d) => (
-                      <ItemLink key={d.documento_id} href={`/documentos/${d.documento_id}`}>
-                        <FileText size={16} color="var(--brand-2)" style={{ flex: "none" }} />
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textTransform: "capitalize" }}>
-                          {d.tipo} — {formatNome(d.paciente_nome)}
-                        </span>
-                      </ItemLink>
-                    ))}
-                  </div>
-                ) : (
-                  <Vazio>Nenhum documento em rascunho.</Vazio>
-                )}
-              </Bloco>
-
               <Bloco titulo="Instrumentos para interpretar" contador={c?.instrumentos_pendentes}>
                 {dados && dados.instrumentos_pendentes.length > 0 ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -224,6 +260,23 @@ export default function InicioPage() {
                   </div>
                 ) : (
                   <Vazio>Nenhum instrumento aguardando interpretação.</Vazio>
+                )}
+              </Bloco>
+
+              <Bloco titulo="Documentos em rascunho" contador={c?.documentos_rascunho}>
+                {dados && dados.documentos_rascunho.length > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {dados.documentos_rascunho.map((d) => (
+                      <ItemLink key={d.documento_id} href={`/documentos/${d.documento_id}`}>
+                        <FileText size={16} color="var(--brand-2)" style={{ flex: "none" }} />
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textTransform: "capitalize" }}>
+                          {d.tipo} — {formatNome(d.paciente_nome)}
+                        </span>
+                      </ItemLink>
+                    ))}
+                  </div>
+                ) : (
+                  <Vazio>Nenhum documento em rascunho.</Vazio>
                 )}
               </Bloco>
             </div>
