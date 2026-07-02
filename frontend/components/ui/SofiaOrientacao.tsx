@@ -190,7 +190,7 @@ export function SofiaOrientacao<C extends SofiaCitacaoBase>({
                 color: "var(--warm-500)",
               }}
             >
-              {resposta.disclaimer} · <span className="badge badge-neutral">{resposta.modelo}</span>
+              {resposta.disclaimer}
             </p>
           </>
         )}
