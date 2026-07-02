@@ -17,6 +17,7 @@ from app.instrumentos.geradores import (
     sintetizar_gam,
 )
 from app.instrumentos.pdf import render_instrumento_pdf
+from app.pdftimbre import Timbre
 from app.models.audit import AuditLog
 from app.models.consentimento import Consentimento
 from app.models.instrumentos import AnexoProntuario, Instrumento, RespostaInstrumento
@@ -317,6 +318,7 @@ async def finalizar(
         definicao=instr.definicao,
         respostas=r.respostas or {},
         saida_texto=r.saida_texto or "",
+        timbre=Timbre.from_user(user),
     )
 
     anexo = AnexoProntuario(

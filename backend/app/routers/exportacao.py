@@ -33,6 +33,7 @@ from app.models.sessao import Sessao
 from app.models.supervisao import EstudoSupervisao
 from app.models.user import User
 from app.pdfutils import esc, render_html_to_pdf
+from app.pdftimbre import TIMBRE_CSS, Timbre, timbre_header_html
 from app.security.crypto import decrypt_bytes, decrypt_str
 
 router = APIRouter(tags=["exportacao"])
@@ -222,7 +223,7 @@ async def _montar_export(session, user: User, pac: Paciente) -> tuple[dict[str, 
     return export, anexos_files
 
 
-def _resumo_pdf(export: dict[str, Any]) -> bytes:
+def _resumo_pdf(export: dict[str, Any], timbre: Timbre | None = None) -> bytes:
     p = export["paciente"]
     c = export["contagens"]
     ident = " · ".join(x for x in [p.get("nascimento"), p.get("sexo"), p.get("documento")] if x)
@@ -230,7 +231,9 @@ def _resumo_pdf(export: dict[str, Any]) -> bytes:
     def linha(rot: str, val: str) -> str:
         return f'<p><b>{esc(rot)}:</b> {esc(val)}</p>'
 
+    cabecalho = timbre_header_html(timbre) if timbre else ""
     partes = [
+        cabecalho,
         f"<h1>Resumo de prontuário — {esc(p.get('nome') or '—')}</h1>",
         f'<p class="muted">Práxis · CENAT · exportação LGPD · {esc(export["meta"]["exportado_em"][:19])} UTC</p>',
         linha("Identificação", ident or "—"),
@@ -291,7 +294,7 @@ def _resumo_pdf(export: dict[str, Any]) -> bytes:
     .muted { color: #666; font-size: 9pt; }
     ul { margin: 2pt 0 2pt 16pt; }
     """
-    pdf, _ = render_html_to_pdf("".join(partes), css, "Práxis · CENAT · exportação LGPD · pág. {PAGINA}/{TOTAL}")
+    pdf, _ = render_html_to_pdf("".join(partes), css + TIMBRE_CSS, "Práxis · CENAT · exportação LGPD · pág. {PAGINA}/{TOTAL}")
     return pdf
 
 
@@ -328,7 +331,7 @@ async def exportar(
         zf.writestr("export.json", export_bytes)
         for a in anexos_files:
             zf.writestr(a["nome"], a["pdf"])
-        zf.writestr("resumo.pdf", _resumo_pdf(export))
+        zf.writestr("resumo.pdf", _resumo_pdf(export, Timbre.from_user(user)))
     data = buf.getvalue()
     return Response(
         content=data, media_type="application/zip",

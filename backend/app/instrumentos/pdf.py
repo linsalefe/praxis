@@ -15,6 +15,8 @@ from typing import Any
 
 import fitz  # PyMuPDF
 
+from app.pdftimbre import TIMBRE_CSS, Timbre, timbre_header_html
+
 MEDIABOX = fitz.paper_rect("a4")
 CONTENT_RECT = MEDIABOX + (42, 42, -42, -60)  # deixa espaço p/ rodapé
 
@@ -174,6 +176,7 @@ def render_instrumento_pdf(
     definicao: dict[str, Any],
     respostas: dict[str, Any],
     saida_texto: str,
+    timbre: Timbre | None = None,
 ) -> tuple[bytes, str]:
     """Devolve (pdf_bytes, sha256_hex)."""
     emitido_em = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -182,8 +185,10 @@ def render_instrumento_pdf(
     saida_html = _md_to_html_simples(saida_texto or "_Rascunho da saída não gerado._")
     fonte_txt = _esc(instrumento_fonte or "")
     crp_html = _esc(" · CRP " + profissional_crp) if profissional_crp else ""
+    tb = timbre or Timbre.fallback(profissional_nome, profissional_crp)
 
     html_doc = (
+        f"{timbre_header_html(tb)}"
         f"<h1>{_esc(instrumento_titulo)}</h1>"
         f'<p class="muted">Práxis · CENAT · emitido em {_esc(emitido_em)}</p>'
         f"<p><span class=\"field-label\">Paciente:</span> {_esc(paciente_nome)}<br/>"
@@ -197,7 +202,7 @@ def render_instrumento_pdf(
     # Passo 1: gera PDF de conteúdo com Story (multi-página automático).
     buf = io.BytesIO()
     writer = fitz.DocumentWriter(buf)
-    story = fitz.Story(html=html_doc, user_css=CSS)
+    story = fitz.Story(html=html_doc, user_css=CSS + TIMBRE_CSS)
 
     def rectfn(_rect_num, _filled):
         return MEDIABOX, CONTENT_RECT, None
