@@ -65,10 +65,52 @@ export async function api<T = unknown>(
     const detail = (data && (data.detail || data.message)) || res.statusText;
     throw new ApiError(res.status, typeof detail === "string" ? detail : JSON.stringify(detail));
   }
+
+  // Sliding session: após qualquer chamada autenticada bem-sucedida, se o token
+  // está perto de expirar, renova em background (sem bloquear a resposta atual).
+  if (path !== "/auth/renovar") void maybeRenovarSessao();
+
   return data as T;
 }
 
 let _handling401 = false;
+
+// --- Renovação silenciosa de sessão (sliding session) -----------------------
+let _renewing = false;
+// Dispara a ≤10min do exp — dentro da janela de 15min do backend, sem provocar
+// rajada de 204 (backend só renova dentro dela; fora, responde no-op).
+const JANELA_CLIENTE_S = 10 * 60;
+
+/** Segundos até o exp do JWT (decodifica o payload localmente), ou null. */
+function tokenExpiraEmSegundos(token: string): number | null {
+  try {
+    const payloadB64 = token.split(".")[1];
+    if (!payloadB64) return null;
+    const json = JSON.parse(atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/")));
+    if (typeof json.exp !== "number") return null;
+    return json.exp - Math.floor(Date.now() / 1000);
+  } catch {
+    return null;
+  }
+}
+
+async function maybeRenovarSessao(): Promise<void> {
+  if (_renewing || typeof window === "undefined") return;
+  const tok = getToken();
+  if (!tok || getScope() !== "session") return;
+  const restante = tokenExpiraEmSegundos(tok);
+  if (restante === null || restante > JANELA_CLIENTE_S) return;
+  _renewing = true;
+  try {
+    const r = await api<{ access_token?: string } | null>("/auth/renovar", { method: "POST" });
+    if (r && r.access_token) saveToken(r.access_token, "session");
+    // 204 (fora da janela / teto / token legado) ⇒ r é null: mantém o atual.
+  } catch {
+    // Silencioso: se a renovação falhar, o fluxo normal de 401 trata a expiração.
+  } finally {
+    _renewing = false;
+  }
+}
 
 /** Aviso + redirect uma única vez (evita toasts/redirects em rajada). */
 function handle401(): void {
