@@ -134,6 +134,16 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 500; letter-spacing:
   padding: 24px;
 }
 
+/* Topbar responsiva (UX-1 U2): links inline no desktop, hambúrguer < 900px. */
+.topbar-links { display: flex; align-items: center; gap: 16px; }
+.topbar-burger { display: none; }
+.topbar-link.ativo { color: var(--brand-2); font-weight: 600; }
+@media (max-width: 900px) {
+  .topbar-links { display: none; }
+  .topbar-burger { display: inline-flex; }
+  .container-praxis { padding: 16px; }
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -248,6 +258,10 @@ input:-webkit-autofill:focus {
   to   { transform: translateX(0); }
 }
 .drawer-panel { animation: drawer-in var(--dur-base) var(--ease-calm); }
+
+/* Indicador de gravação ativa (Scribe U4). Congelado sob reduced-motion. */
+.rec-dot { animation: rec-pulse 1.2s ease-in-out infinite; }
+@keyframes rec-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 
 /* ==========================================================================
    Acessibilidade — respeitar preferência de movimento reduzido

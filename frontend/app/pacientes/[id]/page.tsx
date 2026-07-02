@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Activity, CalendarClock, CalendarPlus, ClipboardCheck, ClipboardList, Download, FileSignature, FileText, Package, Paperclip, Trash2, Video } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { formatCentavos, reaisParaCentavos } from "@/lib/money";
+import { dataRelativa } from "@/lib/date";
 import { Topbar } from "@/components/Topbar";
 import { ScribeModal } from "@/components/ScribeModal";
 import { TelessessaoModal } from "@/components/TelessessaoModal";
@@ -294,7 +295,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                   <div style={{ fontWeight: 500, textTransform: "capitalize" }}>{d.tipo}</div>
                   <div style={{ color: "var(--muted)", fontSize: 12 }}>
                     <span className="badge">{d.status}</span>{" "}
-                    {d.finalidade.slice(0, 70)}{d.finalidade.length > 70 && "…"} · {new Date(d.criado_em).toLocaleDateString("pt-BR")}
+                    {d.finalidade.slice(0, 70)}{d.finalidade.length > 70 && "…"} · {dataRelativa(d.criado_em)}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -322,8 +323,8 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                   <div style={{ fontWeight: 500 }}>{r.instrumento_tipo.toUpperCase()} · {r.instrumento_versao}</div>
                   <div style={{ color: "var(--muted)", fontSize: 12 }}>
                     <span className="badge">{r.status}</span>{" "}
-                    iniciado {new Date(r.criado_em).toLocaleDateString("pt-BR")}
-                    {r.finalizado_em && ` · finalizado ${new Date(r.finalizado_em).toLocaleDateString("pt-BR")}`}
+                    iniciado {dataRelativa(r.criado_em)}
+                    {r.finalizado_em && ` · finalizado ${dataRelativa(r.finalizado_em)}`}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -359,7 +360,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                         <tr key={a.id} style={{ borderTop: "1px solid var(--border)" }}>
                           <td style={{ padding: 12 }}>{a.titulo}</td>
                           <td style={{ padding: 12, color: "var(--muted)" }}>{(a.bytes / 1024).toFixed(0)} KB</td>
-                          <td style={{ padding: 12, color: "var(--muted)" }}>{new Date(a.criado_em).toLocaleString("pt-BR")}</td>
+                          <td style={{ padding: 12, color: "var(--muted)" }}>{dataRelativa(a.criado_em)}</td>
                           <td style={{ padding: 12, textAlign: "right" }}>
                             <a className="link" href={`${API_BASE}/anexos/${a.id}/arquivo`} target="_blank" rel="noreferrer">
                               <Download size={13} style={{ display: "inline", verticalAlign: "middle" }} /> baixar
@@ -416,7 +417,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
             {sessoes.map((s) => (
               <div key={s.id} className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
-                  <div style={{ fontWeight: 500 }}>{new Date(s.data).toLocaleString("pt-BR")}</div>
+                  <div style={{ fontWeight: 500 }}>{dataRelativa(s.data)}</div>
                   <div style={{ color: "var(--muted)", fontSize: 13 }}>
                     <span className="badge">{s.modalidade}</span>{" "}
                     <span className="badge">{s.status}</span>
@@ -508,7 +509,7 @@ function EventoLinha({ ev }: { ev: EventoTimeline }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 500, fontSize: 14 }}>{ev.titulo}</div>
         <div style={{ color: "var(--muted)", fontSize: 12, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-          <span style={{ fontFamily: "var(--font-mono)" }}>{new Date(ev.data).toLocaleDateString("pt-BR")}</span>
+          <span style={{ fontFamily: "var(--font-mono)" }}>{dataRelativa(ev.data)}</span>
           {badges}
         </div>
       </div>

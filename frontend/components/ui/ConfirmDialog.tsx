@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 /**
  * ConfirmDialog — confirmação para ações irreversíveis (dado clínico não some
@@ -26,6 +27,7 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const trapRef = useFocusTrap<HTMLDivElement>(open);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -55,6 +57,7 @@ export function ConfirmDialog({
       }}
     >
       <div
+        ref={trapRef}
         className="card"
         onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: 440, width: "100%", boxShadow: "var(--shadow-lg)" }}

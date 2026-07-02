@@ -60,10 +60,12 @@ function PageInner() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [turnos]);
 
-  async function enviar(e: React.FormEvent) {
-    e.preventDefault();
+  const enviando = turnos.some((t) => t.loading);
+
+  async function enviar(e?: React.FormEvent | React.KeyboardEvent) {
+    e?.preventDefault();
     const q = pergunta.trim();
-    if (q.length < 3) return;
+    if (q.length < 3 || enviando) return;
     setPergunta("");
     const t: Turno = { pergunta: q, resposta: null, loading: true };
     setTurnos((ts) => [...ts, t]);
@@ -128,16 +130,26 @@ function PageInner() {
           ))}
         </div>
 
-        <form onSubmit={enviar} style={{ display: "flex", gap: 8, marginTop: 12 }}>
-          <input
+        <form onSubmit={enviar} style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "flex-end" }}>
+          <textarea
             className="input"
-            placeholder="Pergunte à Sofia…"
+            placeholder="Pergunte à Sofia…  (Enter envia · Shift+Enter quebra linha)"
             value={pergunta}
-            onChange={(e) => setPergunta(e.target.value)}
-            minLength={3}
-            required
+            onChange={(e) => {
+              setPergunta(e.target.value);
+              e.target.style.height = "auto";
+              e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (!enviando) enviar(e);
+              }
+            }}
+            rows={1}
+            style={{ resize: "none", minHeight: 40, lineHeight: 1.5, overflowY: "auto" }}
           />
-          <button className="btn btn-primary" type="submit">
+          <button className="btn btn-primary" type="submit" disabled={enviando || pergunta.trim().length < 3}>
             <Send size={16} /> Enviar
           </button>
         </form>

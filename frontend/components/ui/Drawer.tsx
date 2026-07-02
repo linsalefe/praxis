@@ -7,6 +7,7 @@
  */
 import { useEffect } from "react";
 import { X } from "lucide-react";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 export function Drawer({
   open, title, onClose, children,
@@ -16,6 +17,7 @@ export function Drawer({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const trapRef = useFocusTrap<HTMLDivElement>(open);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -34,6 +36,7 @@ export function Drawer({
       style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", justifyContent: "flex-end", zIndex: 60 }}
     >
       <div
+        ref={trapRef}
         className="drawer-panel"
         onClick={(e) => e.stopPropagation()}
         style={{

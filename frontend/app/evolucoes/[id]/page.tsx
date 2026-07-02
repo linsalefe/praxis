@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { CheckCircle2, Save } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
+import { CopiarBtn } from "@/components/ui/CopiarBtn";
 
 type Evolucao = {
   id: string; sessao_id: string; autor_id: string;
@@ -94,9 +95,15 @@ export default function EvolucaoPage({ params }: { params: Promise<{ id: string 
       <main className="container-praxis" style={{ maxWidth: 820 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h1 style={{ fontSize: 22, margin: "8px 0" }}>Evolução clínica</h1>
-          <span className="badge" style={{ color: assinada ? "var(--ok)" : "var(--muted)" }}>
-            {assinada ? `Assinada em ${new Date(ev.assinado_em!).toLocaleString("pt-BR")}` : "Rascunho"}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <CopiarBtn
+              className="btn btn-ghost"
+              texto={BLOCOS.map(([k, titulo]) => `${titulo}\n${(ev[k] as string) || ""}`).join("\n\n")}
+            />
+            <span className="badge" style={{ color: assinada ? "var(--ok)" : "var(--muted)" }}>
+              {assinada ? `Assinada em ${new Date(ev.assinado_em!).toLocaleString("pt-BR")}` : "Rascunho"}
+            </span>
+          </div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 16 }}>

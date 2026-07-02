@@ -8,6 +8,7 @@ import { BadgeCheck, Download, FileCheck2, FileSignature, RefreshCcw, ShieldChec
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { Drawer } from "@/components/ui/Drawer";
+import { CopiarBtn } from "@/components/ui/CopiarBtn";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
@@ -135,6 +136,10 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             <FileSignature size={20} color="var(--brand-2)" /> {tpl.titulo}
           </h1>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <CopiarBtn
+              className="btn btn-ghost"
+              texto={tpl.blocos.map((b) => `${b.label}\n${doc.conteudo[b.id] || ""}`).join("\n\n")}
+            />
             {finalizado && (
               <span className={`badge ${doc.assinatura_tipo === "icp_brasil" ? "badge-pos" : "badge-neutral"}`}>
                 {doc.assinatura_tipo === "icp_brasil" ? "ICP-Brasil" : "assinatura simples"}
