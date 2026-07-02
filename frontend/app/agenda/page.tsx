@@ -40,7 +40,7 @@ export default function AgendaPage() {
   const [sessoes, setSessoes] = useState<Sessao[]>([]);
   const [loading, setLoading] = useState(true);
   const [pacientes, setPacientes] = useState<PacienteLite[]>([]);
-  const [drawer, setDrawer] = useState<{ open: boolean; editar?: Sessao }>({ open: false });
+  const [drawer, setDrawer] = useState<{ open: boolean; editar?: Sessao; dataInicial?: Date }>({ open: false });
   const [cancelar, setCancelar] = useState<Sessao | null>(null);
   const [telessessao, setTelessessao] = useState<Sessao | null>(null);
 
@@ -78,6 +78,29 @@ export default function AgendaPage() {
   }, []);
 
   const passo = view === "dia" ? 1 : 7;
+
+  // A4: navegação por teclado — ←/→ mudam o período, "t" volta para hoje.
+  // Ignora quando há modal aberto ou o foco está num campo de formulário.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (drawer.open || cancelar || telessessao) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.key === "ArrowLeft") setAnchor((d) => addDays(d, -passo));
+      else if (e.key === "ArrowRight") setAnchor((d) => addDays(d, passo));
+      else if (e.key === "t" || e.key === "T") setAnchor(new Date());
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [passo, drawer.open, cancelar, telessessao]);
+
+  // A2: abre "Nova sessão" com a data pré-preenchida no dia clicado (09:00).
+  const novaNoDia = (d: Date) => {
+    const dt = new Date(d);
+    dt.setHours(9, 0, 0, 0);
+    setDrawer({ open: true, dataInicial: dt });
+  };
+  const ehHoje = (d: Date) => ymd(d) === ymd(new Date());
 
   async function mudarStatus(s: Sessao, status: string) {
     try {
@@ -161,19 +184,40 @@ export default function AgendaPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: view === "dia" ? 8 : 18 }}>
             {dias.map((d) => {
               const lista = porDia.get(ymd(d)) ?? [];
+              const hoje = ehHoje(d);
+              const Cabecalho = view === "semana" ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <div style={{
+                    fontFamily: "var(--font-display)", fontWeight: hoje ? 700 : 500,
+                    textTransform: "capitalize", color: hoje ? "var(--brand)" : "var(--text)",
+                  }}>{diaLongo(d)}</div>
+                  {hoje && <span className="badge badge-info">hoje</span>}
+                  <button
+                    type="button" className="link" onClick={() => novaNoDia(d)}
+                    title="Nova sessão neste dia"
+                    style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13 }}
+                  >
+                    <CalendarPlus size={14} /> nova
+                  </button>
+                </div>
+              ) : null;
+
               if (view === "semana" && lista.length === 0) {
                 return (
-                  <div key={ymd(d)}>
-                    <div style={{ fontFamily: "var(--font-display)", fontWeight: 500, textTransform: "capitalize", marginBottom: 6 }}>{diaLongo(d)}</div>
-                    <div style={{ color: "var(--muted)", fontSize: 13, paddingLeft: 2 }}>sem sessões</div>
+                  <div key={ymd(d)} style={hoje ? { background: "var(--surface-2)", borderRadius: "var(--radius-md)", padding: "8px 10px" } : undefined}>
+                    {Cabecalho}
+                    <button
+                      type="button" onClick={() => novaNoDia(d)}
+                      style={{ width: "100%", textAlign: "left", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius-md)", color: "var(--muted)", fontSize: 13, padding: "10px 12px", cursor: "pointer" }}
+                    >
+                      sem sessões — clique para agendar
+                    </button>
                   </div>
                 );
               }
               return (
-                <div key={ymd(d)}>
-                  {view === "semana" && (
-                    <div style={{ fontFamily: "var(--font-display)", fontWeight: 500, textTransform: "capitalize", marginBottom: 6 }}>{diaLongo(d)}</div>
-                  )}
+                <div key={ymd(d)} style={hoje && view === "semana" ? { background: "var(--surface-2)", borderRadius: "var(--radius-md)", padding: "8px 10px" } : undefined}>
+                  {Cabecalho}
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {lista.map((s) => (
                       <SessaoRow key={s.id} s={s} onStatus={mudarStatus}
@@ -197,7 +241,7 @@ export default function AgendaPage() {
         <SessaoForm
           editar={drawer.editar}
           pacientes={pacientes}
-          anchor={anchor}
+          anchor={drawer.dataInicial ?? anchor}
           onSalvo={() => { setDrawer({ open: false }); carregar(); }}
         />
       </Drawer>
