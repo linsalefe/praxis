@@ -60,3 +60,14 @@ class MeOut(BaseModel):
     papel: str
     totp_ativado: bool
     tenant_id: str
+    nome_exibicao: str | None = None
+    registro_profissional: str | None = None
+    contato_timbre: str | None = None
+
+
+class PerfilUpdateIn(BaseModel):
+    """Campos editáveis do perfil (timbre dos PDFs). Todos opcionais; string
+    vazia limpa o campo (volta ao fallback nome/crp)."""
+    nome_exibicao: str | None = Field(default=None, max_length=160)
+    registro_profissional: str | None = Field(default=None, max_length=64)
+    contato_timbre: str | None = Field(default=None, max_length=255)

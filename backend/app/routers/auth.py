@@ -16,6 +16,7 @@ from app.models.user import User
 from app.schemas.auth import (
     LoginIn,
     MeOut,
+    PerfilUpdateIn,
     RegisterIn,
     TokenOut,
     TotpLoginIn,
@@ -33,6 +34,17 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # login (auth_at). Nada disso cria refresh token nem altera o TTL do access token.
 _JANELA_RENOVACAO_S = 15 * 60
 _TETO_SESSAO_S = 12 * 60 * 60
+
+
+def _me_out(user: User) -> MeOut:
+    return MeOut(
+        id=str(user.id), nome=user.nome, email=user.email, crp=user.crp,
+        abordagem=user.abordagem, papel=user.papel, totp_ativado=user.totp_ativado,
+        tenant_id=str(user.tenant_id),
+        nome_exibicao=user.nome_exibicao,
+        registro_profissional=user.registro_profissional,
+        contato_timbre=user.contato_timbre,
+    )
 
 
 async def _log(session, *, acao: str, entidade: str, entidade_id: str | None, tenant_id, user_id, ip, meta=None):
@@ -140,11 +152,7 @@ async def totp_verify(
     await _log(session, acao="ENABLE_2FA", entidade="User", entidade_id=str(user.id),
                tenant_id=user.tenant_id, user_id=user.id, ip=ip)
     await session.commit()
-    return MeOut(
-        id=str(user.id), nome=user.nome, email=user.email, crp=user.crp,
-        abordagem=user.abordagem, papel=user.papel, totp_ativado=True,
-        tenant_id=str(user.tenant_id),
-    )
+    return _me_out(user)
 
 
 @router.post("/2fa/login", response_model=TokenOut)
@@ -175,11 +183,31 @@ async def totp_login(
 
 @router.get("/me", response_model=MeOut)
 async def me(user: Annotated[User, Depends(get_current_user)]) -> MeOut:
-    return MeOut(
-        id=str(user.id), nome=user.nome, email=user.email, crp=user.crp,
-        abordagem=user.abordagem, papel=user.papel, totp_ativado=user.totp_ativado,
-        tenant_id=str(user.tenant_id),
-    )
+    return _me_out(user)
+
+
+@router.patch("/me", response_model=MeOut)
+async def atualizar_perfil(
+    body: PerfilUpdateIn,
+    request: Request,
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+) -> MeOut:
+    """Atualiza os campos de timbre do perfil. Só mexe no que veio no corpo;
+    string vazia limpa o campo (volta ao fallback nome/crp na geração de PDF)."""
+    campos = body.model_dump(exclude_unset=True)
+    for campo, valor in campos.items():
+        if isinstance(valor, str):
+            valor = valor.strip() or None
+        setattr(user, campo, valor)
+
+    ip = request.client.host if request.client else None
+    await _log(session, acao="PERFIL_ATUALIZADO", entidade="User", entidade_id=str(user.id),
+               tenant_id=user.tenant_id, user_id=user.id, ip=ip,
+               meta={"campos": sorted(campos.keys())})
+    await session.commit()
+    await session.refresh(user)
+    return _me_out(user)
 
 
 @router.post(
