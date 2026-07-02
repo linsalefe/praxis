@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Card } from "@/components/ui/Card";
-import { formatNome } from "@/lib/format";
+import { formatNome, mascararCpf, formatCpf } from "@/lib/format";
 
 /**
  * PacienteCard — cabeçalho do prontuário.
@@ -53,6 +54,7 @@ export function PacienteCard({
   paciente: PacienteLike;
   sessoes: SessaoLike[];
 }) {
+  const [mostrarDoc, setMostrarDoc] = useState(false);
   const ini = iniciais(paciente.nome);
   const anos = idade(paciente.nascimento);
   const agora = new Date();
@@ -68,7 +70,6 @@ export function PacienteCard({
   const identificacao = [
     anos != null ? `${anos} anos` : null,
     paciente.sexo,
-    paciente.documento,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -100,8 +101,25 @@ export function PacienteCard({
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <span className="badge badge-info">Em acompanhamento</span>
             <span style={{ color: "var(--muted)", fontSize: 13 }}>
-              {identificacao || "Sem dados adicionais."}
+              {identificacao || (paciente.documento ? "" : "Sem dados adicionais.")}
             </span>
+            {paciente.documento && (
+              <span style={{ color: "var(--muted)", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                {identificacao && "·"}
+                <span style={{ fontFamily: "var(--font-mono)" }}>
+                  {mostrarDoc ? formatCpf(paciente.documento) : mascararCpf(paciente.documento)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setMostrarDoc((v) => !v)}
+                  className="link"
+                  style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12 }}
+                  aria-pressed={mostrarDoc}
+                >
+                  {mostrarDoc ? "ocultar" : "mostrar"}
+                </button>
+              </span>
+            )}
           </div>
         </div>
       </div>

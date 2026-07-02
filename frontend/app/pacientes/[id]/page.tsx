@@ -346,7 +346,14 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
         {/* ===== Trajetória ===== */}
         <div role="tabpanel" id="panel-trajetoria" aria-labelledby="tab-trajetoria" hidden={tab !== "trajetoria"}>
           {series.length === 0 && timeline.length === 0 && (
-            <p style={{ color: "var(--muted)" }}>Sem dados de trajetória ainda — escores e eventos aparecem aqui conforme o acompanhamento avança.</p>
+            <Card style={{ textAlign: "center", padding: 28 }}>
+              <p style={{ color: "var(--muted)", margin: "0 0 12px" }}>
+                Sem dados de trajetória ainda — escores e eventos aparecem aqui conforme o acompanhamento avança.
+              </p>
+              <Button variant="primary" onClick={() => setInstrModal(true)}>
+                <ClipboardList size={16} /> Aplicar instrumento
+              </Button>
+            </Card>
           )}
           {series.length > 0 && (
             <>
