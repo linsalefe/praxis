@@ -9,6 +9,7 @@ import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { Drawer } from "@/components/ui/Drawer";
 import { CopiarBtn } from "@/components/ui/CopiarBtn";
+import { BreadcrumbPaciente } from "@/components/ui/BreadcrumbPaciente";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
@@ -128,9 +129,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
     <>
       <Topbar />
       <main className="container-praxis" style={{ maxWidth: 880 }}>
-        <p style={{ margin: 0 }}>
-          <Link className="link" href={`/pacientes/${doc.paciente_id}`}>← Paciente</Link>
-        </p>
+        <BreadcrumbPaciente pacienteId={doc.paciente_id} />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
           <h1 style={{ fontSize: 22, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <FileSignature size={20} color="var(--brand-2)" /> {tpl.titulo}

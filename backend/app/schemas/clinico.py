@@ -98,6 +98,7 @@ class EvolucaoUpdate(BaseModel):
 class EvolucaoOut(BaseModel):
     id: str
     sessao_id: str
+    paciente_id: str | None = None
     autor_id: str
     identificacao: str | None
     demanda_objetivos: str | None

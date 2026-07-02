@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Activity, CalendarClock, CalendarPlus, ClipboardCheck, ClipboardList, Download, FileSignature, FileText, Package, Paperclip, Trash2, Video } from "lucide-react";
+import { Activity, CalendarClock, CalendarPlus, ClipboardCheck, ClipboardList, Download, FilePlus, FileSignature, FileText, Package, Paperclip, Trash2, Video } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { formatCentavos, reaisParaCentavos } from "@/lib/money";
 import { dataRelativa } from "@/lib/date";
@@ -19,7 +19,20 @@ import { PresenceMark } from "@/components/ui/PresenceMark";
 import { PacienteCard } from "@/components/ui/PacienteCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Drawer } from "@/components/ui/Drawer";
+import { MenuAcoes } from "@/components/ui/MenuAcoes";
 import { GraficoTrajetoria, type SerieTrajetoria } from "@/components/ui/GraficoTrajetoria";
+
+type TabKey = "visao" | "trajetoria" | "sessoes" | "instrumentos" | "documentos";
+const TABS: [TabKey, string][] = [
+  ["visao", "Visão geral"], ["trajetoria", "Trajetória"], ["sessoes", "Sessões"],
+  ["instrumentos", "Instrumentos"], ["documentos", "Documentos"],
+];
+function normalizarTab(v: string | null): TabKey {
+  if (v === "anexos") return "documentos";           // alias do redirect do InstrumentoWizard
+  if (v === "geral") return "visao";
+  return (TABS.some(([k]) => k === v) ? v : "visao") as TabKey;
+}
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
@@ -59,6 +72,10 @@ type Resumo = {
 export default function FichaPacientePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const qs = useSearchParams();
+  const [tab, setTab] = useState<TabKey>(() => normalizarTab(qs.get("tab")));
+  const novoAnexoId = qs.get("novo");
+  const [agendarOpen, setAgendarOpen] = useState(false);
   const [pac, setPac] = useState<Paciente | null>(null);
   const [sessoes, setSessoes] = useState<Sessao[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,6 +136,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
       });
       setSessoes((r) => [s, ...r]);
       setNewSes({ data: "", modalidade: "presencial", status: "agendada", valor: "" });
+      setAgendarOpen(false);
       toast.success("Sessão criada.");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Falha");
@@ -178,6 +196,17 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
     }
   }
 
+  function mudarTab(k: TabKey) {
+    setTab(k);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", k);
+      url.searchParams.delete("novo");
+      window.history.replaceState(null, "", url);
+    } catch { /* ignora */ }
+    document.getElementById(`tab-${k}`)?.focus();
+  }
+
   if (loading) return (
     <>
       <Topbar />
@@ -190,106 +219,240 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
   );
   if (!pac) return null;
 
+  // --- CTA primário contextual: "sessão hoje sem evolução" → Registrar evolução ---
+  const hoje = new Date();
+  const mesmoDia = (iso: string) => {
+    const d = new Date(iso);
+    return d.getFullYear() === hoje.getFullYear() && d.getMonth() === hoje.getMonth() && d.getDate() === hoje.getDate();
+  };
+  const sessoesComEvolucao = new Set(
+    timeline.filter((e) => e.tipo_evento === "evolucao")
+      .map((e) => (e.meta as { sessao_id?: string }).sessao_id)
+      .filter((x): x is string => !!x),
+  );
+  const sessaoHojeSemEvolucao = sessoes.find(
+    (s) => mesmoDia(s.data) && s.status !== "cancelada" && s.status !== "falta" && !sessoesComEvolucao.has(s.id),
+  );
+
   return (
     <>
       <Topbar />
       <main className="container-praxis">
         <p style={{ margin: "0 0 12px" }}><Link className="link" href="/pacientes">← Pacientes</Link></p>
         <PacienteCard paciente={pac} sessoes={sessoes} />
-        <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Link href={`/sofia?paciente_id=${id}`} className="btn">
-            <PresenceMark size={16} /> Perguntar à Sofia
-          </Link>
-          <button className="btn" onClick={() => setInstrModal(true)}>
-            <ClipboardList size={16} /> Novo instrumento
-          </button>
-          <button className="btn" onClick={() => setPrepModal(true)}>
-            <ClipboardCheck size={16} /> Preparar sessão
-          </button>
-          <button className="btn" onClick={() => setDocModal(true)}>
-            <FileSignature size={16} /> Gerar documento
-          </button>
-          <button className="btn" onClick={() => setConfirmExport(true)} disabled={exporting}>
-            <Package size={16} /> {exporting ? "Exportando…" : "Exportar dados (LGPD)"}
-          </button>
-          <button className="btn btn-danger" onClick={() => setConfirmDel(true)} style={{ marginLeft: "auto" }}>
-            <Trash2 size={16} /> Excluir paciente
-          </button>
+
+        {/* Header de ação: 1 CTA primário contextual + menu "···" (secundárias e destrutivas separadas) */}
+        <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", justifyContent: "flex-end", flexWrap: "wrap" }}>
+          {sessaoHojeSemEvolucao ? (
+            <button className="btn btn-primary" onClick={() => novaEvolucao(sessaoHojeSemEvolucao.id)}>
+              <FilePlus size={16} /> Registrar evolução
+            </button>
+          ) : (
+            <button className="btn btn-primary" onClick={() => setAgendarOpen(true)}>
+              <CalendarPlus size={16} /> Agendar sessão
+            </button>
+          )}
+          <MenuAcoes
+            secundarias={[
+              { label: "Perguntar à Sofia", icon: <PresenceMark size={16} />, onClick: () => router.push(`/sofia?paciente_id=${id}`) },
+              { label: "Novo instrumento", icon: <ClipboardList size={16} />, onClick: () => setInstrModal(true) },
+              { label: "Preparar sessão", icon: <ClipboardCheck size={16} />, onClick: () => setPrepModal(true) },
+              { label: "Gerar documento", icon: <FileSignature size={16} />, onClick: () => setDocModal(true) },
+            ]}
+            destrutivas={[
+              { label: exporting ? "Exportando…" : "Exportar dados (LGPD)", icon: <Package size={16} />, onClick: () => setConfirmExport(true), disabled: exporting },
+              { label: "Excluir paciente", icon: <Trash2 size={16} />, onClick: () => setConfirmDel(true) },
+            ]}
+          />
         </div>
 
-        {/* --- Resumo factual (números reais, denominador explícito) --- */}
-        {resumo && resumo.sessoes.total > 0 && (
-          <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
-            <div className="card">
-              <div style={{ color: "var(--muted)", fontSize: 12 }}>Sessões realizadas</div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 20 }}>
-                {resumo.sessoes.realizadas}<span style={{ fontSize: 12, color: "var(--warm-500)" }}>/{resumo.sessoes.total}</span>
-              </div>
-              <div style={{ color: "var(--muted)", fontSize: 11 }}>
-                {resumo.sessoes.faltas} falta(s) · {resumo.sessoes.canceladas} cancel. · {resumo.sessoes.agendadas_futuras} agendada(s)
-              </div>
-            </div>
-            <div className="card">
-              <div style={{ color: "var(--muted)", fontSize: 12 }}>Adesão</div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 20 }}>
-                {resumo.adesao.den > 0 ? `${resumo.adesao.num}/${resumo.adesao.den}` : "—"}
-              </div>
-              <div style={{ color: "var(--muted)", fontSize: 11 }}>{resumo.adesao.criterio}</div>
-            </div>
-            <div className="card">
-              <div style={{ color: "var(--muted)", fontSize: 12 }}>Evoluções</div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 20 }}>{resumo.evolucoes.assinadas}</div>
-              <div style={{ color: "var(--muted)", fontSize: 11 }}>assinadas · {resumo.evolucoes.rascunho} rascunho</div>
-            </div>
-            <div className="card">
-              <div style={{ color: "var(--muted)", fontSize: 12 }}>Período de acompanhamento</div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, marginTop: 4 }}>
-                {resumo.primeira_sessao ? new Date(resumo.primeira_sessao).toLocaleDateString("pt-BR") : "—"}
-                {" → "}
-                {resumo.ultima_sessao ? new Date(resumo.ultima_sessao).toLocaleDateString("pt-BR") : "—"}
-              </div>
-              <div style={{ color: "var(--muted)", fontSize: 11 }}>{resumo.instrumentos_aplicados} instrumento(s) aplicado(s)</div>
-            </div>
-          </div>
-        )}
+        {/* Sub-navegação sticky (tablist navegável por teclado: ← → alternam seções) */}
+        <div
+          className="subnav"
+          role="tablist"
+          aria-label="Seções do paciente"
+          onKeyDown={(e) => {
+            if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+            e.preventDefault();
+            const i = TABS.findIndex(([k]) => k === tab);
+            const n = e.key === "ArrowRight" ? (i + 1) % TABS.length : (i - 1 + TABS.length) % TABS.length;
+            mudarTab(TABS[n][0]);
+          }}
+        >
+          {TABS.map(([k, label]) => (
+            <button
+              key={k}
+              id={`tab-${k}`}
+              role="tab"
+              aria-selected={tab === k}
+              aria-controls={`panel-${k}`}
+              tabIndex={tab === k ? 0 : -1}
+              className="subnav-tab"
+              onClick={() => mudarTab(k)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
-        {/* --- Trajetória de escores (SVG factual) --- */}
-        {series.length > 0 && (
-          <>
-            <h2 style={{ fontSize: 15, margin: "24px 0 8px", color: "var(--muted)" }}>
-              <Activity size={13} style={{ display: "inline", verticalAlign: "middle" }} /> Trajetória de escores
-            </h2>
-            <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 12px" }}>
-              Escores registrados das escalas reaplicadas. Bandas = faixas de severidade. A leitura clínica é do profissional.
-            </p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12 }}>
-              {series.map((s) => (
-                <div key={s.tipo} className="card">
-                  <GraficoTrajetoria serie={s} />
+        {/* ===== Visão geral ===== */}
+        <div role="tabpanel" id="panel-visao" aria-labelledby="tab-visao" hidden={tab !== "visao"}>
+          {resumo && resumo.sessoes.total > 0 ? (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
+              <div className="card">
+                <div style={{ color: "var(--muted)", fontSize: 12 }}>Sessões realizadas</div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 20 }}>
+                  {resumo.sessoes.realizadas}<span style={{ fontSize: 12, color: "var(--warm-500)" }}>/{resumo.sessoes.total}</span>
+                </div>
+                <div style={{ color: "var(--muted)", fontSize: 11 }}>
+                  {resumo.sessoes.faltas} falta(s) · {resumo.sessoes.canceladas} cancel. · {resumo.sessoes.agendadas_futuras} agendada(s)
+                </div>
+              </div>
+              <div className="card">
+                <div style={{ color: "var(--muted)", fontSize: 12 }}>Adesão</div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 20 }}>
+                  {resumo.adesao.den > 0 ? `${resumo.adesao.num}/${resumo.adesao.den}` : "—"}
+                </div>
+                <div style={{ color: "var(--muted)", fontSize: 11 }}>{resumo.adesao.criterio}</div>
+              </div>
+              <div className="card">
+                <div style={{ color: "var(--muted)", fontSize: 12 }}>Evoluções</div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 20 }}>{resumo.evolucoes.assinadas}</div>
+                <div style={{ color: "var(--muted)", fontSize: 11 }}>assinadas · {resumo.evolucoes.rascunho} rascunho</div>
+              </div>
+              <div className="card">
+                <div style={{ color: "var(--muted)", fontSize: 12 }}>Período de acompanhamento</div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, marginTop: 4 }}>
+                  {resumo.primeira_sessao ? new Date(resumo.primeira_sessao).toLocaleDateString("pt-BR") : "—"}
+                  {" → "}
+                  {resumo.ultima_sessao ? new Date(resumo.ultima_sessao).toLocaleDateString("pt-BR") : "—"}
+                </div>
+                <div style={{ color: "var(--muted)", fontSize: 11 }}>{resumo.instrumentos_aplicados} instrumento(s) aplicado(s)</div>
+              </div>
+            </div>
+          ) : (
+            <p style={{ color: "var(--muted)" }}>Sem números ainda — agende e registre sessões para ver o resumo factual.</p>
+          )}
+          {pac && <ConformidadeIaCard pacienteId={pac.id} pacienteNome={pac.nome} />}
+        </div>
+
+        {/* ===== Trajetória ===== */}
+        <div role="tabpanel" id="panel-trajetoria" aria-labelledby="tab-trajetoria" hidden={tab !== "trajetoria"}>
+          {series.length === 0 && timeline.length === 0 && (
+            <p style={{ color: "var(--muted)" }}>Sem dados de trajetória ainda — escores e eventos aparecem aqui conforme o acompanhamento avança.</p>
+          )}
+          {series.length > 0 && (
+            <>
+              <h2 style={{ fontSize: 15, margin: "0 0 8px", color: "var(--muted)" }}>
+                <Activity size={13} style={{ display: "inline", verticalAlign: "middle" }} /> Trajetória de escores
+              </h2>
+              <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 12px" }}>
+                Escores registrados das escalas reaplicadas. Bandas = faixas de severidade. A leitura clínica é do profissional.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12 }}>
+                {series.map((s) => (
+                  <div key={s.tipo} className="card">
+                    <GraficoTrajetoria serie={s} />
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {timeline.length > 0 && (
+            <>
+              <h2 style={{ fontSize: 15, margin: "24px 0 8px", color: "var(--muted)" }}>
+                <CalendarClock size={13} style={{ display: "inline", verticalAlign: "middle" }} /> Linha do tempo
+              </h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {timeline.map((ev) => (
+                  <EventoLinha key={`${ev.tipo_evento}-${ev.ref_id}`} ev={ev} />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ===== Sessões ===== */}
+        <div role="tabpanel" id="panel-sessoes" aria-labelledby="tab-sessoes" hidden={tab !== "sessoes"}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 0 12px", gap: 8 }}>
+            <h2 style={{ fontSize: 15, margin: 0, color: "var(--muted)" }}>Timeline de sessões</h2>
+            <button className="btn" onClick={() => setAgendarOpen(true)}><CalendarPlus size={16} /> Agendar sessão</button>
+          </div>
+          {sessoes.length === 0 ? (
+            <p style={{ color: "var(--muted)" }}>Nenhuma sessão registrada ainda — use “Agendar sessão”.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {sessoes.map((s) => (
+                <div key={s.id} className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{dataRelativa(s.data)}</div>
+                    <div style={{ color: "var(--muted)", fontSize: 13 }}>
+                      <span className="badge">{s.modalidade}</span>{" "}
+                      <span className="badge">{s.status}</span>
+                      {s.valor_centavos != null && <> <span className="badge">{formatCentavos(s.valor_centavos)}</span></>}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {s.modalidade === "online" && s.status !== "cancelada" && (
+                      <button className="btn btn-primary" onClick={() => setTelessessao(s.id)}>
+                        <Video size={16} /> Sala
+                      </button>
+                    )}
+                    <button className="btn" onClick={() => setScribeSessao(s.id)}>
+                      <PresenceMark size={16} /> Gerar evolução
+                    </button>
+                    <button className="btn" onClick={() => novaEvolucao(s.id)}>
+                      <FileText size={16} /> Em branco
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
-          </>
-        )}
+          )}
+        </div>
 
-        {/* --- Linha do tempo unificada (read-only, linkável) --- */}
-        {timeline.length > 0 && (
-          <>
-            <h2 style={{ fontSize: 15, margin: "24px 0 8px", color: "var(--muted)" }}>
-              <CalendarClock size={13} style={{ display: "inline", verticalAlign: "middle" }} /> Linha do tempo
-            </h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {timeline.map((ev) => (
-                <EventoLinha key={`${ev.tipo_evento}-${ev.ref_id}`} ev={ev} />
-              ))}
+        {/* ===== Instrumentos ===== */}
+        <div role="tabpanel" id="panel-instrumentos" aria-labelledby="tab-instrumentos" hidden={tab !== "instrumentos"}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 0 12px", gap: 8 }}>
+            <h2 style={{ fontSize: 15, margin: 0, color: "var(--muted)" }}>Instrumentos</h2>
+            <button className="btn" onClick={() => setInstrModal(true)}><ClipboardList size={16} /> Novo instrumento</button>
+          </div>
+          {respostas.length === 0 ? (
+            <p style={{ color: "var(--muted)" }}>Nenhum instrumento aplicado ainda.</p>
+          ) : respostas.map((r) => (
+            <div key={r.id} className="card" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontWeight: 500 }}>{r.instrumento_tipo.toUpperCase()} · {r.instrumento_versao}</div>
+                <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                  <span className="badge">{r.status}</span>{" "}
+                  iniciado {dataRelativa(r.criado_em)}
+                  {r.finalizado_em && ` · finalizado ${dataRelativa(r.finalizado_em)}`}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <Link href={`/instrumentos/${r.id}`} className="btn">
+                  {r.status === "finalizado" ? "Ver" : "Continuar"}
+                </Link>
+                {r.anexo_id && (
+                  <a className="btn" href={`${API_BASE}/anexos/${r.anexo_id}/arquivo`} target="_blank" rel="noreferrer">
+                    <Download size={14} /> PDF
+                  </a>
+                )}
+              </div>
             </div>
-          </>
-        )}
+          ))}
+        </div>
 
-        {documentos.length > 0 && (
-          <>
-            <h2 style={{ fontSize: 15, margin: "24px 0 8px", color: "var(--muted)" }}>Documentos CFP</h2>
-            {documentos.map((d) => (
+        {/* ===== Documentos (+ anexos do prontuário) ===== */}
+        <div role="tabpanel" id="panel-documentos" aria-labelledby="tab-documentos" hidden={tab !== "documentos"}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 0 12px", gap: 8 }}>
+            <h2 style={{ fontSize: 15, margin: 0, color: "var(--muted)" }}>Documentos CFP</h2>
+            <button className="btn" onClick={() => setDocModal(true)}><FileSignature size={16} /> Gerar documento</button>
+          </div>
+          {documentos.length === 0 ? (
+            <p style={{ color: "var(--muted)" }}>Nenhum documento gerado ainda.</p>
+          ) : (
+            documentos.map((d) => (
               <div key={d.id} className="card" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
                   <div style={{ fontWeight: 500, textTransform: "capitalize" }}>{d.tipo}</div>
@@ -309,141 +472,74 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                   )}
                 </div>
               </div>
-            ))}
-          </>
-        )}
-
-        {(respostas.length > 0 || anexos.length > 0) && (
-          <>
-            <h2 style={{ fontSize: 15, margin: "24px 0 8px", color: "var(--muted)" }}>Instrumentos</h2>
-            {respostas.length === 0 && <p style={{ color: "var(--muted)" }}>Nenhum instrumento aplicado ainda.</p>}
-            {respostas.map((r) => (
-              <div key={r.id} className="card" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ fontWeight: 500 }}>{r.instrumento_tipo.toUpperCase()} · {r.instrumento_versao}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                    <span className="badge">{r.status}</span>{" "}
-                    iniciado {dataRelativa(r.criado_em)}
-                    {r.finalizado_em && ` · finalizado ${dataRelativa(r.finalizado_em)}`}
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <Link href={`/instrumentos/${r.id}`} className="btn">
-                    {r.status === "finalizado" ? "Ver" : "Continuar"}
-                  </Link>
-                  {r.anexo_id && (
-                    <a className="btn" href={`${API_BASE}/anexos/${r.anexo_id}/arquivo`} target="_blank" rel="noreferrer">
-                      <Download size={14} /> PDF
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {anexos.length > 0 && (
-              <>
-                <h2 style={{ fontSize: 15, margin: "24px 0 8px", color: "var(--muted)" }}>
-                  <Paperclip size={13} style={{ display: "inline", verticalAlign: "middle" }} /> Anexos do prontuário
-                </h2>
-                <div className="card" style={{ padding: 0 }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12 }}>
-                        <th style={{ padding: 12 }}>Título</th>
-                        <th style={{ padding: 12 }}>Tamanho</th>
-                        <th style={{ padding: 12 }}>Criado em</th>
-                        <th style={{ padding: 12 }}></th>
+            ))
+          )}
+          {anexos.length > 0 && (
+            <>
+              <h2 style={{ fontSize: 15, margin: "24px 0 8px", color: "var(--muted)" }}>
+                <Paperclip size={13} style={{ display: "inline", verticalAlign: "middle" }} /> Anexos do prontuário
+              </h2>
+              <div className="card" style={{ padding: 0 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12 }}>
+                      <th style={{ padding: 12 }}>Título</th>
+                      <th style={{ padding: 12 }}>Tamanho</th>
+                      <th style={{ padding: 12 }}>Criado em</th>
+                      <th style={{ padding: 12 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {anexos.map((a) => (
+                      <tr key={a.id} style={{ borderTop: "1px solid var(--border)", background: novoAnexoId === a.id ? "var(--amber-100)" : undefined }}>
+                        <td style={{ padding: 12 }}>{a.titulo}</td>
+                        <td style={{ padding: 12, color: "var(--muted)" }}>{(a.bytes / 1024).toFixed(0)} KB</td>
+                        <td style={{ padding: 12, color: "var(--muted)" }}>{dataRelativa(a.criado_em)}</td>
+                        <td style={{ padding: 12, textAlign: "right" }}>
+                          <a className="link" href={`${API_BASE}/anexos/${a.id}/arquivo`} target="_blank" rel="noreferrer">
+                            <Download size={13} style={{ display: "inline", verticalAlign: "middle" }} /> baixar
+                          </a>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {anexos.map((a) => (
-                        <tr key={a.id} style={{ borderTop: "1px solid var(--border)" }}>
-                          <td style={{ padding: 12 }}>{a.titulo}</td>
-                          <td style={{ padding: 12, color: "var(--muted)" }}>{(a.bytes / 1024).toFixed(0)} KB</td>
-                          <td style={{ padding: 12, color: "var(--muted)" }}>{dataRelativa(a.criado_em)}</td>
-                          <td style={{ padding: 12, textAlign: "right" }}>
-                            <a className="link" href={`${API_BASE}/anexos/${a.id}/arquivo`} target="_blank" rel="noreferrer">
-                              <Download size={13} style={{ display: "inline", verticalAlign: "middle" }} /> baixar
-                            </a>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </>
-        )}
-
-        <div className="card" style={{ marginTop: 20 }}>
-          <h2 style={{ fontSize: 15, margin: "0 0 12px", color: "var(--muted)" }}>Agendar sessão</h2>
-          <form onSubmit={criarSessao} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr auto", gap: 8, alignItems: "end" }}>
-            <div>
-              <label className="label">Data e hora</label>
-              <input className="input" type="datetime-local" required
-                value={newSes.data} onChange={(e) => setNewSes({ ...newSes, data: e.target.value })} />
-            </div>
-            <div>
-              <label className="label">Modalidade</label>
-              <select className="input" value={newSes.modalidade} onChange={(e) => setNewSes({ ...newSes, modalidade: e.target.value })}>
-                <option value="presencial">Presencial</option>
-                <option value="online">Online</option>
-              </select>
-            </div>
-            <div>
-              <label className="label">Status</label>
-              <select className="input" value={newSes.status} onChange={(e) => setNewSes({ ...newSes, status: e.target.value })}>
-                <option value="agendada">Agendada</option>
-                <option value="realizada">Realizada</option>
-                <option value="cancelada">Cancelada</option>
-                <option value="falta">Falta</option>
-              </select>
-            </div>
-            <div>
-              <label className="label">Valor (R$)</label>
-              <input className="input" inputMode="decimal" placeholder="150,00"
-                value={newSes.valor} onChange={(e) => setNewSes({ ...newSes, valor: e.target.value })} />
-            </div>
-            <button className="btn btn-primary"><CalendarPlus size={16} /> Agendar</button>
-          </form>
-        </div>
-
-        <h2 style={{ fontSize: 15, margin: "24px 0 12px", color: "var(--muted)" }}>Timeline de sessões</h2>
-        {sessoes.length === 0 ? (
-          <p style={{ color: "var(--muted)" }}>Nenhuma sessão registrada ainda — agende a primeira acima.</p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {sessoes.map((s) => (
-              <div key={s.id} className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ fontWeight: 500 }}>{dataRelativa(s.data)}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 13 }}>
-                    <span className="badge">{s.modalidade}</span>{" "}
-                    <span className="badge">{s.status}</span>
-                    {s.valor_centavos != null && <> <span className="badge">{formatCentavos(s.valor_centavos)}</span></>}
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {s.modalidade === "online" && s.status !== "cancelada" && (
-                    <button className="btn btn-primary" onClick={() => setTelessessao(s.id)}>
-                      <Video size={16} /> Sala
-                    </button>
-                  )}
-                  <button className="btn" onClick={() => setScribeSessao(s.id)}>
-                    <PresenceMark size={16} /> Gerar evolução
-                  </button>
-                  <button className="btn" onClick={() => novaEvolucao(s.id)}>
-                    <FileText size={16} /> Em branco
-                  </button>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ))}
-          </div>
-        )}
-
-        {pac && <ConformidadeIaCard pacienteId={pac.id} pacienteNome={pac.nome} />}
+            </>
+          )}
+        </div>
       </main>
+      <Drawer open={agendarOpen} title="Agendar sessão" onClose={() => setAgendarOpen(false)}>
+        <form onSubmit={criarSessao} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div>
+            <label className="label">Data e hora</label>
+            <input className="input" type="datetime-local" required
+              value={newSes.data} onChange={(e) => setNewSes({ ...newSes, data: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Modalidade</label>
+            <select className="input" value={newSes.modalidade} onChange={(e) => setNewSes({ ...newSes, modalidade: e.target.value })}>
+              <option value="presencial">Presencial</option>
+              <option value="online">Online</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Status</label>
+            <select className="input" value={newSes.status} onChange={(e) => setNewSes({ ...newSes, status: e.target.value })}>
+              <option value="agendada">Agendada</option>
+              <option value="realizada">Realizada</option>
+              <option value="cancelada">Cancelada</option>
+              <option value="falta">Falta</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Valor (R$)</label>
+            <input className="input" inputMode="decimal" placeholder="150,00"
+              value={newSes.valor} onChange={(e) => setNewSes({ ...newSes, valor: e.target.value })} />
+          </div>
+          <button className="btn btn-primary" style={{ marginTop: 4 }}><CalendarPlus size={16} /> Agendar</button>
+        </form>
+      </Drawer>
       {scribeSessao && (
         <ScribeModal sessaoId={scribeSessao} onClose={() => setScribeSessao(null)} />
       )}

@@ -20,9 +20,14 @@ from app.schemas.clinico import EvolucaoCreate, EvolucaoOut, EvolucaoUpdate
 router = APIRouter(prefix="/evolucoes", tags=["evolucoes"])
 
 
-def _to_out(e: Evolucao) -> EvolucaoOut:
+async def _to_out(e: Evolucao, session: SessionDep) -> EvolucaoOut:
+    # paciente_id não é denormalizado na evolução → resolvido via sessão
+    # (identity-map torna o get barato quando a sessão já foi carregada).
+    s = await session.get(Sessao, e.sessao_id)
     return EvolucaoOut(
-        id=str(e.id), sessao_id=str(e.sessao_id), autor_id=str(e.autor_id),
+        id=str(e.id), sessao_id=str(e.sessao_id),
+        paciente_id=str(s.paciente_id) if s else None,
+        autor_id=str(e.autor_id),
         identificacao=e.identificacao, demanda_objetivos=e.demanda_objetivos,
         evolucao=e.evolucao, encaminhamento=e.encaminhamento,
         assinado_em=e.assinado_em, hash_assinatura=e.hash_assinatura,
@@ -59,7 +64,7 @@ async def criar(
     session.add(e)
     await session.commit()
     await session.refresh(e)
-    return _to_out(e)
+    return await _to_out(e, session)
 
 
 @router.get("/sessao/{sessao_id}", response_model=list[EvolucaoOut])
@@ -73,7 +78,7 @@ async def listar_por_sessao(
         Evolucao.sessao_id == uuid.UUID(sessao_id),
     ).order_by(Evolucao.criado_em.asc())
     rows = list((await session.scalars(q)).all())
-    return [_to_out(e) for e in rows]
+    return [await _to_out(e, session) for e in rows]
 
 
 @router.get("/{evolucao_id}", response_model=EvolucaoOut)
@@ -85,7 +90,7 @@ async def obter(
     e = await session.get(Evolucao, uuid.UUID(evolucao_id))
     if not e or e.tenant_id != user.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Evolução não encontrada")
-    return _to_out(e)
+    return await _to_out(e, session)
 
 
 @router.patch("/{evolucao_id}", response_model=EvolucaoOut)
@@ -106,7 +111,7 @@ async def atualizar(
             setattr(e, field, val)
     await session.commit()
     await session.refresh(e)
-    return _to_out(e)
+    return await _to_out(e, session)
 
 
 @router.post("/{evolucao_id}/assinar", response_model=EvolucaoOut)
@@ -146,4 +151,4 @@ async def assinar(
 
     await session.commit()
     await session.refresh(e)
-    return _to_out(e)
+    return await _to_out(e, session)
