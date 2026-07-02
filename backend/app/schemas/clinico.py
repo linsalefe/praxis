@@ -109,9 +109,23 @@ class EvolucaoOut(BaseModel):
     atualizado_em: datetime
 
 
+class IaLogItemOut(BaseModel):
+    """Um evento real de uso de IA (derivado do audit_log)."""
+    acao: str
+    recurso: str
+    ts: datetime | None
+    entidade: str
+    entidade_id: str | None
+
+
+class TcleIaOut(BaseModel):
+    versao: str
+    texto: str
+
+
 class ConsentimentoCreate(BaseModel):
     paciente_id: str
-    tipo: Literal["tratamento_dados", "gravacao", "compartilhamento", "teleatendimento"]
+    tipo: Literal["tratamento_dados", "gravacao", "compartilhamento", "teleatendimento", "uso_ia"]
     texto_aceito: str = Field(min_length=1)
     aceito_por: str = Field(min_length=1, max_length=160)
 

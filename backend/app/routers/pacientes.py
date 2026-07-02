@@ -8,11 +8,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 
+from app.conformidade.ia_cfp import listar_ia_log
 from app.deps import SessionDep, get_current_user
 from app.models.audit import AuditLog
 from app.models.paciente import Paciente
 from app.models.user import User
-from app.schemas.clinico import PacienteCreate, PacienteOut, PacienteUpdate
+from app.schemas.clinico import IaLogItemOut, PacienteCreate, PacienteOut, PacienteUpdate
 from app.security.crypto import decrypt_str, encrypt_str
 
 router = APIRouter(prefix="/pacientes", tags=["pacientes"])
@@ -133,3 +134,17 @@ async def deletar(
     p.deleted_at = datetime.now(tz=timezone.utc)
     p.reter_ate = (datetime.now(tz=timezone.utc) + timedelta(days=365 * 20)).date()
     await session.commit()
+
+
+@router.get("/{paciente_id}/ia-log", response_model=list[IaLogItemOut])
+async def ia_log(
+    paciente_id: str,
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+) -> list[IaLogItemOut]:
+    """Log factual de uso de IA para este paciente (Res. CFP 09/2024)."""
+    p = await session.get(Paciente, uuid.UUID(paciente_id))
+    if not p or p.tenant_id != user.tenant_id or p.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paciente não encontrado")
+    itens = await listar_ia_log(session, user.tenant_id, p.id)
+    return [IaLogItemOut(**it) for it in itens]

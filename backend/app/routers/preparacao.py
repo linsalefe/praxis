@@ -163,6 +163,7 @@ async def preparar_sessao(
              "n_instrumentos": ctx.n_instrumentos_finalizados,
              "n_chunks_acervo": len(roteiro.hits),
              "sessao_id": str(sessao_uuid) if sessao_uuid else None,
+             "paciente_id": str(pac.id),
          })
     await session.commit()
     await session.refresh(r)

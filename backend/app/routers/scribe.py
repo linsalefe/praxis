@@ -169,7 +169,8 @@ async def scribe_resumo(
     ip = request.client.host if request.client else None
     _log(session, tenant_id=user.tenant_id, user_id=user.id, ip=ip,
          acao="SCRIBE_STRUCTURED", entidade="Evolucao", entidade_id=str(e.id),
-         meta={"modo": "resumo", "provider": estruturada.provider_id, "latencia_ms": latencia})
+         meta={"modo": "resumo", "provider": estruturada.provider_id, "latencia_ms": latencia,
+               "paciente_id": str(sess.paciente_id)})
     await session.commit()
     await session.refresh(e)
 
@@ -263,6 +264,7 @@ async def scribe_audio(
          meta={
              "modo": "audio", "provider": estruturada.provider_id,
              "latencia_transc_ms": latencia_transc, "latencia_estrut_ms": latencia_estrut,
+             "paciente_id": str(sess.paciente_id),
          })
     await session.commit()
     await session.refresh(e)

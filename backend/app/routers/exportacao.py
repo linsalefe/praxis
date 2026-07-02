@@ -18,6 +18,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 
+from app.conformidade.ia_cfp import listar_ia_log
 from app.db import current_request_ip
 from app.deps import SessionDep, get_current_user
 from app.instrumentos.scoring import pontuar_likert
@@ -178,6 +179,9 @@ async def _montar_export(session, user: User, pac: Paciente) -> tuple[dict[str, 
         for x in sups
     ]
 
+    # --- Log de uso de IA (factual, a partir do audit_log) ---
+    ia_log_json = await listar_ia_log(session, tid, pid)
+
     export = {
         "meta": {
             "exportado_em": datetime.now(tz=timezone.utc).isoformat(),
@@ -206,12 +210,14 @@ async def _montar_export(session, user: User, pac: Paciente) -> tuple[dict[str, 
         "consentimentos": consentimentos_json,
         "roteiros": roteiros_json,
         "supervisao": supervisao_json,
+        "ia_log": ia_log_json,
     }
     export["contagens"] = {
         "sessoes": len(sessoes_json), "evolucoes": len(evolucoes_json),
         "documentos": len(documentos_json), "instrumentos": len(instrumentos_json),
         "anexos": len(anexos_meta), "consentimentos": len(consentimentos_json),
         "roteiros": len(roteiros_json), "supervisao": len(supervisao_json),
+        "ia_log": len(ia_log_json),
     }
     return export, anexos_files
 
@@ -232,7 +238,7 @@ def _resumo_pdf(export: dict[str, Any]) -> bytes:
         "<h2>Conteúdo do pacote</h2><ul>",
         f"<li>{c['sessoes']} sessões · {c['evolucoes']} evoluções · {c['documentos']} documentos</li>",
         f"<li>{c['instrumentos']} instrumentos · {c['anexos']} anexos · {c['consentimentos']} consentimentos</li>",
-        f"<li>{c['roteiros']} roteiros · {c['supervisao']} estudos de supervisão</li>",
+        f"<li>{c['roteiros']} roteiros · {c['supervisao']} estudos de supervisão · {c.get('ia_log', 0)} eventos de IA</li>",
         "</ul>",
     ]
 
@@ -266,6 +272,13 @@ def _resumo_pdf(export: dict[str, Any]) -> bytes:
         partes.append("<h2>Consentimentos</h2><ul>")
         for c2 in export["consentimentos"]:
             partes.append(f"<li>{esc(c2['tipo'])} — {esc(c2['aceito_por'])} · {esc((c2['aceito_em'] or '')[:10])}</li>")
+        partes.append("</ul>")
+
+    if export.get("ia_log"):
+        partes.append("<h2>Uso de IA de apoio (Res. CFP 09/2024)</h2>")
+        partes.append('<p class="muted">Eventos reais de uso de IA de apoio neste prontuário — todo conteúdo é rascunho revisado e assinado pelo profissional.</p><ul>')
+        for ev in export["ia_log"]:
+            partes.append(f"<li>{esc((ev['ts'] or '')[:16])} · {esc(ev['recurso'])}</li>")
         partes.append("</ul>")
 
     partes.append('<hr/><p class="muted">Escores são calculados (factuais). Este resumo acompanha o export.json e os anexos originais no pacote.</p>')
