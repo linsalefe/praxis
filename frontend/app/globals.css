@@ -144,6 +144,39 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 500; letter-spacing:
   .container-praxis { padding: 16px; }
 }
 
+/* ==========================================================================
+   UX-3 U15 — Passe mobile (≤640px = celular). Presença preservada.
+   ========================================================================== */
+@media (max-width: 640px) {
+  .container-praxis { padding: 14px; }
+  h1 { font-size: 22px; }
+
+  /* Cards de linha "info | ações" empilham; o grupo de ações quebra em linha. */
+  .row-stack { flex-direction: column !important; align-items: stretch !important; gap: 12px; }
+  .row-stack > * { min-width: 0; }
+  .row-stack > *:last-child { flex-wrap: wrap; justify-content: flex-start; }
+
+  /* Sub-nav da ficha do paciente: rola no eixo X em vez de quebrar linha. */
+  .subnav { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .subnav-tab { white-space: nowrap; }
+
+  /* Tabelas viram cards empilhados via data-label — sem JS.
+     O <thead> some visualmente; cada <td> mostra seu rótulo (attr data-label). */
+  .table-cards thead { display: none; }
+  .table-cards, .table-cards tbody, .table-cards tr, .table-cards td { display: block; width: 100%; }
+  .table-cards tr { border: 1px solid var(--border); border-radius: var(--radius-md); margin: 12px; }
+  .table-cards td {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+    text-align: right; border: 0; padding: 8px 14px;
+  }
+  .table-cards td + td { border-top: 1px solid var(--border); }
+  .table-cards td::before {
+    content: attr(data-label); color: var(--muted); font-size: 12px;
+    text-align: left; white-space: nowrap; flex-shrink: 0;
+  }
+  .table-cards td[data-label=""]::before { content: none; }
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);

@@ -48,6 +48,12 @@ export default function AgendaPage() {
   const [cancelar, setCancelar] = useState<Sessao | null>(null);
   const [telessessao, setTelessessao] = useState<Sessao | null>(null);
 
+  // UX-3 U15: no celular a agenda abre em "dia" por padrão (semana no desktop).
+  // Em useEffect (não no initializer) para evitar mismatch de hidratação.
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 640px)").matches) setView("dia");
+  }, []);
+
   const range = useMemo(() => {
     if (view === "dia") return { de: ymd(anchor), ate: ymd(anchor) };
     const s = weekStart(anchor);
@@ -232,7 +238,7 @@ function SessaoRow({
 }) {
   const pendente = s.status === "agendada" && new Date(s.data) < new Date();
   return (
-    <Card style={{
+    <Card className="row-stack" style={{
       display: "flex", alignItems: "center", gap: 12, padding: "12px 14px",
       borderLeft: pendente ? "3px solid var(--warn-line)" : undefined,
     }}>
