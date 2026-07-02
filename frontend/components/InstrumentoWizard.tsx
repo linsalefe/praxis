@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Download, FileCheck2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, FileCheck2, ShieldCheck } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { PresenceMark } from "@/components/ui/PresenceMark";
@@ -252,6 +252,16 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
         {isSaidaStep && (
           <div className="card" style={{ marginTop: 12 }}>
             <h2 style={{ fontSize: 15, marginTop: 0 }}>Saída — revise e finalize</h2>
+            {instr.tipo === "gam" && (
+              <div style={{ marginBottom: 12, padding: 10, borderRadius: "var(--radius-md)", background: "var(--surface-2)", display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <ShieldCheck size={16} color="var(--brand-2)" style={{ flexShrink: 0, marginTop: 1 }} />
+                <p style={{ margin: 0, fontSize: 12.5, color: "var(--muted)" }}>
+                  <strong>Apoio à gestão autônoma e à decisão compartilhada.</strong> Não substitui
+                  o prescritor e <strong>nenhuma conduta de medicação é sugerida</strong> — a decisão
+                  sobre o tratamento é do usuário com o seu médico.
+                </p>
+              </div>
+            )}
             {isLikert && instr.definicao && (
               <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid var(--border)" }}>
                 <PainelFaixa definicao={instr.definicao} pontuacao={resp.pontuacao} />

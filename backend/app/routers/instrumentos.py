@@ -9,7 +9,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 
 from app.deps import SessionDep, get_current_user
-from app.instrumentos.geradores import formular_maastricht, planejar_wrap, redigir_leitura_escala
+from app.instrumentos.geradores import (
+    formular_maastricht,
+    formular_ptmf,
+    planejar_wrap,
+    redigir_leitura_escala,
+    sintetizar_gam,
+)
 from app.instrumentos.pdf import render_instrumento_pdf
 from app.models.audit import AuditLog
 from app.models.consentimento import Consentimento
@@ -253,6 +259,10 @@ async def gerar_saida(
         gerada = await formular_maastricht(session, instr.definicao, r.respostas or {}, user.abordagem)
     elif instr.tipo == "wrap":
         gerada = await planejar_wrap(instr.definicao, r.respostas or {})
+    elif instr.tipo == "gam":
+        gerada = await sintetizar_gam(instr.definicao, r.respostas or {})
+    elif instr.tipo == "ptmf":
+        gerada = await formular_ptmf(instr.definicao, r.respostas or {})
     elif (instr.definicao or {}).get("kind") == "likert_sum":
         # Escore/faixa são calculados de forma determinística; a IA só redige a
         # leitura sobre o número pronto (nunca recalcula).
