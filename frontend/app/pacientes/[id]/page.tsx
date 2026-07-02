@@ -9,6 +9,7 @@ import { api, ApiError, getToken } from "@/lib/api";
 import { formatCentavos, reaisParaCentavos } from "@/lib/money";
 import { dataRelativa } from "@/lib/date";
 import { instrumentoTipoLabel, modalidadeLabel } from "@/lib/labels";
+import { formatNome } from "@/lib/format";
 import { Topbar } from "@/components/Topbar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ScribeModal } from "@/components/ScribeModal";
@@ -554,7 +555,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
       <ConfirmDialog
         open={confirmExport}
         title="Exportar dados (LGPD)"
-        description={`Será gerado um pacote (.zip) com o prontuário completo de ${pac.nome}: dados pessoais decifrados, evoluções, documentos, instrumentos e os anexos originais. O arquivo contém informação sensível — você é responsável por armazená-lo e transmiti-lo com segurança. Nada é apagado ou alterado.`}
+        description={`Será gerado um pacote (.zip) com o prontuário completo de ${formatNome(pac.nome)}: dados pessoais decifrados, evoluções, documentos, instrumentos e os anexos originais. O arquivo contém informação sensível — você é responsável por armazená-lo e transmiti-lo com segurança. Nada é apagado ou alterado.`}
         confirmLabel="Baixar pacote"
         busy={exporting}
         onConfirm={exportar}
@@ -563,7 +564,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
       <ConfirmDialog
         open={confirmDel}
         title="Excluir paciente"
-        description={`O prontuário de ${pac.nome} será removido da lista (soft-delete, mantido sob guarda legal de 20 anos). Esta ação exige nova inclusão para reverter.`}
+        description={`O prontuário de ${formatNome(pac.nome)} será removido da lista (soft-delete, mantido sob guarda legal de 20 anos). Esta ação exige nova inclusão para reverter.`}
         confirmLabel="Excluir paciente"
         busy={deleting}
         onConfirm={excluir}

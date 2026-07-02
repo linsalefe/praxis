@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
+import { formatNome } from "@/lib/format";
 
 /**
  * PacienteCard — cabeçalho do prontuário.
@@ -95,7 +96,7 @@ export function PacienteCard({
           {ini}
         </div>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <h1 style={{ fontSize: 22, margin: "0 0 4px" }}>{paciente.nome}</h1>
+          <h1 style={{ fontSize: 22, margin: "0 0 4px" }}>{formatNome(paciente.nome)}</h1>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <span className="badge badge-info">Em acompanhamento</span>
             <span style={{ color: "var(--muted)", fontSize: 13 }}>

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { CalendarPlus, ChevronLeft, ChevronRight, Clock, Video } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { statusLabel, modalidadeLabel } from "@/lib/labels";
+import { formatNome } from "@/lib/format";
 import { Topbar } from "@/components/Topbar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -204,7 +205,7 @@ export default function AgendaPage() {
       <ConfirmDialog
         open={!!cancelar}
         title="Cancelar sessão"
-        description={cancelar ? `A sessão de ${cancelar.paciente_nome} em ${new Date(cancelar.data).toLocaleString("pt-BR")} será marcada como cancelada.` : ""}
+        description={cancelar ? `A sessão de ${formatNome(cancelar.paciente_nome)} em ${new Date(cancelar.data).toLocaleString("pt-BR")} será marcada como cancelada.` : ""}
         confirmLabel="Cancelar sessão"
         onConfirm={() => { if (cancelar) mudarStatus(cancelar, "cancelada"); setCancelar(null); }}
         onCancel={() => setCancelar(null)}
@@ -241,7 +242,7 @@ function SessaoRow({
         <Clock size={13} color="var(--muted)" /> {hora(s.data)}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <Link href={`/pacientes/${s.paciente_id}`} className="link" style={{ fontWeight: 500 }}>{s.paciente_nome}</Link>
+        <Link href={`/pacientes/${s.paciente_id}`} className="link" style={{ fontWeight: 500 }}>{formatNome(s.paciente_nome)}</Link>
         <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 2 }}>
           <span className="badge">{modalidadeLabel(s.modalidade)}</span>
           <StatusBadge status={s.status} />
@@ -309,7 +310,7 @@ function SessaoForm({
         ) : (
           <select className="input" value={pacienteId} onChange={(e) => setPacienteId(e.target.value)} required>
             <option value="">Selecione…</option>
-            {pacientes.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            {pacientes.map((p) => <option key={p.id} value={p.id}>{formatNome(p.nome)}</option>)}
           </select>
         )}
       </Field>

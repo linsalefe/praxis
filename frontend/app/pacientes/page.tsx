@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { PlusCircle, Search, X } from "lucide-react";
 import { api, ApiError, getScope, getToken } from "@/lib/api";
 import { dataRelativa } from "@/lib/date";
+import { formatNome } from "@/lib/format";
 import { Topbar } from "@/components/Topbar";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
@@ -148,7 +149,7 @@ export default function PacientesPage() {
                 {filtrados.map((p) => (
                   <tr key={p.id} style={{ borderTop: "1px solid var(--border)" }}>
                     <td data-label="Nome" style={{ padding: 12 }}>
-                      <Link className="link" href={`/pacientes/${p.id}`}>{p.nome}</Link>
+                      <Link className="link" href={`/pacientes/${p.id}`}>{formatNome(p.nome)}</Link>
                     </td>
                     <td data-label="Contato" style={{ padding: 12 }}>{p.contato || "—"}</td>
                     <td data-label="Nascimento" style={{ padding: 12 }}>{p.nascimento || "—"}</td>

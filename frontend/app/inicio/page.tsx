@@ -8,6 +8,7 @@ import { CalendarClock, FileSignature, FileText, ClipboardList, UserPlus, Rotate
 import { api, ApiError, getScope, getToken } from "@/lib/api";
 import { dataRelativa } from "@/lib/date";
 import { modalidadeLabel } from "@/lib/labels";
+import { formatNome } from "@/lib/format";
 import { Topbar } from "@/components/Topbar";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -155,7 +156,7 @@ export default function InicioPage() {
                     <ItemLink key={s.sessao_id} href={`/pacientes/${s.paciente_id}`}>
                       <CalendarClock size={16} color="var(--brand-2)" style={{ flex: "none" }} />
                       <span style={{ fontFamily: "var(--font-mono)", color: "var(--text)" }}>{hora(s.data)}</span>
-                      <strong style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.paciente_nome}</strong>
+                      <strong style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{formatNome(s.paciente_nome)}</strong>
                       <span className="badge badge-neutral">{modalidadeLabel(s.modalidade)}</span>
                     </ItemLink>
                   ))}
@@ -181,7 +182,7 @@ export default function InicioPage() {
                       <ItemLink key={e.evolucao_id} href={`/evolucoes/${e.evolucao_id}`}>
                         <FileSignature size={16} color="var(--brand-2)" style={{ flex: "none" }} />
                         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          Evolução — {e.paciente_nome}
+                          Evolução — {formatNome(e.paciente_nome)}
                         </span>
                         <span style={{ color: "var(--muted)", fontSize: 12, flex: "none" }}>{dataCurta(e.criado_em)}</span>
                       </ItemLink>
@@ -199,7 +200,7 @@ export default function InicioPage() {
                       <ItemLink key={d.documento_id} href={`/documentos/${d.documento_id}`}>
                         <FileText size={16} color="var(--brand-2)" style={{ flex: "none" }} />
                         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textTransform: "capitalize" }}>
-                          {d.tipo} — {d.paciente_nome}
+                          {d.tipo} — {formatNome(d.paciente_nome)}
                         </span>
                       </ItemLink>
                     ))}
@@ -216,7 +217,7 @@ export default function InicioPage() {
                       <ItemLink key={r.resposta_id} href={`/instrumentos/${r.resposta_id}`}>
                         <ClipboardList size={16} color="var(--brand-2)" style={{ flex: "none" }} />
                         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {r.instrumento_titulo} — {r.paciente_nome}
+                          {r.instrumento_titulo} — {formatNome(r.paciente_nome)}
                         </span>
                       </ItemLink>
                     ))}
@@ -233,7 +234,7 @@ export default function InicioPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <ItemLink href={`/pacientes/${ultimo.id}`}>
                     <RotateCcw size={16} color="var(--brand-2)" style={{ flex: "none" }} />
-                    <span>Último paciente aberto: <strong>{ultimo.nome}</strong></span>
+                    <span>Último paciente aberto: <strong>{formatNome(ultimo.nome)}</strong></span>
                   </ItemLink>
                   <ItemLink href={`/sofia?paciente_id=${ultimo.id}`}>
                     <PresenceMark size={16} />
