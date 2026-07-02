@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ShieldCheck, Check, X } from "lucide-react";
 import { PresenceMark } from "@/components/ui/PresenceMark";
+import { Card } from "@/components/ui/Card";
 
 export const metadata = {
   title: "Como o Práxis usa IA · CENAT",
@@ -35,7 +36,7 @@ export default function ComoUsamosIaPage() {
         A responsabilidade técnica pela conduta é sempre humana.
       </p>
 
-      <div className="card" style={{ marginBottom: 16 }}>
+      <Card style={{ marginBottom: 16 }}>
         <h2 style={{ fontSize: 16, marginTop: 0 }}>O que a IA faz</h2>
         <ul style={{ margin: 0, paddingLeft: 4, listStyle: "none", display: "grid", gap: 8 }}>
           {faz.map((t, i) => (
@@ -45,9 +46,9 @@ export default function ComoUsamosIaPage() {
             </li>
           ))}
         </ul>
-      </div>
+      </Card>
 
-      <div className="card" style={{ marginBottom: 16 }}>
+      <Card style={{ marginBottom: 16 }}>
         <h2 style={{ fontSize: 16, marginTop: 0 }}>O que a IA não faz</h2>
         <ul style={{ margin: 0, paddingLeft: 4, listStyle: "none", display: "grid", gap: 8 }}>
           {naoFaz.map((t, i) => (
@@ -57,9 +58,9 @@ export default function ComoUsamosIaPage() {
             </li>
           ))}
         </ul>
-      </div>
+      </Card>
 
-      <div className="card" style={{ marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-start" }}>
+      <Card style={{ marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-start" }}>
         <ShieldCheck size={18} color="var(--brand-2)" style={{ flexShrink: 0, marginTop: 2 }} />
         <div>
           <h2 style={{ fontSize: 16, margin: "0 0 6px" }}>Supervisão humana e confidencialidade</h2>
@@ -73,7 +74,7 @@ export default function ComoUsamosIaPage() {
             de dados do paciente.
           </p>
         </div>
-      </div>
+      </Card>
 
       <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 20 }}>
         <Link className="link" href="/login">← Entrar no Práxis</Link>

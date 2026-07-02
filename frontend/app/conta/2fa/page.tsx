@@ -7,6 +7,9 @@ import { KeyRound, ShieldCheck } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { CertificadoManager } from "@/components/CertificadoManager";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Field } from "@/components/ui/Field";
 
 type Me = { id: string; nome: string; email: string; totp_ativado: boolean };
 type SetupResp = { otpauth_url: string; qrcode_data_uri: string };
@@ -51,7 +54,7 @@ export default function Conta2FA() {
       <Topbar meNome={me.nome} />
       <main className="container-praxis" style={{ maxWidth: 560 }}>
         <h1 style={{ fontSize: 22, margin: "8px 0 20px" }}>Autenticação em dois fatores</h1>
-        <div className="card">
+        <Card>
           <p style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <ShieldCheck size={18} color={me.totp_ativado ? "var(--ok)" : "var(--muted)"} />
             Status: <strong>{me.totp_ativado ? "Ativado" : "Não ativado"}</strong>
@@ -62,9 +65,9 @@ export default function Conta2FA() {
               <p style={{ color: "var(--muted)" }}>
                 Ative o 2FA para proteger o acesso a dados clínicos. Use um app como Aegis, Google Authenticator ou 1Password.
               </p>
-              <button className="btn btn-primary" onClick={iniciar}>
+              <Button variant="primary" onClick={iniciar}>
                 <KeyRound size={16} /> Iniciar configuração
-              </button>
+              </Button>
             </>
           )}
 
@@ -77,16 +80,15 @@ export default function Conta2FA() {
                 Ou copie: {setup.otpauth_url}
               </p>
               <div style={{ display: "flex", gap: 8, alignItems: "end", marginTop: 16 }}>
-                <div style={{ flex: 1 }}>
-                  <label className="label">Código de 6 dígitos</label>
+                <Field label="Código de 6 dígitos" style={{ flex: 1 }}>
                   <input className="input" inputMode="numeric" maxLength={8} value={codigo}
                     onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ""))} />
-                </div>
-                <button className="btn btn-primary" onClick={confirmar}>Confirmar</button>
+                </Field>
+                <Button variant="primary" onClick={confirmar}>Confirmar</Button>
               </div>
             </>
           )}
-        </div>
+        </Card>
 
         <CertificadoManager />
       </main>

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { FileSignature, X } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 
 type Tipo = "declaracao" | "atestado" | "relatorio" | "laudo" | "encaminhamento";
 
@@ -63,12 +65,12 @@ export function DocumentoModal({
       style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}
       onClick={busy ? undefined : onClose}
     >
-      <div className="card" style={{ width: "92%", maxWidth: 620 }} onClick={(e) => e.stopPropagation()}>
+      <Card style={{ width: "92%", maxWidth: 620 }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <FileSignature size={18} color="var(--brand-2)" /> Gerar documento
           </h3>
-          <button className="btn" onClick={onClose} disabled={!!busy}><X size={14} /></button>
+          <Button onClick={onClose} disabled={!!busy}><X size={14} /></Button>
         </div>
         <p style={{ color: "var(--muted)", fontSize: 13 }}>
           Escolha o tipo (Res. CFP 06/2019). O rascunho vem editável e a assinatura permanece manual.
@@ -128,11 +130,11 @@ export function DocumentoModal({
         )}
 
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-          <button className="btn btn-primary" onClick={gerar} disabled={!!busy}>
+          <Button variant="primary" onClick={gerar} disabled={!!busy}>
             <FileSignature size={16} /> {busy || "Gerar rascunho"}
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

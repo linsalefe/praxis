@@ -6,6 +6,7 @@ import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
+import { Card } from "@/components/ui/Card";
 
 type Doc = {
   id: string; slug: string; titulo: string; autor: string;
@@ -39,7 +40,7 @@ export default function AcervoPage() {
         {loading ? (
           <p style={{ color: "var(--muted)" }}>Carregando…</p>
         ) : (
-          <div className="card" style={{ padding: 0 }}>
+          <Card style={{ padding: 0 }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12 }}>
@@ -64,7 +65,7 @@ export default function AcervoPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
         )}
       </main>
     </>

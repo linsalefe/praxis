@@ -7,6 +7,9 @@ import { Video, Link2, ShieldCheck, X } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Field } from "@/components/ui/Field";
 
 type SalaStatus = {
   sessao_id: string;
@@ -125,13 +128,13 @@ export function TelessessaoModal({
       style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}
       onClick={() => !busy && onClose()}
     >
-      <div className="card" style={{ maxWidth: 520, width: "94%", background: "var(--surface)" }} onClick={(e) => e.stopPropagation()}>
+      <Card style={{ maxWidth: 520, width: "94%", background: "var(--surface)" }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <PresenceMark size={20} />
             <h3 style={{ margin: 0 }}>Telessessão</h3>
           </div>
-          <button className="btn" onClick={onClose} disabled={busy} aria-label="Fechar"><X size={16} /></button>
+          <Button onClick={onClose} disabled={busy} aria-label="Fechar"><X size={16} /></Button>
         </div>
         <p style={{ color: "var(--muted)", margin: "0 0 12px", fontSize: 13 }}>{pacienteNome}</p>
 
@@ -150,12 +153,12 @@ export function TelessessaoModal({
           </div>
         ) : temConsentimento ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <button className="btn btn-primary" onClick={entrar} disabled={busy}>
+            <Button variant="primary" onClick={entrar} loading={busy}>
               <Video size={16} /> {busy ? "Abrindo…" : "Entrar na sala"}
-            </button>
-            <button className="btn" onClick={copiarLink} disabled={busy}>
+            </Button>
+            <Button onClick={copiarLink} disabled={busy}>
               <Link2 size={16} /> Copiar link do paciente
-            </button>
+            </Button>
             <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "var(--muted)" }}>
               O paciente entra pelo mesmo link — não é preciso cadastro. A sala não expõe dados pessoais.
             </p>
@@ -169,16 +172,15 @@ export function TelessessaoModal({
             <p style={{ margin: 0, fontSize: 12.5, color: "var(--muted)", fontStyle: "italic" }}>
               “{TEXTO_CONSENTIMENTO}”
             </p>
-            <div>
-              <label className="label">Aceito por</label>
+            <Field label="Aceito por">
               <input className="input" value={aceitoPor} onChange={(e) => setAceitoPor(e.target.value)} placeholder="Nome de quem consente" />
-            </div>
-            <button className="btn btn-primary" onClick={registrarConsentimento} disabled={busy || aceitoPor.trim().length < 1}>
+            </Field>
+            <Button variant="primary" onClick={registrarConsentimento} disabled={busy || aceitoPor.trim().length < 1}>
               <ShieldCheck size={16} /> {busy ? "Registrando…" : "Registrar consentimento"}
-            </button>
+            </Button>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

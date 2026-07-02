@@ -7,6 +7,8 @@ import { Mic, Upload, FileText, Square, X } from "lucide-react";
 import { getToken, ApiError } from "@/lib/api";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
@@ -200,8 +202,7 @@ export function ScribeModal({
       }}
       onClick={busy ? undefined : tentarFechar}
     >
-      <div
-        className="card"
+      <Card
         style={{ width: "92%", maxWidth: 640, background: "var(--surface)" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -209,9 +210,9 @@ export function ScribeModal({
           <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <PresenceMark size={18} /> Gerar evolução
           </h3>
-          <button className="btn" onClick={tentarFechar} disabled={!!busy} aria-label="Fechar">
+          <Button onClick={tentarFechar} disabled={!!busy} aria-label="Fechar">
             <X size={14} />
-          </button>
+          </Button>
         </div>
 
         <div style={{ display: "flex", gap: 6, marginTop: 12, borderBottom: "1px solid var(--border)" }}>
@@ -254,9 +255,9 @@ export function ScribeModal({
                 disabled={!!busy}
               />
               <div style={{ marginTop: 12, textAlign: "right" }}>
-                <button className="btn btn-primary" onClick={enviarResumo} disabled={!!busy}>
+                <Button variant="primary" onClick={enviarResumo} disabled={!!busy}>
                   <PresenceMark size={16} /> {busy ?? "Gerar evolução"}
-                </button>
+                </Button>
               </div>
             </>
           )}
@@ -275,8 +276,8 @@ export function ScribeModal({
                 disabled={!!busy}
               />
               <div style={{ marginTop: 12, textAlign: "right" }}>
-                <button
-                  className="btn btn-primary"
+                <Button
+                  variant="primary"
                   disabled={!!busy}
                   onClick={async () => {
                     const f = fileRef.current?.files?.[0];
@@ -285,7 +286,7 @@ export function ScribeModal({
                   }}
                 >
                   <Upload size={16} /> {busy ?? "Enviar e transcrever"}
-                </button>
+                </Button>
               </div>
             </>
           )}
@@ -297,15 +298,15 @@ export function ScribeModal({
               </p>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 {!gravando && !audioBlob && (
-                  <button className="btn btn-primary" onClick={iniciarGravacao} disabled={!!busy}>
+                  <Button variant="primary" onClick={iniciarGravacao} disabled={!!busy}>
                     <Mic size={16} /> Iniciar
-                  </button>
+                  </Button>
                 )}
                 {gravando && (
                   <>
-                    <button className="btn btn-danger" onClick={pararGravacao}>
+                    <Button variant="danger" onClick={pararGravacao}>
                       <Square size={16} /> Parar ({duracao}s)
-                    </button>
+                    </Button>
                     <span aria-live="polite" style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--danger)", fontSize: 13 }}>
                       <span className="rec-dot" aria-hidden style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--danger)", display: "inline-block" }} />
                       gravando
@@ -319,16 +320,16 @@ export function ScribeModal({
                 {audioBlob && !gravando && (
                   <>
                     <span className="badge">gravado {duracao}s · {(audioBlob.size / 1024).toFixed(0)} KB</span>
-                    <button className="btn" onClick={() => { setAudioBlob(null); setDuracao(0); }} disabled={!!busy}>
+                    <Button onClick={() => { setAudioBlob(null); setDuracao(0); }} disabled={!!busy}>
                       Descartar
-                    </button>
-                    <button
-                      className="btn btn-primary"
+                    </Button>
+                    <Button
+                      variant="primary"
                       disabled={!!busy}
                       onClick={() => enviarAudio(audioBlob, `sessao-${sessaoId}.webm`)}
                     >
                       <PresenceMark size={16} /> {busy ?? "Enviar e gerar"}
-                    </button>
+                    </Button>
                   </>
                 )}
               </div>
@@ -344,7 +345,7 @@ export function ScribeModal({
         <p style={{ marginTop: 12, color: "var(--muted)", fontSize: 11 }}>
           Rascunho é editável. Assinatura permanece manual — a responsabilidade técnica é do profissional (Manual CFP 2025).
         </p>
-      </div>
+      </Card>
     </div>
 
     <ConfirmDialog

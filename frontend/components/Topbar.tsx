@@ -10,6 +10,7 @@ import {
 import { clearToken } from "@/lib/api";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { Drawer } from "@/components/ui/Drawer";
+import { Button } from "@/components/ui/Button";
 
 type Item = { href: string; label: string; icon: React.ReactNode };
 
@@ -73,17 +74,17 @@ export function Topbar({ meNome }: { meNome?: string }) {
 
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         {meNome && <span style={{ color: "var(--muted)", fontSize: 13 }}>{meNome}</span>}
-        <button className="btn topbar-links" onClick={logout}>
+        <Button className="topbar-links" onClick={logout}>
           <LogOut size={14} /> Sair
-        </button>
-        <button
-          className="btn topbar-burger"
+        </Button>
+        <Button
+          className="topbar-burger"
           onClick={() => setMenu(true)}
           aria-label="Abrir menu"
           aria-expanded={menu}
         >
           <Menu size={18} />
-        </button>
+        </Button>
       </div>
 
       <Drawer open={menu} title="Menu" onClose={() => setMenu(false)}>
@@ -104,9 +105,9 @@ export function Topbar({ meNome }: { meNome?: string }) {
             );
           })}
           <hr className="divider" />
-          <button className="btn" onClick={() => { setMenu(false); logout(); }} style={{ justifyContent: "flex-start" }}>
+          <Button onClick={() => { setMenu(false); logout(); }} style={{ justifyContent: "flex-start" }}>
             <LogOut size={14} /> Sair
-          </button>
+          </Button>
         </nav>
       </Drawer>
     </header>

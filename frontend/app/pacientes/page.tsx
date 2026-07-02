@@ -9,6 +9,9 @@ import { api, ApiError, getScope, getToken } from "@/lib/api";
 import { dataRelativa } from "@/lib/date";
 import { Topbar } from "@/components/Topbar";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Field } from "@/components/ui/Field";
 
 type Paciente = {
   id: string; nome: string; contato: string | null;
@@ -104,9 +107,9 @@ export default function PacientesPage() {
       <main className="container-praxis">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, margin: "8px 0 20px" }}>
           <h1 style={{ fontSize: 22, margin: 0 }}>Pacientes</h1>
-          <button className="btn btn-primary" onClick={() => setDrawer(true)}>
+          <Button variant="primary" onClick={() => setDrawer(true)}>
             <PlusCircle size={16} /> Novo paciente
-          </button>
+          </Button>
         </div>
 
         {/* Busca */}
@@ -123,15 +126,15 @@ export default function PacientesPage() {
         </div>
 
         {loading ? (
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} height={20} width={`${90 - i * 8}%`} />)}
-          </div>
+          </Card>
         ) : rows.length === 0 ? (
           <p style={{ color: "var(--muted)" }}>Nenhum paciente cadastrado ainda — comece por “Novo paciente”.</p>
         ) : filtrados.length === 0 ? (
           <p style={{ color: "var(--muted)" }}>Nenhum paciente encontrado para “{busca}”.</p>
         ) : (
-          <div className="card" style={{ padding: 0 }}>
+          <Card style={{ padding: 0 }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12 }}>
@@ -156,7 +159,7 @@ export default function PacientesPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
         )}
       </main>
 
@@ -179,27 +182,29 @@ export default function PacientesPage() {
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <h2 style={{ fontSize: 18, margin: 0 }}>Novo paciente</h2>
-              <button className="btn btn-ghost" onClick={() => setDrawer(false)} aria-label="Fechar"><X size={18} /></button>
+              <Button variant="ghost" onClick={() => setDrawer(false)} aria-label="Fechar"><X size={18} /></Button>
             </div>
             <form onSubmit={criar} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div><label className="label">Nome *</label>
-                <input className="input" required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                  aria-invalid={erroCriar ? true : undefined} />
-                {erroCriar && <p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: "6px 0 0" }}>{erroCriar}</p>}
-              </div>
-              <div><label className="label">Contato</label>
-                <input className="input" value={form.contato} onChange={(e) => setForm({ ...form, contato: e.target.value })} /></div>
-              <div><label className="label">Nascimento</label>
-                <input className="input" type="date" value={form.nascimento} onChange={(e) => setForm({ ...form, nascimento: e.target.value })} /></div>
-              <div><label className="label">Documento</label>
-                <input className="input" value={form.documento} onChange={(e) => setForm({ ...form, documento: e.target.value })} /></div>
-              <div><label className="label">Sexo</label>
-                <input className="input" value={form.sexo} onChange={(e) => setForm({ ...form, sexo: e.target.value })} /></div>
+              <Field label="Nome *" error={erroCriar}>
+                <input className="input" required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
+              </Field>
+              <Field label="Contato">
+                <input className="input" value={form.contato} onChange={(e) => setForm({ ...form, contato: e.target.value })} />
+              </Field>
+              <Field label="Nascimento">
+                <input className="input" type="date" value={form.nascimento} onChange={(e) => setForm({ ...form, nascimento: e.target.value })} />
+              </Field>
+              <Field label="Documento">
+                <input className="input" value={form.documento} onChange={(e) => setForm({ ...form, documento: e.target.value })} />
+              </Field>
+              <Field label="Sexo">
+                <input className="input" value={form.sexo} onChange={(e) => setForm({ ...form, sexo: e.target.value })} />
+              </Field>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
-                <button type="button" className="btn" onClick={() => setDrawer(false)} disabled={creating}>Cancelar</button>
-                <button type="submit" className="btn btn-primary" disabled={creating}>
+                <Button type="button" onClick={() => setDrawer(false)} disabled={creating}>Cancelar</Button>
+                <Button type="submit" variant="primary" loading={creating}>
                   <PlusCircle size={16} /> {creating ? "Adicionando…" : "Adicionar"}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

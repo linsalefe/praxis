@@ -10,6 +10,7 @@ import { dataRelativa } from "@/lib/date";
 import { Topbar } from "@/components/Topbar";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Card } from "@/components/ui/Card";
 
 type SessaoHoje = {
   sessao_id: string; paciente_id: string; paciente_nome: string;
@@ -47,7 +48,7 @@ function Bloco({
   children: React.ReactNode;
 }) {
   return (
-    <section className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <Card as="section" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <h2 style={{ fontSize: 15, margin: 0, display: "flex", alignItems: "baseline", gap: 8 }}>
         {titulo}
         {contador != null && contador > 0 && (
@@ -55,7 +56,7 @@ function Bloco({
         )}
       </h2>
       {children}
-    </section>
+    </Card>
   );
 }
 
@@ -130,17 +131,17 @@ export default function InicioPage() {
 
         {loading ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <Skeleton width="30%" height={14} />
               <Skeleton height={40} /><Skeleton height={40} />
-            </div>
+            </Card>
             <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
-              <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <Skeleton width="50%" height={14} /><Skeleton height={36} /><Skeleton height={36} />
-              </div>
-              <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              </Card>
+              <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <Skeleton width="50%" height={14} /><Skeleton height={36} />
-              </div>
+              </Card>
             </div>
           </div>
         ) : (
@@ -164,10 +165,10 @@ export default function InicioPage() {
             </Bloco>
 
             {tudoEmDia && (
-              <div className="card" style={{ textAlign: "center", padding: 28 }}>
+              <Card style={{ textAlign: "center", padding: 28 }}>
                 <p style={{ margin: "0 0 4px", fontFamily: "var(--font-display)", fontSize: 18 }}>Tudo em dia.</p>
                 <p style={{ margin: 0, color: "var(--muted)", fontSize: 14 }}>Nenhuma pendência aguardando você.</p>
-              </div>
+              </Card>
             )}
 
             {/* Pendências acionáveis */}

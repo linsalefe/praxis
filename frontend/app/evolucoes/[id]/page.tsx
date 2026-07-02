@@ -8,6 +8,8 @@ import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { CopiarBtn } from "@/components/ui/CopiarBtn";
 import { BreadcrumbPaciente } from "@/components/ui/BreadcrumbPaciente";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 
 type Evolucao = {
   id: string; sessao_id: string; paciente_id: string | null; autor_id: string;
@@ -110,7 +112,7 @@ export default function EvolucaoPage({ params }: { params: Promise<{ id: string 
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 16 }}>
           {BLOCOS.map(([k, titulo, hint]) => (
-            <div key={k} className="card">
+            <Card key={k}>
               <label className="label" style={{ fontSize: 14, color: "var(--text)", marginBottom: 4 }}>{titulo}</label>
               <p style={{ margin: "0 0 8px", color: "var(--muted)", fontSize: 12 }}>{hint}</p>
               <textarea
@@ -120,17 +122,17 @@ export default function EvolucaoPage({ params }: { params: Promise<{ id: string 
                 value={(ev[k] as string) || ""}
                 onChange={(e) => upd(k, e.target.value)}
               />
-            </div>
+            </Card>
           ))}
         </div>
 
         <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
-          <button className="btn" onClick={salvarRascunho} disabled={saving || assinada || !dirty}>
+          <Button onClick={salvarRascunho} loading={saving} disabled={assinada || !dirty}>
             <Save size={16} /> {saving ? "Salvando…" : "Salvar rascunho"}
-          </button>
-          <button className="btn btn-primary" onClick={assinar} disabled={signing || assinada}>
+          </Button>
+          <Button variant="primary" onClick={assinar} loading={signing} disabled={assinada}>
             <CheckCircle2 size={16} /> {signing ? "Assinando…" : "Assinar evolução"}
-          </button>
+          </Button>
         </div>
 
         {assinada && ev.hash_assinatura && (

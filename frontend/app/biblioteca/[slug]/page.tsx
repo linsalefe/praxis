@@ -7,6 +7,8 @@ import { Info } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { Skeleton, SkeletonCard } from "@/components/ui/Skeleton";
+import { Card } from "@/components/ui/Card";
+import { SectionTitle } from "@/components/ui/SectionTitle";
 
 type Obra = {
   id: string; slug: string; titulo: string; autor: string;
@@ -80,9 +82,9 @@ export default function ObraPage() {
             <SkeletonCard lines={4} />
           </div>
         ) : erro ? (
-          <div className="card" style={{ marginTop: 12 }}>
+          <Card style={{ marginTop: 12 }}>
             <p style={{ margin: 0, color: "var(--muted)" }}>{erro}</p>
-          </div>
+          </Card>
         ) : obra ? (
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: "10px 0 4px" }}>
@@ -97,8 +99,7 @@ export default function ObraPage() {
             </p>
 
             {obra.is_terceiro && (
-              <div
-                className="card"
+              <Card
                 style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 16, borderColor: "var(--brand-2)" }}
               >
                 <Info size={16} color="var(--brand-2)" style={{ flexShrink: 0, marginTop: 2 }} />
@@ -107,18 +108,18 @@ export default function ObraPage() {
                   Para consultar o conteúdo, use a busca semântica: os trechos vêm reduzidos,
                   em respeito aos direitos autorais.
                 </p>
-              </div>
+              </Card>
             )}
 
-            <h2 style={{ fontSize: 15, color: "var(--muted)", margin: "0 0 10px" }}>Índice</h2>
+            <SectionTitle margin="0 0 10px">Índice</SectionTitle>
             {grupos.length === 0 ? (
-              <div className="card">
+              <Card>
                 <p style={{ margin: 0, color: "var(--muted)" }}>
                   Índice indisponível para esta obra.
                 </p>
-              </div>
+              </Card>
             ) : (
-              <div className="card" style={{ padding: 0 }}>
+              <Card style={{ padding: 0 }}>
                 {grupos.map((g, gi) => {
                   const pi = g.itens[0].pagina_inicio;
                   const pf = g.itens[g.itens.length - 1].pagina_fim;
@@ -143,7 +144,7 @@ export default function ObraPage() {
                     </div>
                   );
                 })}
-              </div>
+              </Card>
             )}
           </>
         ) : null}

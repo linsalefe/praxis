@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ShieldCheck, Upload } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Field } from "@/components/ui/Field";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
@@ -52,7 +55,7 @@ export function CertificadoManager() {
   }
 
   return (
-    <div className="card" style={{ marginTop: 16 }}>
+    <Card style={{ marginTop: 16 }}>
       <h2 style={{ fontSize: 16, margin: "0 0 8px", display: "flex", alignItems: "center", gap: 8 }}>
         <ShieldCheck size={18} color="var(--brand-2)" /> Certificado de assinatura (ICP-Brasil A1)
       </h2>
@@ -72,23 +75,21 @@ export function CertificadoManager() {
       )}
 
       <form onSubmit={enviar} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div>
-          <label className="label">Arquivo do certificado (.pfx / .p12)</label>
+        <Field label="Arquivo do certificado (.pfx / .p12)">
           <input className="input" type="file" accept=".pfx,.p12" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-        </div>
-        <div>
-          <label className="label">Senha do certificado</label>
+        </Field>
+        <Field label="Senha do certificado">
           <input className="input" type="password" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="••••••••" />
-        </div>
-        <button className="btn btn-primary" disabled={busy}>
+        </Field>
+        <Button variant="primary" loading={busy}>
           <Upload size={16} /> {busy ? "Enviando…" : cert ? "Substituir certificado" : "Enviar certificado"}
-        </button>
+        </Button>
       </form>
 
       <p style={{ color: "var(--muted)", fontSize: 11, marginTop: 10 }}>
         O arquivo é guardado <b>cifrado</b> em repouso e a <b>senha nunca é armazenada</b> — ela é solicitada a cada
         assinatura. Certificados <b>A3</b> (token/cartão) não são suportados (exigem assinatura no dispositivo).
       </p>
-    </div>
+    </Card>
   );
 }

@@ -8,6 +8,8 @@ import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { BreadcrumbPaciente } from "@/components/ui/BreadcrumbPaciente";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 
 type Citacao = {
   n: number; titulo: string; autor: string;
@@ -134,12 +136,12 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         )}
 
         <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "space-between" }}>
-          <button className="btn btn-danger" onClick={() => setConfirmDel(true)}>
+          <Button variant="danger" onClick={() => setConfirmDel(true)}>
             <Trash2 size={14} /> Remover estudo
-          </button>
-          <button className="btn btn-primary" onClick={copiar}>
+          </Button>
+          <Button variant="primary" onClick={copiar}>
             <Copy size={14} /> Copiar texto
-          </button>
+          </Button>
         </div>
 
         <p style={{ marginTop: 12, color: "var(--muted)", fontSize: 11 }}>
@@ -152,7 +154,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 40 }}
             onClick={() => setDrawer(null)}
           >
-            <div className="card" style={{ maxWidth: 640, width: "92%" }} onClick={(ev) => ev.stopPropagation()}>
+            <Card style={{ maxWidth: 640, width: "92%" }} onClick={(ev) => ev.stopPropagation()}>
               <h3 style={{ marginTop: 0 }}>{drawer.titulo}</h3>
               <p style={{ color: "var(--muted)", margin: "4px 0" }}>{drawer.autor}</p>
               <p style={{ margin: "4px 0" }}>
@@ -166,9 +168,9 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
               <hr className="divider" />
               <p style={{ whiteSpace: "pre-wrap" }}>{drawer.snippet}</p>
               <div style={{ textAlign: "right", marginTop: 12 }}>
-                <button className="btn" onClick={() => setDrawer(null)}>Fechar</button>
+                <Button onClick={() => setDrawer(null)}>Fechar</Button>
               </div>
-            </div>
+            </Card>
           </div>
         )}
       </main>

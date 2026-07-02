@@ -9,6 +9,9 @@ import { formatCentavos } from "@/lib/money";
 import { Topbar } from "@/components/Topbar";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { SkeletonCard } from "@/components/ui/Skeleton";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Field } from "@/components/ui/Field";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
@@ -134,16 +137,14 @@ export default function FinanceiroPage() {
         </p>
 
         <div style={{ display: "flex", gap: 8, alignItems: "end", marginBottom: 18, flexWrap: "wrap" }}>
-          <div>
-            <label className="label">De</label>
+          <Field label="De">
             <input className="input" type="date" value={de} onChange={(e) => setDe(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Até</label>
+          </Field>
+          <Field label="Até">
             <input className="input" type="date" value={ate} onChange={(e) => setAte(e.target.value)} />
-          </div>
+          </Field>
           {(de || ate) && (
-            <button className="btn" onClick={() => { setDe(""); setAte(""); }}>Limpar período</button>
+            <Button onClick={() => { setDe(""); setAte(""); }}>Limpar período</Button>
           )}
         </div>
 
@@ -165,21 +166,21 @@ export default function FinanceiroPage() {
               )}
             </h2>
             {pendentes.length === 0 ? (
-              <div className="card"><p style={{ margin: 0, color: "var(--muted)" }}>
+              <Card><p style={{ margin: 0, color: "var(--muted)" }}>
                 Nenhuma sessão realizada aguardando pagamento no período.
-              </p></div>
+              </p></Card>
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
                 {pendentes.map((l) => (
-                  <div key={l.sessao_id} className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <Card key={l.sessao_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                     <div>
                       <div style={{ fontWeight: 500 }}>{l.paciente_nome}</div>
                       <div style={{ color: "var(--muted)", fontSize: 13 }}>
                         {new Date(l.data).toLocaleDateString("pt-BR")} · {formatCentavos(l.valor_centavos)}
                       </div>
                     </div>
-                    <button className="btn btn-primary" onClick={() => setPagar(l)}>Marcar pago</button>
-                  </div>
+                    <Button variant="primary" onClick={() => setPagar(l)}>Marcar pago</Button>
+                  </Card>
                 ))}
               </div>
             )}
@@ -187,13 +188,13 @@ export default function FinanceiroPage() {
             {/* Pagos / histórico */}
             <h2 style={{ fontSize: 15, color: "var(--muted)", margin: "24px 0 10px" }}>Pagos</h2>
             {pagos.length === 0 ? (
-              <div className="card"><p style={{ margin: 0, color: "var(--muted)" }}>
+              <Card><p style={{ margin: 0, color: "var(--muted)" }}>
                 Nenhum pagamento registrado no período.
-              </p></div>
+              </p></Card>
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
                 {pagos.map((l) => (
-                  <div key={l.sessao_id} className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <Card key={l.sessao_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                     <div>
                       <div style={{ fontWeight: 500 }}>{l.paciente_nome}</div>
                       <div style={{ color: "var(--muted)", fontSize: 13 }}>
@@ -202,15 +203,15 @@ export default function FinanceiroPage() {
                       </div>
                     </div>
                     {l.recibo ? (
-                      <button className="btn" onClick={() => abrirPdf(`/financeiro/recibos/${l.recibo!.id}`, "GET").catch(() => toast.error("Falha ao baixar"))}>
+                      <Button onClick={() => abrirPdf(`/financeiro/recibos/${l.recibo!.id}`, "GET").catch(() => toast.error("Falha ao baixar"))}>
                         <Download size={15} /> Recibo nº {l.recibo.numero}
-                      </button>
+                      </Button>
                     ) : (
-                      <button className="btn btn-primary" onClick={() => setReciboDe(l)}>
+                      <Button variant="primary" onClick={() => setReciboDe(l)}>
                         <Receipt size={15} /> Emitir recibo
-                      </button>
+                      </Button>
                     )}
-                  </div>
+                  </Card>
                 ))}
               </div>
             )}
@@ -225,30 +226,28 @@ export default function FinanceiroPage() {
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 40 }}
           onClick={() => !busy && setPagar(null)}
         >
-          <div className="card" style={{ maxWidth: 420, width: "92%", background: "var(--surface)" }} onClick={(e) => e.stopPropagation()}>
+          <Card style={{ maxWidth: 420, width: "92%", background: "var(--surface)" }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>Registrar pagamento</h3>
             <p style={{ color: "var(--muted)", margin: "4px 0 14px", fontSize: 14 }}>
               {pagar.paciente_nome} · {formatCentavos(pagar.valor_centavos)}
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <div>
-                <label className="label">Forma</label>
+              <Field label="Forma">
                 <select className="input" value={forma} onChange={(e) => setForma(e.target.value)}>
                   {FORMAS.map((f) => <option key={f.v} value={f.v}>{f.l}</option>)}
                 </select>
-              </div>
-              <div>
-                <label className="label">Pago em</label>
+              </Field>
+              <Field label="Pago em">
                 <input className="input" type="date" value={pagoEm} onChange={(e) => setPagoEm(e.target.value)} />
-              </div>
+              </Field>
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
-              <button className="btn" onClick={() => setPagar(null)} disabled={busy}>Cancelar</button>
-              <button className="btn btn-primary" onClick={confirmarPagamento} disabled={busy}>
+              <Button onClick={() => setPagar(null)} disabled={busy}>Cancelar</Button>
+              <Button variant="primary" onClick={confirmarPagamento} loading={busy}>
                 {busy ? "Salvando…" : "Confirmar pagamento"}
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 

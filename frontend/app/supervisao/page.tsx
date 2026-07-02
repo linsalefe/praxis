@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { Compass, PlusCircle, Trash2, Users2 } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { SupervisaoModal } from "@/components/SupervisaoModal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
@@ -65,9 +67,9 @@ export default function Page() {
           <h1 style={{ fontSize: 22, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <Compass size={20} color="var(--brand-2)" /> Supervisão · Estudo de Caso
           </h1>
-          <button className="btn btn-primary" onClick={() => setOpenModal(true)}>
+          <Button variant="primary" onClick={() => setOpenModal(true)}>
             <PlusCircle size={16} /> Nova análise
-          </button>
+          </Button>
         </div>
         <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 6 }}>
           Traga um caso do prontuário ou avulso — o Práxis apresenta leituras por abordagem
@@ -81,7 +83,7 @@ export default function Page() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
             {rows.map((r) => (
-              <div key={r.id} className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <Card key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                     <span className="badge">{r.origem === "paciente" ? "prontuário" : "avulso"}</span>
@@ -100,11 +102,11 @@ export default function Page() {
                 </div>
                 <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                   <Link href={`/supervisao/${r.id}`} className="btn">Abrir</Link>
-                  <button className="btn btn-danger" onClick={() => setConfirmId(r.id)} title="Remover">
+                  <Button variant="danger" onClick={() => setConfirmId(r.id)} title="Remover">
                     <Trash2 size={14} />
-                  </button>
+                  </Button>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         )}
