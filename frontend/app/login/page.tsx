@@ -72,7 +72,7 @@ export default function LoginPage() {
           <form onSubmit={onSubmit} noValidate>
             <label className="label" htmlFor="email">Email</label>
             <input
-              id="email" className="input" type="email" required
+              id="email" className="input" type="email" required autoFocus
               value={email} onChange={(e) => setEmail(e.target.value)}
               autoComplete="email" aria-invalid={erro ? true : undefined}
             />
@@ -115,8 +115,9 @@ export default function LoginPage() {
             </a>
           </p>
           <hr className="divider" />
-          <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-            Não tem conta? <Link className="link" href="/registro">Cadastre-se</Link>.
+          <p style={{ fontSize: 13, color: "var(--muted)", margin: 0, display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+            <span>Não tem conta? <Link className="link" href="/registro">Cadastre-se</Link>.</span>
+            <Link className="link" href="/como-usamos-ia">Como o Práxis usa IA</Link>
           </p>
         </Card>
       </div>

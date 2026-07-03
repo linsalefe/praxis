@@ -81,8 +81,9 @@ export default function Conta2FA() {
               </p>
               <div style={{ display: "flex", gap: 8, alignItems: "end", marginTop: 16 }}>
                 <Field label="Código de 6 dígitos" style={{ flex: 1 }}>
-                  <input className="input" inputMode="numeric" maxLength={8} value={codigo}
-                    onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ""))} />
+                  <input className="input" inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={codigo}
+                    onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ""))}
+                    style={{ fontFamily: "var(--font-mono)", letterSpacing: ".3em", textAlign: "center" }} />
                 </Field>
                 <Button variant="primary" onClick={confirmar}>Confirmar</Button>
               </div>
