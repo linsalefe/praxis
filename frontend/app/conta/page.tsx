@@ -8,6 +8,7 @@ import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { Field } from "@/components/ui/Field";
 
 type Me = {
@@ -64,13 +65,21 @@ export default function ContaPerfil() {
     }
   }
 
-  if (!me) return (<><Topbar /><main className="container-praxis"><p style={{ color: "var(--muted)" }}>Carregando…</p></main></>);
+  if (!me) return (
+    <>
+      <Topbar />
+      <main className="container-praxis" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <Skeleton height={28} width="40%" />
+        <Skeleton height={140} radius="var(--radius-lg)" />
+      </main>
+    </>
+  );
 
   return (
     <>
       <Topbar meNome={me.nome} />
       <main className="container-praxis" style={{ maxWidth: 560 }}>
-        <h1 style={{ fontSize: 22, margin: "8px 0 6px", display: "flex", alignItems: "center", gap: 8 }}>
+        <h1 style={{ fontSize: "var(--fs-xl)", margin: "8px 0 6px", display: "flex", alignItems: "center", gap: 8 }}>
           <IdCard size={20} /> Timbre profissional
         </h1>
         <p style={{ color: "var(--muted)", marginTop: 0 }}>

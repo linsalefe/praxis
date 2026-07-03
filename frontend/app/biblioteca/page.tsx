@@ -6,7 +6,6 @@ import Link from "next/link";
 import { BookOpen, Search } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
-import { PresenceMark } from "@/components/ui/PresenceMark";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -74,8 +73,8 @@ export default function BibliotecaPage() {
       <Topbar />
       <main className="container-praxis" style={{ maxWidth: 980 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-          <PresenceMark size={26} />
-          <h1 style={{ margin: 0, fontSize: 22 }}>Biblioteca viva</h1>
+          <BookOpen size={20} color="var(--brand-2)" />
+          <h1 style={{ margin: 0, fontSize: "var(--fs-xl)" }}>Biblioteca viva</h1>
           <span className="badge">acervo CENAT</span>
         </div>
         <p style={{ color: "var(--muted)", margin: "0 0 16px", fontSize: 14 }}>

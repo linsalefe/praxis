@@ -80,7 +80,7 @@ export default function ObraPage() {
         ) : obra ? (
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: "10px 0 4px" }}>
-              <h1 style={{ fontSize: 22, margin: 0 }}>{obra.titulo}</h1>
+              <h1 style={{ fontSize: "var(--fs-xl)", margin: 0 }}>{obra.titulo}</h1>
               <span className="badge">{obra.is_terceiro ? "terceiro" : "CENAT"}</span>
             </div>
             <p style={{ color: "var(--muted)", margin: "0 0 14px", fontSize: 14 }}>
@@ -111,17 +111,24 @@ export default function ObraPage() {
                 </p>
               </Card>
             ) : podeLer ? (
-              // Obra própria do CENAT — leitura corrida das seções, na ordem.
-              <div style={{ display: "grid", gap: 16 }}>
-                {indice.map((it, i) => (
-                  <Card key={it.ordem}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                      <span className="badge">Seção {i + 1}</span>
-                      <span className="badge">{paginas(it.pagina_inicio, it.pagina_fim)}</span>
-                    </div>
-                    <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.65 }}>{it.texto}</p>
-                  </Card>
-                ))}
+              // Obra própria do CENAT — modo leitura: coluna contínua de 68ch,
+              // sem Card por seção. Título em Fraunces 20 com a página em mono à
+              // direita; corpo com respiro (line-height 1.7).
+              <div style={{ maxWidth: "68ch" }}>
+                {indice.map((it, i) => {
+                  const titulo = it.secao_titulo || it.capitulo || `Seção ${i + 1}`;
+                  return (
+                    <section key={it.ordem} style={{ marginBottom: 28 }}>
+                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
+                        <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 20, margin: 0 }}>{titulo}</h2>
+                        <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--muted)", whiteSpace: "nowrap" }}>
+                          {paginas(it.pagina_inicio, it.pagina_fim)}
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.7 }}>{it.texto}</p>
+                    </section>
+                  );
+                })}
               </div>
             ) : (
               // Obra de terceiros — só estrutura navegável por páginas (sem texto).

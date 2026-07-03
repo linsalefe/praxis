@@ -10,6 +10,7 @@ import { CopiarBtn } from "@/components/ui/CopiarBtn";
 import { BreadcrumbPaciente } from "@/components/ui/BreadcrumbPaciente";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type Evolucao = {
@@ -117,7 +118,16 @@ export default function EvolucaoPage({ params }: { params: Promise<{ id: string 
     }
   }
 
-  if (!ev) return (<><Topbar /><main className="container-praxis"><p style={{ color: "var(--muted)" }}>Carregando…</p></main></>);
+  if (!ev) return (
+    <>
+      <Topbar />
+      <main className="container-praxis" style={{ maxWidth: 820, display: "flex", flexDirection: "column", gap: 16 }}>
+        <Skeleton height={28} width="40%" />
+        <Skeleton height={120} radius="var(--radius-lg)" />
+        <Skeleton height={120} radius="var(--radius-lg)" />
+      </main>
+    </>
+  );
 
   const assinada = !!ev.assinado_em;
 
@@ -127,7 +137,7 @@ export default function EvolucaoPage({ params }: { params: Promise<{ id: string 
       <main className="container-praxis" style={{ maxWidth: 820 }}>
         <BreadcrumbPaciente pacienteId={ev.paciente_id} />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h1 style={{ fontSize: 22, margin: "8px 0" }}>Evolução clínica</h1>
+          <h1 style={{ fontSize: "var(--fs-xl)", margin: "8px 0" }}>Evolução clínica</h1>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <CopiarBtn
               className="btn btn-ghost"
@@ -181,9 +191,13 @@ export default function EvolucaoPage({ params }: { params: Promise<{ id: string 
         </div>
 
         {assinada && ev.hash_assinatura && (
-          <p style={{ marginTop: 16, color: "var(--muted)", fontFamily: "monospace", fontSize: 12 }}>
-            SHA-256: {ev.hash_assinatura}
-          </p>
+          <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 8, color: "var(--muted)", fontSize: 12 }}>
+            <span>SHA-256:</span>
+            <span style={{ fontFamily: "var(--font-mono)" }} title={ev.hash_assinatura}>
+              {ev.hash_assinatura.slice(0, 4)}…{ev.hash_assinatura.slice(-4)}
+            </span>
+            <CopiarBtn texto={ev.hash_assinatura} label="Copiar hash" className="btn btn-ghost" />
+          </div>
         )}
       </main>
 
@@ -193,6 +207,7 @@ export default function EvolucaoPage({ params }: { params: Promise<{ id: string 
         description="Após assinar, o conteúdo fica imutável, recebe hash de integridade e passa a compor o prontuário. Revise o texto antes de confirmar."
         confirmLabel="Assinar"
         cancelLabel="Continuar revisando"
+        confirmVariant="primary"
         busy={signing}
         busyLabel="Assinando…"
         onConfirm={assinar}

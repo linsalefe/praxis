@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import { BookOpen, ClipboardCheck, Quote } from "lucide-react";
@@ -13,7 +14,15 @@ import { Button } from "@/components/ui/Button";
  * superscript clicável que abre a citação correspondente. Links externos são
  * neutralizados (renderizados como texto) — nada navega para fora.
  */
-function RespostaMarkdown({ texto, onCitacaoN }: { texto: string; onCitacaoN?: (n: number) => void }) {
+function RespostaMarkdown({
+  texto,
+  onCitacaoN,
+  tituloDaFonte,
+}: {
+  texto: string;
+  onCitacaoN?: (n: number) => void;
+  tituloDaFonte?: (n: number) => string | undefined;
+}) {
   const preparado = texto.replace(/\[T(\d+)\]/g, "[T$1](#cite-$1)");
 
   const componentes: Components = {
@@ -34,6 +43,7 @@ function RespostaMarkdown({ texto, onCitacaoN }: { texto: string; onCitacaoN?: (
       const m = /^#cite-(\d+)$/.exec(href ?? "");
       if (m) {
         const n = Number(m[1]);
+        const titulo = tituloDaFonte?.(n);
         return (
           <sup>
             <button
@@ -42,6 +52,7 @@ function RespostaMarkdown({ texto, onCitacaoN }: { texto: string; onCitacaoN?: (
               className="link"
               style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "0.85em" }}
               title={`Ver fonte T${n}`}
+              aria-label={titulo ? `Ver fonte T${n}: ${titulo}` : `Ver fonte T${n}`}
             >
               [T{n}]
             </button>
@@ -107,8 +118,22 @@ export function SofiaOrientacao<C extends SofiaCitacaoBase>({
   onCitacao?: (c: C) => void;
   onUsarNaPreparacao?: () => void;
 }) {
+  // Anúncio único ao concluir o streaming (transição streaming → done). Turnos
+  // históricos, que nunca passam por streaming, não disparam anúncio.
+  const [anuncio, setAnuncio] = useState("");
+  const eraStreaming = useRef(false);
+  useEffect(() => {
+    if (eraStreaming.current && !streaming && resposta) {
+      const n = resposta.citacoes.length;
+      setAnuncio(`Resposta da Sofia concluída, ${n} ${n === 1 ? "fonte citada" : "fontes citadas"}.`);
+    }
+    eraStreaming.current = !!streaming;
+  }, [streaming, resposta]);
+
   return (
     <div style={{ marginBottom: 24 }}>
+      {/* Live region oculta — anuncia a conclusão da resposta uma única vez. */}
+      <span className="sr-only" role="status" aria-live="polite">{anuncio}</span>
       {/* Pergunta do profissional — bolha distinta, alinhada à direita */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
         <div style={{ maxWidth: "85%" }}>
@@ -169,7 +194,7 @@ export function SofiaOrientacao<C extends SofiaCitacaoBase>({
 
         {/* Estado: carregando — respiração, não spinner */}
         {loading && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--muted)" }}>
+          <div role="status" style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--muted)" }}>
             <PresenceMark size={18} title="consultando" />
             <span>consultando o acervo…</span>
           </div>
@@ -194,6 +219,7 @@ export function SofiaOrientacao<C extends SofiaCitacaoBase>({
                   const c = resposta.citacoes.find((x) => x.n === n);
                   if (c) onCitacao?.(c);
                 }}
+                tituloDaFonte={(n) => resposta.citacoes.find((x) => x.n === n)?.titulo}
               />
               {streaming && (
                 <span style={{ marginLeft: 4 }}><PresenceMark size={14} title="escrevendo" /></span>

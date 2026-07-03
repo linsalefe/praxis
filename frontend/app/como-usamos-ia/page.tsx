@@ -27,7 +27,7 @@ export default function ComoUsamosIaPage() {
     <main className="container-praxis" style={{ maxWidth: 760 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, marginBottom: 6 }}>
         <PresenceMark size={26} />
-        <h1 style={{ margin: 0, fontSize: 24 }}>Como o Práxis usa IA</h1>
+        <h1 style={{ margin: 0, fontSize: "var(--fs-xl)" }}>Como o Práxis usa IA</h1>
       </div>
       <p style={{ color: "var(--muted)", margin: "0 0 20px", fontSize: 15, lineHeight: 1.5 }}>
         No Práxis (by CENAT), a inteligência artificial é <strong>ferramenta de apoio</strong> ao

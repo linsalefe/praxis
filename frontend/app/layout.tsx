@@ -41,7 +41,20 @@ export default function RootLayout({
     <html lang="pt-BR" className={`${fraunces.variable} ${inter.variable} ${plexMono.variable}`}>
       <body>
         {children}
-        <Toaster theme="light" richColors position="top-right" />
+        <Toaster
+          theme="light"
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              color: "var(--text)",
+              borderRadius: "var(--radius-md)",
+              boxShadow: "var(--shadow-md)",
+              fontFamily: "var(--font-ui)",
+            },
+          }}
+        />
       </body>
     </html>
   );

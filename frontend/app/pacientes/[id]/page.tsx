@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Activity, CalendarClock, CalendarPlus, ClipboardCheck, ClipboardList, Download, FilePlus, FileSignature, FileText, Package, Paperclip, Trash2, Video } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { formatCentavos, reaisParaCentavos } from "@/lib/money";
-import { dataRelativa } from "@/lib/date";
+import { dataRelativa, dataCurtaComHora, sufixoRelativoProximo } from "@/lib/date";
 import { instrumentoTipoLabel, modalidadeLabel, docTipoLabel } from "@/lib/labels";
 import { formatNome } from "@/lib/format";
 import { Topbar } from "@/components/Topbar";
@@ -22,6 +22,7 @@ import { SofiaPainelProntuario } from "@/components/SofiaPainelProntuario";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { PacienteCard } from "@/components/ui/PacienteCard";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Drawer } from "@/components/ui/Drawer";
 import { MenuAcoes } from "@/components/ui/MenuAcoes";
@@ -228,13 +229,32 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
     document.getElementById(`tab-${k}`)?.focus();
   }
 
+  // Skeleton anatômico: espelha a anatomia real (cabeçalho + subnav + 4 KPIs)
+  // para chegada sem layout shift enquanto as chamadas em paralelo resolvem.
   if (loading) return (
     <>
       <Topbar />
       <main className="container-praxis" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <Skeleton height={96} radius="var(--radius-lg)" />
-        <Skeleton height={40} width="60%" />
-        <Skeleton height={140} radius="var(--radius-lg)" />
+        {/* Card de cabeçalho: retrato 56px + duas linhas */}
+        <div className="card" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <Skeleton width={56} height={56} radius="var(--radius-full)" />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+            <Skeleton width="40%" height={18} />
+            <Skeleton width="60%" height={12} />
+          </div>
+        </div>
+        {/* Faixa da subnav */}
+        <div style={{ display: "flex", gap: 8 }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} width={92} height={30} />
+          ))}
+        </div>
+        {/* Grid de 4 KPIs */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} height={82} radius="var(--radius-lg)" />
+          ))}
+        </div>
       </main>
     </>
   );
@@ -391,9 +411,21 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
             <>
               <SectionTitle icon={<CalendarClock size={13} style={{ display: "inline", verticalAlign: "middle" }} />} margin="24px 0 8px">Linha do tempo</SectionTitle>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {timeline.map((ev) => (
-                  <EventoLinha key={`${ev.tipo_evento}-${ev.ref_id}`} ev={ev} />
-                ))}
+                {timeline.map((ev, i) => {
+                  const d = new Date(ev.data);
+                  const prev = i > 0 ? new Date(timeline[i - 1].data) : null;
+                  const mudouMes = !prev || prev.getMonth() !== d.getMonth() || prev.getFullYear() !== d.getFullYear();
+                  return (
+                    <div key={`${ev.tipo_evento}-${ev.ref_id}`}>
+                      {mudouMes && (
+                        <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--muted)", textTransform: "capitalize", margin: i === 0 ? "0 0 8px" : "18px 0 8px" }}>
+                          {d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+                        </div>
+                      )}
+                      <EventoLinha ev={ev} />
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}
@@ -406,13 +438,18 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
             <Button onClick={() => setAgendarOpen(true)}><CalendarPlus size={16} /> Agendar sessão</Button>
           </div>
           {sessoes.length === 0 ? (
-            <p style={{ color: "var(--muted)" }}>Nenhuma sessão registrada ainda — use “Agendar sessão”.</p>
+            <EmptyState icone={<CalendarPlus size={28} />} frase="Nenhuma sessão registrada ainda — use “Agendar sessão”." />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {sessoes.map((s) => (
                 <Card key={s.id} className="row-stack" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div>
-                    <div style={{ fontWeight: 500 }}>{dataRelativa(s.data)}</div>
+                    <div style={{ fontWeight: 500, fontFamily: "var(--font-mono)" }}>
+                      {dataCurtaComHora(s.data)}
+                      {sufixoRelativoProximo(s.data) && (
+                        <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {sufixoRelativoProximo(s.data)}</span>
+                      )}
+                    </div>
                     <div style={{ color: "var(--muted)", fontSize: 13 }}>
                       <span className="badge">{modalidadeLabel(s.modalidade)}</span>{" "}
                       <StatusBadge status={s.status} />
@@ -445,7 +482,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
             <Button onClick={() => setInstrModal(true)}><ClipboardList size={16} /> Novo instrumento</Button>
           </div>
           {respostas.length === 0 ? (
-            <p style={{ color: "var(--muted)" }}>Nenhum instrumento aplicado ainda.</p>
+            <EmptyState icone={<ClipboardList size={28} />} frase="Nenhum instrumento aplicado ainda." />
           ) : respostas.map((r) => (
             <Card key={r.id} className="row-stack" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
@@ -477,7 +514,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
             <Button onClick={() => setDocModal(true)}><FileSignature size={16} /> Gerar documento</Button>
           </div>
           {documentos.length === 0 ? (
-            <p style={{ color: "var(--muted)" }}>Nenhum documento gerado ainda.</p>
+            <EmptyState icone={<FileSignature size={28} />} frase="Nenhum documento gerado ainda." />
           ) : (
             documentos.map((d) => (
               <Card key={d.id} className="row-stack" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>

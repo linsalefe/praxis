@@ -42,7 +42,7 @@ export function Drawer({
       aria-modal="true"
       aria-label={title}
       onClick={onClose}
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", justifyContent: "flex-end", zIndex: 60 }}
+      style={{ position: "fixed", inset: 0, background: "var(--scrim)", display: "flex", justifyContent: "flex-end", zIndex: "var(--z-overlay)" }}
     >
       <div
         ref={trapRef}
@@ -64,7 +64,7 @@ export function Drawer({
               padding: "14px 18px", borderBottom: "1px solid var(--border)", flexShrink: 0,
             }}>
               <h2 style={{ margin: 0, fontSize: 17 }}>{title}</h2>
-              <button className="btn" onClick={onClose} aria-label="Fechar"><X size={16} /></button>
+              <button className="btn btn-icon" onClick={onClose} aria-label="Fechar"><X size={16} /></button>
             </div>
             <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
               {children}
@@ -74,7 +74,7 @@ export function Drawer({
           <>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <h2 style={{ margin: 0, fontSize: 17 }}>{title}</h2>
-              <button className="btn" onClick={onClose} aria-label="Fechar"><X size={16} /></button>
+              <button className="btn btn-icon" onClick={onClose} aria-label="Fechar"><X size={16} /></button>
             </div>
             {children}
           </>

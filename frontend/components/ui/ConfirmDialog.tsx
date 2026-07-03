@@ -15,6 +15,7 @@ export function ConfirmDialog({
   description,
   confirmLabel = "Excluir",
   cancelLabel = "Cancelar",
+  confirmVariant = "danger",
   busy = false,
   busyLabel,
   onConfirm,
@@ -25,6 +26,9 @@ export function ConfirmDialog({
   description?: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** Cor do botão de confirmação. "danger" (default) para ações destrutivas;
+   *  "primary" para atos não-destrutivos (ex.: assinar). */
+  confirmVariant?: "danger" | "primary";
   busy?: boolean;
   /** Rótulo do botão de confirmação enquanto `busy`. Default: "Excluindo…". */
   busyLabel?: string;
@@ -52,11 +56,11 @@ export function ConfirmDialog({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(42, 38, 32, 0.38)",
+        background: "var(--scrim)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 60,
+        zIndex: "var(--z-overlay)",
         padding: 16,
       }}
     >
@@ -76,7 +80,7 @@ export function ConfirmDialog({
           <Button onClick={onCancel} disabled={busy} type="button">
             {cancelLabel}
           </Button>
-          <Button variant="danger" onClick={onConfirm} disabled={busy} type="button">
+          <Button variant={confirmVariant} onClick={onConfirm} disabled={busy} type="button">
             {busy ? (busyLabel ?? "Excluindo…") : confirmLabel}
           </Button>
         </div>

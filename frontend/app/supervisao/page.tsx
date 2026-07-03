@@ -9,6 +9,8 @@ import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { SupervisaoModal } from "@/components/SupervisaoModal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
@@ -64,7 +66,7 @@ export default function Page() {
       <Topbar />
       <main className="container-praxis" style={{ maxWidth: 960 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h1 style={{ fontSize: 22, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          <h1 style={{ fontSize: "var(--fs-xl)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <Compass size={20} color="var(--brand-2)" /> Supervisão · Estudo de Caso
           </h1>
           <Button variant="primary" onClick={() => setOpenModal(true)}>
@@ -77,9 +79,18 @@ export default function Page() {
         </p>
 
         {loading ? (
-          <p style={{ color: "var(--muted)" }}>Carregando…</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+            <Skeleton height={64} radius="var(--radius-lg)" />
+            <Skeleton height={64} radius="var(--radius-lg)" />
+          </div>
         ) : rows.length === 0 ? (
-          <p style={{ color: "var(--muted)" }}>Nenhum estudo ainda. Crie o primeiro em "Nova análise".</p>
+          <div style={{ marginTop: 12 }}>
+            <EmptyState
+              icone={<Compass size={28} />}
+              frase="Nenhum estudo ainda."
+              cta={<Button variant="primary" onClick={() => setOpenModal(true)}><PlusCircle size={16} /> Nova análise</Button>}
+            />
+          </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
             {rows.map((r) => (
@@ -102,7 +113,7 @@ export default function Page() {
                 </div>
                 <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                   <Link href={`/supervisao/${r.id}`} className="btn">Abrir</Link>
-                  <Button variant="danger" onClick={() => setConfirmId(r.id)} title="Remover">
+                  <Button variant="danger" className="btn-icon" onClick={() => setConfirmId(r.id)} title="Remover" aria-label="Remover">
                     <Trash2 size={14} />
                   </Button>
                 </div>

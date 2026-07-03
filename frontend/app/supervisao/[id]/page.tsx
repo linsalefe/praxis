@@ -11,6 +11,7 @@ import { Modal } from "@/components/ui/Modal";
 import { BreadcrumbPaciente } from "@/components/ui/BreadcrumbPaciente";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type Citacao = {
   n: number; titulo: string; autor: string;
@@ -90,7 +91,15 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
     } catch { toast.error("Falha ao copiar"); }
   }
 
-  if (!e) return (<><Topbar /><main className="container-praxis"><p style={{ color: "var(--muted)" }}>Carregando…</p></main></>);
+  if (!e) return (
+    <>
+      <Topbar />
+      <main className="container-praxis" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <Skeleton height={28} width="40%" />
+        <Skeleton height={140} radius="var(--radius-lg)" />
+      </main>
+    </>
+  );
 
   return (
     <>
@@ -98,7 +107,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
       <main className="container-praxis" style={{ maxWidth: 900 }}>
         <BreadcrumbPaciente pacienteId={e.paciente_id} fallbackHref="/supervisao" fallbackLabel="Supervisão" />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
-          <h1 style={{ fontSize: 22, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          <h1 style={{ fontSize: "var(--fs-xl)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <Compass size={20} color="var(--brand-2)" /> Estudo de caso
           </h1>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -117,7 +126,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
           rows={22}
           value={e.texto_analise}
           onChange={(ev) => { setE({ ...e, texto_analise: ev.target.value }); scheduleSave(); }}
-          style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12.5, lineHeight: 1.5 }}
+          style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 13, lineHeight: 1.5 }}
         />
 
         {e.citacoes.length > 0 && (

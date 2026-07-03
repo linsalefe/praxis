@@ -67,7 +67,7 @@ function ItemLink({ href, onClick, children }: { href: string; onClick?: () => v
     <Link
       href={href}
       onClick={onClick}
-      className="link"
+      className="item-link"
       style={{
         display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
         padding: "10px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)",
@@ -75,7 +75,7 @@ function ItemLink({ href, onClick, children }: { href: string; onClick?: () => v
       }}
     >
       <span style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 10 }}>{children}</span>
-      <ArrowRight size={15} color="var(--brand-2)" style={{ flex: "none" }} />
+      <ArrowRight size={15} color="var(--brand-2)" className="item-link-arrow" style={{ flex: "none" }} />
     </Link>
   );
 }
@@ -164,7 +164,7 @@ export default function InicioPage() {
       <Topbar meNome={me} />
       <main className="container-praxis">
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
-          <h1 style={{ fontSize: 26, margin: 0 }}>Hoje</h1>
+          <h1 style={{ fontSize: "var(--fs-2xl)", margin: 0 }}>Hoje</h1>
           <span style={{ color: "var(--muted)", fontSize: 14, textTransform: "capitalize" }}>{hoje}</span>
         </div>
 
@@ -192,7 +192,7 @@ export default function InicioPage() {
                   {hero.icon}
                   <div>
                     <div style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 600 }}>{hero.texto}</div>
-                    <div style={{ color: "var(--muted)", fontSize: 13 }}>Priorize isto antes do resto do dia.</div>
+                    <div style={{ color: "var(--muted)", fontSize: 13 }}>Comece por aqui.</div>
                   </div>
                 </div>
                 <Link href={hero.href} className="btn btn-primary">

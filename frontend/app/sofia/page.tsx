@@ -13,7 +13,17 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { Drawer } from "@/components/ui/Drawer";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { sugestoesDeterministicas } from "@/components/SofiaPainelProntuario";
 import { PrepararSessaoModal } from "@/components/PrepararSessaoModal";
+
+// Sugestões gerais (sem paciente em contexto) — primeiro contato na página aberta.
+const SUGESTOES_GERAIS_PAGINA = [
+  "Como estruturar a primeira reunião de rede em Diálogo Aberto?",
+  "O que a literatura diz sobre redução de danos no acompanhamento?",
+  "Como o paradigma da atenção psicossocial ajuda a formular um caso?",
+];
 
 function PageInner() {
   const router = useRouter();
@@ -25,6 +35,7 @@ function PageInner() {
   const [drawer, setDrawer] = useState<Citacao | null>(null);
   const [prep, setPrep] = useState<string | null>(null);
   const [showHist, setShowHist] = useState(false);
+  const [confirmExcluir, setConfirmExcluir] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const ultimoTurnoRef = useRef<HTMLDivElement>(null);
 
@@ -67,7 +78,7 @@ function PageInner() {
 
   function excluirConversa(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    void chat.excluirConversa(id);
+    setConfirmExcluir(id);
   }
 
   function novaConversa() {
@@ -89,7 +100,7 @@ function PageInner() {
           {/* Cabeçalho fixo */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
             <PresenceMark size={26} />
-            <h1 style={{ margin: 0, fontSize: 22 }}>Sofia</h1>
+            <h1 style={{ margin: 0, fontSize: "var(--fs-xl)" }}>Sofia</h1>
             <span className="badge">respostas com fonte do acervo CENAT</span>
             <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
               <Button variant="ghost" onClick={abrirHistorico}>
@@ -109,7 +120,7 @@ function PageInner() {
                 checked={usarPaciente}
                 onChange={(e) => setUsarPaciente(e.target.checked)}
               />
-              marcar contexto deste paciente <span className="badge">nada de PII vai à IA</span>
+              usar o contexto deste paciente <span className="badge">nada de PII vai à IA</span>
             </label>
           )}
 
@@ -119,11 +130,26 @@ function PageInner() {
             style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px 2px" }}
           >
             {turnos.length === 0 && (
-              <p style={{ color: "var(--muted)" }}>
-                Faça perguntas clínicas — as respostas são fundamentadas no acervo, com citação da fonte. Ex.:
-                “Como estruturar a primeira reunião de rede em Diálogo Aberto?”,
-                “O que a literatura diz sobre redução de danos com clozapina?”
-              </p>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, textAlign: "center", padding: "24px 0", maxWidth: 560, margin: "0 auto" }}>
+                <PresenceMark size={40} />
+                <p style={{ margin: 0, color: "var(--muted)", fontSize: 14, lineHeight: 1.5 }}>
+                  Perguntas clínicas, respondidas com o acervo CENAT — sempre com a fonte citada.
+                </p>
+                <div style={{ display: "grid", gap: 8, width: "100%" }}>
+                  {(pacienteId ? sugestoesDeterministicas([], []) : SUGESTOES_GERAIS_PAGINA).map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      className="card"
+                      onClick={() => void chat.enviar(s)}
+                      style={{ textAlign: "left", cursor: "pointer", padding: "10px 12px", lineHeight: 1.4 }}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+                <span className="badge badge-warn">nada de PII vai à IA</span>
+              </div>
             )}
             {turnos.map((t, i) => (
               <div key={i} ref={i === turnos.length - 1 ? ultimoTurnoRef : undefined} style={{ scrollMarginTop: 8 }}>
@@ -217,17 +243,17 @@ function PageInner() {
               ) : (
                 <div style={{ display: "grid", gap: 8 }}>
                   {historico.map((c) => (
-                    <div
-                      key={c.id}
-                      onClick={() => abrirConversa(c.id)}
-                      className="card"
-                      style={{
-                        cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 8,
-                        padding: "10px 12px",
-                        outline: c.id === conversaId ? "2px solid var(--brand-2)" : "none",
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                    <div key={c.id} style={{ position: "relative" }}>
+                      <button
+                        type="button"
+                        onClick={() => abrirConversa(c.id)}
+                        className="card"
+                        style={{
+                          width: "100%", display: "block", textAlign: "left", cursor: "pointer",
+                          padding: "10px 44px 10px 12px",
+                          outline: c.id === conversaId ? "2px solid var(--brand-2)" : undefined,
+                        }}
+                      >
                         <div style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {c.titulo}
                         </div>
@@ -235,12 +261,13 @@ function PageInner() {
                           {c.total_turnos} pergunta{c.total_turnos === 1 ? "" : "s"}
                           {c.paciente_id && <> · <span className="badge">paciente</span></>}
                         </div>
-                      </div>
+                      </button>
                       <button
                         type="button"
                         onClick={(e) => excluirConversa(c.id, e)}
                         aria-label="Excluir conversa"
-                        style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--muted)", padding: 4 }}
+                        className="btn btn-ghost btn-icon"
+                        style={{ position: "absolute", top: 6, right: 6, color: "var(--muted)" }}
                       >
                         <Trash2 size={15} />
                       </button>
@@ -250,6 +277,15 @@ function PageInner() {
               )}
           </Drawer>
         )}
+
+        <ConfirmDialog
+          open={confirmExcluir !== null}
+          title="Excluir conversa"
+          description="As perguntas e respostas desta conversa serão removidas. Esta ação não pode ser desfeita."
+          confirmLabel="Excluir"
+          onConfirm={() => { if (confirmExcluir) void chat.excluirConversa(confirmExcluir); setConfirmExcluir(null); }}
+          onCancel={() => setConfirmExcluir(null)}
+        />
         </main>
       </div>
     </>
@@ -258,7 +294,7 @@ function PageInner() {
 
 export default function SofiaPage() {
   return (
-    <Suspense fallback={<main className="container-praxis"><p style={{ color: "var(--muted)" }}>Carregando…</p></main>}>
+    <Suspense fallback={<main className="container-praxis" style={{ display: "flex", flexDirection: "column", gap: 12 }}><Skeleton height={28} width="30%" /><Skeleton height={120} radius="var(--radius-lg)" /></main>}>
       <PageInner />
     </Suspense>
   );

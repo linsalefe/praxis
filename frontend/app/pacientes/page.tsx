@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { PlusCircle, Search } from "lucide-react";
+import { PlusCircle, Search, Users } from "lucide-react";
 import { api, ApiError, getScope, getToken } from "@/lib/api";
 import { dataRelativa } from "@/lib/date";
 import { formatNome } from "@/lib/format";
@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Drawer } from "@/components/ui/Drawer";
 
 type Paciente = {
@@ -31,6 +32,7 @@ export default function PacientesPage() {
   const [drawer, setDrawer] = useState(false);
   const [busca, setBusca] = useState("");
   const [erroCriar, setErroCriar] = useState<string | null>(null);
+  const [generoCustom, setGeneroCustom] = useState(false);
   const [form, setForm] = useState({ nome: "", contato: "", nascimento: "", documento: "", sexo: "" });
   const buscaRef = useRef<HTMLInputElement>(null);
 
@@ -93,6 +95,7 @@ export default function PacientesPage() {
       });
       setRows((r) => [p, ...r]);
       setForm({ nome: "", contato: "", nascimento: "", documento: "", sexo: "" });
+      setGeneroCustom(false);
       setDrawer(false);
       toast.success("Paciente criado.");
     } catch (err) {
@@ -108,7 +111,7 @@ export default function PacientesPage() {
       <Topbar meNome={me?.nome} />
       <main className="container-praxis">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, margin: "8px 0 20px" }}>
-          <h1 style={{ fontSize: 22, margin: 0 }}>Pacientes</h1>
+          <h1 style={{ fontSize: "var(--fs-xl)", margin: 0 }}>Pacientes</h1>
           <Button variant="primary" onClick={() => setDrawer(true)}>
             <PlusCircle size={16} /> Novo paciente
           </Button>
@@ -132,7 +135,11 @@ export default function PacientesPage() {
             {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} height={20} width={`${90 - i * 8}%`} />)}
           </Card>
         ) : rows.length === 0 ? (
-          <p style={{ color: "var(--muted)" }}>Nenhum paciente cadastrado ainda — comece por “Novo paciente”.</p>
+          <EmptyState
+            icone={<Users size={28} />}
+            frase="Nenhum paciente cadastrado ainda."
+            cta={<Button variant="primary" onClick={() => setDrawer(true)}><PlusCircle size={16} /> Novo paciente</Button>}
+          />
         ) : filtrados.length === 0 ? (
           <p style={{ color: "var(--muted)" }}>Nenhum paciente encontrado para “{busca}”.</p>
         ) : (
@@ -169,7 +176,7 @@ export default function PacientesPage() {
       {drawer && (
         <Drawer open title="Novo paciente" onClose={() => { if (!creating) setDrawer(false); }}>
           <form onSubmit={criar} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <Field label="Nome *" error={erroCriar}>
+            <Field label="Nome *">
               <input className="input" required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
             </Field>
             <Field label="Contato">
@@ -181,9 +188,36 @@ export default function PacientesPage() {
             <Field label="Documento">
               <input className="input" value={form.documento} onChange={(e) => setForm({ ...form, documento: e.target.value })} />
             </Field>
-            <Field label="Sexo">
-              <input className="input" value={form.sexo} onChange={(e) => setForm({ ...form, sexo: e.target.value })} />
+            <Field label="Gênero">
+              <select
+                className="input"
+                value={generoCustom ? "__custom__" : form.sexo}
+                onChange={(e) => {
+                  if (e.target.value === "__custom__") { setGeneroCustom(true); setForm({ ...form, sexo: "" }); }
+                  else { setGeneroCustom(false); setForm({ ...form, sexo: e.target.value }); }
+                }}
+              >
+                <option value="">—</option>
+                <option value="Mulher">Mulher</option>
+                <option value="Homem">Homem</option>
+                <option value="Não binário">Não binário</option>
+                <option value="Prefiro não informar">Prefiro não informar</option>
+                <option value="__custom__">Autodescrever…</option>
+              </select>
+              {generoCustom && (
+                <input
+                  className="input"
+                  style={{ marginTop: 8 }}
+                  placeholder="Como você se descreve"
+                  value={form.sexo}
+                  onChange={(e) => setForm({ ...form, sexo: e.target.value })}
+                />
+              )}
             </Field>
+            {/* Y17: erro geral do formulário — separado da validação de campo. */}
+            {erroCriar && (
+              <p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: 0 }}>{erroCriar}</p>
+            )}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
               <Button type="button" onClick={() => setDrawer(false)} disabled={creating}>Cancelar</Button>
               <Button type="submit" variant="primary" loading={creating}>

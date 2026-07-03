@@ -13,6 +13,7 @@ import { BreadcrumbPaciente } from "@/components/ui/BreadcrumbPaciente";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
@@ -133,7 +134,14 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
   }
 
   if (!doc || !tpl) return (
-    <><Topbar /><main className="container-praxis"><p style={{ color: "var(--muted)" }}>Carregando…</p></main></>
+    <>
+      <Topbar />
+      <main className="container-praxis" style={{ maxWidth: 880, display: "flex", flexDirection: "column", gap: 16 }}>
+        <Skeleton height={28} width="40%" />
+        <Skeleton height={100} radius="var(--radius-lg)" />
+        <Skeleton height={140} radius="var(--radius-lg)" />
+      </main>
+    </>
   );
 
   const finalizado = doc.status === "assinado";
@@ -145,7 +153,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
       <main className="container-praxis" style={{ maxWidth: 880 }}>
         <BreadcrumbPaciente pacienteId={doc.paciente_id} />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
-          <h1 style={{ fontSize: 22, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          <h1 style={{ fontSize: "var(--fs-xl)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <FileSignature size={20} color="var(--brand-2)" /> {tpl.titulo}
           </h1>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -245,9 +253,13 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         )}
 
         {finalizado && doc.hash_assinatura && (
-          <p style={{ marginTop: 12, color: "var(--muted)", fontSize: 11, fontFamily: "monospace" }}>
-            SHA-256: {doc.hash_assinatura}
-          </p>
+          <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, color: "var(--muted)", fontSize: 11 }}>
+            <span>SHA-256:</span>
+            <span style={{ fontFamily: "var(--font-mono)" }} title={doc.hash_assinatura}>
+              {doc.hash_assinatura.slice(0, 4)}…{doc.hash_assinatura.slice(-4)}
+            </span>
+            <CopiarBtn texto={doc.hash_assinatura} label="Copiar hash" className="btn btn-ghost" />
+          </div>
         )}
         <p style={{ marginTop: 8, color: "var(--muted)", fontSize: 11 }}>{doc.aviso}</p>
       </main>
@@ -277,6 +289,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         description="Após assinar, o documento fica imutável e o PDF é anexado ao prontuário do paciente."
         confirmLabel="Assinar"
         cancelLabel="Continuar revisando"
+        confirmVariant="primary"
         busy={busy === "Assinando…"}
         busyLabel="Assinando…"
         onConfirm={assinar}
