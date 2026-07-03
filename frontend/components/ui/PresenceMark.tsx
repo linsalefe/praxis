@@ -5,6 +5,11 @@
  * Arcos concêntricos que "respiram" (ciclo ~8s) em torno de um núcleo âmbar.
  * Substitui o clichê de IA (Sparkles/Wand2) nos momentos da Sofia/geração.
  *
+ * POLÍTICA DE USO (I7): só onde a IA age, está prestes a agir ou é endereçada
+ * (Sofia em todas as superfícies, gerar rascunho, preparação, link de nav,
+ * /como-usamos-ia). Nunca como enfeite de cabeçalho — telas sem IA usam o ícone
+ * temático da tela (Wallet, BookOpen, Video…).
+ *
  * Acessibilidade: sob `prefers-reduced-motion` a animação é congelada pelo
  * bloco global em globals.css; o estado de repouso (anéis a 0.9, núcleo sólido)
  * permanece legível e estático.

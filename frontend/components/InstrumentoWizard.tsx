@@ -255,7 +255,7 @@ export function InstrumentoWizard({ respostaId }: { respostaId: string }) {
             {instr.tipo === "gam" && (
               <div style={{ marginBottom: 12, padding: 10, borderRadius: "var(--radius-md)", background: "var(--surface-2)", display: "flex", gap: 8, alignItems: "flex-start" }}>
                 <ShieldCheck size={16} color="var(--brand-2)" style={{ flexShrink: 0, marginTop: 1 }} />
-                <p style={{ margin: 0, fontSize: 12.5, color: "var(--muted)" }}>
+                <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
                   <strong>Apoio à gestão autônoma e à decisão compartilhada.</strong> Não substitui
                   o prescritor e <strong>nenhuma conduta de medicação é sugerida</strong> — a decisão
                   sobre o tratamento é do usuário com o seu médico.

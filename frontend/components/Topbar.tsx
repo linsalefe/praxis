@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   BookOpen, CalendarDays, ChevronDown, Compass, IdCard, LayoutGrid, LogOut, Menu,
-  ShieldCheck, UserCog, Users, Wallet,
+  UserCog, Users, Wallet,
 } from "lucide-react";
 import { api, clearToken } from "@/lib/api";
 import { PresenceMark } from "@/components/ui/PresenceMark";
@@ -86,9 +86,10 @@ export function Topbar({ meNome }: { meNome?: string }) {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 0 }}>
-        <Link href="/pacientes" className="link" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "var(--text)" }}>
-          <ShieldCheck size={18} color="var(--brand-2)" />
-          <strong>Práxis</strong>
+        <Link href="/inicio" className="link" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "var(--text)" }}>
+          <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 18, letterSpacing: "-0.01em" }}>
+            Práxis<span style={{ color: "var(--amber-600)" }}>.</span>
+          </span>
           <span className="badge">by CENAT</span>
         </Link>
         <nav className="topbar-links">
@@ -143,7 +144,7 @@ export function Topbar({ meNome }: { meNome?: string }) {
                 position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 200,
                 background: "var(--surface)", border: "1px solid var(--border)",
                 borderRadius: "var(--radius-md)", boxShadow: "var(--shadow-md)",
-                padding: 6, zIndex: 50,
+                padding: 6, zIndex: "var(--z-nav)",
               }}
             >
               <Link

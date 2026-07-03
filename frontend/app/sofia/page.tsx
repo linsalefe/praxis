@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { Drawer } from "@/components/ui/Drawer";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { sugestoesDeterministicas } from "@/components/SofiaPainelProntuario";
 import { PrepararSessaoModal } from "@/components/PrepararSessaoModal";
@@ -99,7 +100,7 @@ function PageInner() {
           {/* Cabeçalho fixo */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
             <PresenceMark size={26} />
-            <h1 style={{ margin: 0, fontSize: 22 }}>Sofia</h1>
+            <h1 style={{ margin: 0, fontSize: "var(--fs-xl)" }}>Sofia</h1>
             <span className="badge">respostas com fonte do acervo CENAT</span>
             <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
               <Button variant="ghost" onClick={abrirHistorico}>
@@ -119,7 +120,7 @@ function PageInner() {
                 checked={usarPaciente}
                 onChange={(e) => setUsarPaciente(e.target.checked)}
               />
-              marcar contexto deste paciente <span className="badge">nada de PII vai à IA</span>
+              usar o contexto deste paciente <span className="badge">nada de PII vai à IA</span>
             </label>
           )}
 
@@ -265,7 +266,8 @@ function PageInner() {
                         type="button"
                         onClick={(e) => excluirConversa(c.id, e)}
                         aria-label="Excluir conversa"
-                        style={{ position: "absolute", top: 8, right: 8, border: "none", background: "transparent", cursor: "pointer", color: "var(--muted)", padding: 4 }}
+                        className="btn btn-ghost btn-icon"
+                        style={{ position: "absolute", top: 6, right: 6, color: "var(--muted)" }}
                       >
                         <Trash2 size={15} />
                       </button>
@@ -292,7 +294,7 @@ function PageInner() {
 
 export default function SofiaPage() {
   return (
-    <Suspense fallback={<main className="container-praxis"><p style={{ color: "var(--muted)" }}>Carregando…</p></main>}>
+    <Suspense fallback={<main className="container-praxis" style={{ display: "flex", flexDirection: "column", gap: 12 }}><Skeleton height={28} width="30%" /><Skeleton height={120} radius="var(--radius-lg)" /></main>}>
       <PageInner />
     </Suspense>
   );

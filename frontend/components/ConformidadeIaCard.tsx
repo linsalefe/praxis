@@ -139,7 +139,7 @@ export function ConformidadeIaCard({
               ))}
             </ul>
           )}
-          <p style={{ margin: "10px 0 0", fontSize: 11.5, color: "var(--muted)" }}>
+          <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--muted)" }}>
             Uso de IA de apoio — todo conteúdo é rascunho revisado e assinado pelo profissional.{" "}
             <Link className="link" href="/como-usamos-ia" target="_blank">Como o Práxis usa IA</Link>
           </p>

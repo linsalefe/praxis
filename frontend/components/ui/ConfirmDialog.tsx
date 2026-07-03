@@ -56,11 +56,11 @@ export function ConfirmDialog({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(42, 38, 32, 0.38)",
+        background: "var(--scrim)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 60,
+        zIndex: "var(--z-overlay)",
         padding: 16,
       }}
     >

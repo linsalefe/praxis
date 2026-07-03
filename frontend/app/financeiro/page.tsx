@@ -9,7 +9,6 @@ import { formatCentavos } from "@/lib/money";
 import { formaPagamentoLabel } from "@/lib/labels";
 import { formatNome, plural } from "@/lib/format";
 import { Topbar } from "@/components/Topbar";
-import { PresenceMark } from "@/components/ui/PresenceMark";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -96,12 +95,22 @@ export default function FinanceiroPage() {
   const totalPendente = pendentes.reduce((a, l) => a + l.valor_centavos, 0);
   const totalPago = pagos.reduce((a, l) => a + l.valor_centavos, 0);
 
-  // FN1: presets de período. Alterar de/ate dispara o recarregamento (useEffect).
-  function preset(tipo: "mes" | "d30" | "ano") {
+  // FN1/Y5: presets de período com estado ativo. Alterar de/ate dispara o
+  // recarregamento (useEffect); clicar no preset ativo limpa o período.
+  function presetRange(tipo: "mes" | "d30" | "ano") {
     const hoje = new Date();
-    if (tipo === "mes") { setDe(ymd(new Date(hoje.getFullYear(), hoje.getMonth(), 1))); setAte(ymd(hoje)); }
-    else if (tipo === "d30") { const d = new Date(hoje); d.setDate(d.getDate() - 30); setDe(ymd(d)); setAte(ymd(hoje)); }
-    else { setDe(ymd(new Date(hoje.getFullYear(), 0, 1))); setAte(ymd(hoje)); }
+    if (tipo === "mes") return { de: ymd(new Date(hoje.getFullYear(), hoje.getMonth(), 1)), ate: ymd(hoje) };
+    if (tipo === "d30") { const d = new Date(hoje); d.setDate(d.getDate() - 30); return { de: ymd(d), ate: ymd(hoje) }; }
+    return { de: ymd(new Date(hoje.getFullYear(), 0, 1)), ate: ymd(hoje) };
+  }
+  const presetAtivo = (tipo: "mes" | "d30" | "ano") => {
+    const r = presetRange(tipo);
+    return de === r.de && ate === r.ate;
+  };
+  function togglePreset(tipo: "mes" | "d30" | "ano") {
+    if (presetAtivo(tipo)) { setDe(""); setAte(""); return; }
+    const r = presetRange(tipo);
+    setDe(r.de); setAte(r.ate);
   }
 
   async function confirmarPagamento() {
@@ -144,9 +153,8 @@ export default function FinanceiroPage() {
       <Topbar />
       <main className="container-praxis" style={{ maxWidth: 920 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-          <PresenceMark size={26} />
-          <h1 style={{ margin: 0, fontSize: 22 }}>Financeiro</h1>
-          <Wallet size={18} color="var(--brand-2)" />
+          <Wallet size={20} color="var(--brand-2)" />
+          <h1 style={{ margin: 0, fontSize: "var(--fs-xl)" }}>Financeiro</h1>
         </div>
         <p style={{ color: "var(--muted)", margin: "0 0 16px", fontSize: 14 }}>
           Valores registrados por sessão — nada de projeção. Recibo é comprovante para reembolso
@@ -165,9 +173,17 @@ export default function FinanceiroPage() {
           )}
         </div>
         <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
-          <button className="badge" style={{ cursor: "pointer" }} onClick={() => preset("mes")}>Este mês</button>
-          <button className="badge" style={{ cursor: "pointer" }} onClick={() => preset("d30")}>Últimos 30 dias</button>
-          <button className="badge" style={{ cursor: "pointer" }} onClick={() => preset("ano")}>Este ano</button>
+          {([["mes", "Este mês"], ["d30", "Últimos 30 dias"], ["ano", "Este ano"]] as const).map(([tipo, label]) => (
+            <button
+              key={tipo}
+              className={`badge${presetAtivo(tipo) ? " badge-info" : ""}`}
+              style={{ cursor: "pointer" }}
+              aria-pressed={presetAtivo(tipo)}
+              onClick={() => togglePreset(tipo)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* FN3: KPIs do período — número grande + rótulo muted */}
@@ -175,7 +191,7 @@ export default function FinanceiroPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 20 }}>
             <Card>
               <div style={{ color: "var(--muted)", fontSize: 12 }}>A receber (pendente)</div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 24, color: "var(--warn-fg)" }}>{formatCentavos(totalPendente)}</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 24, color: "var(--text)" }}>{formatCentavos(totalPendente)}</div>
               <div style={{ color: "var(--muted)", fontSize: 11 }}>{plural(pendentes.length, "sessão", "sessões")}</div>
             </Card>
             <Card>

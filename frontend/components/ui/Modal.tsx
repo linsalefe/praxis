@@ -50,9 +50,9 @@ export function Modal({
       aria-label={title}
       onClick={() => !busy && onClose()}
       style={{
-        position: "fixed", inset: 0, background: "rgba(42, 38, 32, 0.38)",
+        position: "fixed", inset: 0, background: "var(--scrim)",
         display: "flex", alignItems: "center", justifyContent: "center",
-        zIndex: elevated ? 70 : 60, padding: 16,
+        zIndex: elevated ? "var(--z-overlay-2)" : "var(--z-overlay)", padding: 16,
       }}
     >
       <div
@@ -67,7 +67,7 @@ export function Modal({
         {title && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
             <h2 style={{ margin: 0, fontSize: 18 }}>{title}</h2>
-            <button className="btn" onClick={onClose} disabled={busy} aria-label="Fechar"><X size={16} /></button>
+            <button className="btn btn-icon" onClick={onClose} disabled={busy} aria-label="Fechar"><X size={16} /></button>
           </div>
         )}
         {children}

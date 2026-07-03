@@ -59,7 +59,10 @@ export default function LoginPage() {
         <Card>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
             <ShieldCheck size={22} color="var(--brand-2)" />
-            <h1 style={{ margin: 0, fontSize: 20 }}>Práxis · CENAT</h1>
+            <h1 style={{ margin: 0, fontSize: "var(--fs-xl)", fontWeight: 600 }}>
+              Práxis<span style={{ color: "var(--amber-600)" }}>.</span>
+              <span style={{ color: "var(--muted)", fontWeight: 400 }}> · CENAT</span>
+            </h1>
           </div>
           <p style={{ color: "var(--muted)", margin: "0 0 20px", fontSize: 14 }}>
             Copiloto clínico para novas abordagens em saúde mental.

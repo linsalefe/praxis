@@ -80,7 +80,7 @@ export default function ObraPage() {
         ) : obra ? (
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: "10px 0 4px" }}>
-              <h1 style={{ fontSize: 22, margin: 0 }}>{obra.titulo}</h1>
+              <h1 style={{ fontSize: "var(--fs-xl)", margin: 0 }}>{obra.titulo}</h1>
               <span className="badge">{obra.is_terceiro ? "terceiro" : "CENAT"}</span>
             </div>
             <p style={{ color: "var(--muted)", margin: "0 0 14px", fontSize: 14 }}>

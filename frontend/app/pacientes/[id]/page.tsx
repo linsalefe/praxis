@@ -22,6 +22,7 @@ import { SofiaPainelProntuario } from "@/components/SofiaPainelProntuario";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { PacienteCard } from "@/components/ui/PacienteCard";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Drawer } from "@/components/ui/Drawer";
 import { MenuAcoes } from "@/components/ui/MenuAcoes";
@@ -410,9 +411,21 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
             <>
               <SectionTitle icon={<CalendarClock size={13} style={{ display: "inline", verticalAlign: "middle" }} />} margin="24px 0 8px">Linha do tempo</SectionTitle>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {timeline.map((ev) => (
-                  <EventoLinha key={`${ev.tipo_evento}-${ev.ref_id}`} ev={ev} />
-                ))}
+                {timeline.map((ev, i) => {
+                  const d = new Date(ev.data);
+                  const prev = i > 0 ? new Date(timeline[i - 1].data) : null;
+                  const mudouMes = !prev || prev.getMonth() !== d.getMonth() || prev.getFullYear() !== d.getFullYear();
+                  return (
+                    <div key={`${ev.tipo_evento}-${ev.ref_id}`}>
+                      {mudouMes && (
+                        <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--muted)", textTransform: "capitalize", margin: i === 0 ? "0 0 8px" : "18px 0 8px" }}>
+                          {d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+                        </div>
+                      )}
+                      <EventoLinha ev={ev} />
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}
@@ -425,7 +438,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
             <Button onClick={() => setAgendarOpen(true)}><CalendarPlus size={16} /> Agendar sessão</Button>
           </div>
           {sessoes.length === 0 ? (
-            <p style={{ color: "var(--muted)" }}>Nenhuma sessão registrada ainda — use “Agendar sessão”.</p>
+            <EmptyState icone={<CalendarPlus size={28} />} frase="Nenhuma sessão registrada ainda — use “Agendar sessão”." />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {sessoes.map((s) => (
@@ -469,7 +482,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
             <Button onClick={() => setInstrModal(true)}><ClipboardList size={16} /> Novo instrumento</Button>
           </div>
           {respostas.length === 0 ? (
-            <p style={{ color: "var(--muted)" }}>Nenhum instrumento aplicado ainda.</p>
+            <EmptyState icone={<ClipboardList size={28} />} frase="Nenhum instrumento aplicado ainda." />
           ) : respostas.map((r) => (
             <Card key={r.id} className="row-stack" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
@@ -501,7 +514,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
             <Button onClick={() => setDocModal(true)}><FileSignature size={16} /> Gerar documento</Button>
           </div>
           {documentos.length === 0 ? (
-            <p style={{ color: "var(--muted)" }}>Nenhum documento gerado ainda.</p>
+            <EmptyState icone={<FileSignature size={28} />} frase="Nenhum documento gerado ainda." />
           ) : (
             documentos.map((d) => (
               <Card key={d.id} className="row-stack" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>

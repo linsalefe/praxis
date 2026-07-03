@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { Video, Link2, ShieldCheck, X } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { formatNome } from "@/lib/format";
-import { PresenceMark } from "@/components/ui/PresenceMark";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -121,16 +120,16 @@ export function TelessessaoModal({
     <Modal open maxWidth={520} busy={busy} onClose={onClose}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <PresenceMark size={20} />
+            <Video size={18} color="var(--brand-2)" />
             <h3 style={{ margin: 0 }}>Telessessão</h3>
           </div>
-          <Button onClick={onClose} disabled={busy} aria-label="Fechar"><X size={16} /></Button>
+          <Button className="btn-icon" onClick={onClose} disabled={busy} aria-label="Fechar"><X size={16} /></Button>
         </div>
         <p style={{ color: "var(--muted)", margin: "0 0 12px", fontSize: 13 }}>{formatNome(pacienteNome)}</p>
 
         <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "var(--surface-2)", borderRadius: "var(--radius-md)", padding: 10, marginBottom: 14 }}>
           <ShieldCheck size={16} color="var(--brand-2)" style={{ flexShrink: 0, marginTop: 1 }} />
-          <p style={{ margin: 0, fontSize: 12.5, color: "var(--muted)" }}>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
             Atendimento por tecnologia (Res. CFP nº 11/2018): garanta ambiente reservado
             e conexão adequada. Gravação apenas com consentimento específico.
           </p>
@@ -149,7 +148,7 @@ export function TelessessaoModal({
             <Button onClick={copiarLink} disabled={busy}>
               <Link2 size={16} /> Copiar link do paciente
             </Button>
-            <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "var(--muted)" }}>
+            <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--muted)" }}>
               O paciente entra pelo mesmo link — não é preciso cadastro. A sala não expõe dados pessoais.
             </p>
           </div>
@@ -159,7 +158,7 @@ export function TelessessaoModal({
               <strong>Consentimento de teleatendimento pendente.</strong> Registre o aceite do
               paciente antes de liberar a sala.
             </p>
-            <p style={{ margin: 0, fontSize: 12.5, color: "var(--muted)", fontStyle: "italic" }}>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--muted)", fontStyle: "italic" }}>
               “{TEXTO_CONSENTIMENTO}”
             </p>
             <Field label="Aceito por">

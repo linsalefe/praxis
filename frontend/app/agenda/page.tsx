@@ -16,6 +16,7 @@ import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { MenuAcoes } from "@/components/ui/MenuAcoes";
+import { Segmented } from "@/components/ui/Segmented";
 import { Drawer } from "@/components/ui/Drawer";
 import { TelessessaoModal } from "@/components/TelessessaoModal";
 
@@ -146,18 +147,14 @@ export default function AgendaPage() {
       <Topbar />
       <main className="container-praxis" style={{ maxWidth: 860 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <h1 style={{ fontSize: 20, margin: 0 }}>Agenda</h1>
+          <h1 style={{ fontSize: "var(--fs-xl)", margin: 0 }}>Agenda</h1>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <div className="badge" style={{ padding: 0, overflow: "hidden", display: "inline-flex" }}>
-              {(["dia", "semana"] as const).map((v) => (
-                <button key={v} onClick={() => setView(v)}
-                  style={{
-                    border: "none", padding: "6px 12px", cursor: "pointer", textTransform: "capitalize",
-                    background: view === v ? "var(--teal-100)" : "transparent",
-                    color: view === v ? "var(--teal-700)" : "var(--muted)", fontWeight: view === v ? 600 : 400,
-                  }}>{v}</button>
-              ))}
-            </div>
+            <Segmented
+              label="Visualização"
+              value={view}
+              onChange={setView}
+              options={[{ value: "dia", label: "Dia" }, { value: "semana", label: "Semana" }]}
+            />
             <Button variant="primary" onClick={() => setDrawer({ open: true })}>
               <CalendarPlus size={16} /> Nova sessão
             </Button>
@@ -174,7 +171,7 @@ export default function AgendaPage() {
                 ? anchor.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })
                 : `${diaLongo(weekStart(anchor))} — ${diaLongo(addDays(weekStart(anchor), 6))}`}
             </div>
-            <button className="link" style={{ fontSize: 12 }} onClick={() => setAnchor(new Date())}>hoje</button>
+            <button className="link" style={{ fontSize: 12 }} onClick={() => setAnchor(new Date())}>Hoje</button>
           </div>
           <Button onClick={() => setAnchor((d) => addDays(d, passo))} aria-label="Próxima">
             Próxima <ChevronRight size={16} />
@@ -211,7 +208,7 @@ export default function AgendaPage() {
                     title="Nova sessão neste dia"
                     style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13 }}
                   >
-                    <CalendarPlus size={14} /> nova
+                    <CalendarPlus size={14} /> Nova
                   </button>
                 </div>
               ) : null;

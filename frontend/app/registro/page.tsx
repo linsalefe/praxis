@@ -60,7 +60,7 @@ export default function RegisterPage() {
       <Card>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
           <UserPlus size={22} color="var(--brand-2)" />
-          <h1 style={{ margin: 0, fontSize: 20 }}>Cadastro profissional</h1>
+          <h1 style={{ margin: 0, fontSize: "var(--fs-xl)" }}>Cadastro profissional</h1>
         </div>
         <p style={{ color: "var(--muted)", margin: "0 0 20px" }}>
           Isso cria o espaço do seu consultório no Práxis.

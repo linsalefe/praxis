@@ -39,7 +39,7 @@ export default function TwoFactorPage() {
       <Card>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
           <KeyRound size={22} color="var(--brand-2)" />
-          <h1 style={{ margin: 0, fontSize: 20 }}>Verificação 2FA</h1>
+          <h1 style={{ margin: 0, fontSize: "var(--fs-xl)" }}>Verificação 2FA</h1>
         </div>
         <p style={{ color: "var(--muted)", margin: "0 0 20px" }}>
           Digite o código de 6 dígitos do seu autenticador.

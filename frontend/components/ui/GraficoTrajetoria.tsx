@@ -82,7 +82,7 @@ export function GraficoTrajetoria({ serie }: { serie: SerieTrajetoria }) {
           const c = corSeveridade(p.severidade);
           return (
             <g key={p.resposta_id}>
-              <circle cx={cx} cy={cy} r={4.5} fill={c.fg} stroke="var(--paper, #fff)" strokeWidth={1.5}>
+              <circle cx={cx} cy={cy} r={4.5} fill={c.fg} stroke="var(--surface)" strokeWidth={1.5}>
                 <title>{`${fmtData(p.data)}: escore ${p.escore}${p.faixa ? ` (${p.faixa})` : ""}`}</title>
               </circle>
               <text x={cx} y={cy - 8} textAnchor="middle" fontSize={9} fontFamily="var(--font-mono)" fill={c.fg} fontWeight={600}>{p.escore}</text>

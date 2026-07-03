@@ -7,6 +7,7 @@ import { BookOpen } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { Card } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type Doc = {
   id: string; slug: string; titulo: string; autor: string;
@@ -33,12 +34,16 @@ export default function AcervoPage() {
       <Topbar />
       <main className="container-praxis">
         <p style={{ margin: 0 }}><Link className="link" href="/sofia">← Sofia</Link></p>
-        <h1 style={{ fontSize: 22, margin: "8px 0" }}>
+        <h1 style={{ fontSize: "var(--fs-xl)", margin: "8px 0" }}>
           <BookOpen size={18} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
           Acervo indexado
         </h1>
         {loading ? (
-          <p style={{ color: "var(--muted)" }}>Carregando…</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <Skeleton height={40} radius="var(--radius-lg)" />
+            <Skeleton height={40} radius="var(--radius-lg)" />
+            <Skeleton height={40} radius="var(--radius-lg)" />
+          </div>
         ) : (
           <Card style={{ padding: 0 }}>
             <table className="table-cards" style={{ width: "100%", borderCollapse: "collapse" }}>

@@ -104,7 +104,7 @@ export function PrepararSessaoModal({
             style={{
               marginTop: 12, padding: "10px 12px",
               background: "var(--teal-50)", border: "1px solid var(--teal-200)",
-              borderRadius: 8, fontSize: 12.5, lineHeight: 1.5, maxHeight: 140, overflowY: "auto",
+              borderRadius: 8, fontSize: 13, lineHeight: 1.5, maxHeight: 140, overflowY: "auto",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--teal-800)", fontWeight: 500, marginBottom: 4 }}>
