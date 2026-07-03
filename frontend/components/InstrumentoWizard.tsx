@@ -379,32 +379,19 @@ function ItemLikertCampo({
           <span className="badge badge-risk" style={{ marginLeft: 6, fontSize: 10 }}>atenção</span>
         )}
       </div>
-      <div role="radiogroup" aria-label={item.texto} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-        {opcoes.map((o) => {
-          const on = valor === o.valor;
-          return (
-            <label
-              key={o.valor}
-              className={`badge ${on ? "badge-info" : ""}`}
-              style={{
-                cursor: disabled ? "default" : "pointer",
-                opacity: disabled && !on ? 0.5 : 1,
-                padding: "6px 10px",
-                fontWeight: on ? 600 : 400,
-              }}
-            >
-              <input
-                type="radio"
-                name={`item-${item.id}`}
-                checked={on}
-                disabled={disabled}
-                onChange={() => onChange(o.valor)}
-                style={{ marginRight: 4 }}
-              />
-              {o.rotulo}
-            </label>
-          );
-        })}
+      <div role="radiogroup" aria-label={item.texto} className="likert-opcoes">
+        {opcoes.map((o) => (
+          <label key={o.valor} className="likert-opt">
+            <input
+              type="radio"
+              name={`item-${item.id}`}
+              checked={valor === o.valor}
+              disabled={disabled}
+              onChange={() => onChange(o.valor)}
+            />
+            {o.rotulo}
+          </label>
+        ))}
       </div>
     </div>
   );
@@ -466,15 +453,15 @@ function CampoResposta({
       return (
         <div>
           {label}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <div className="likert-opcoes">
             {(pergunta.opcoes || []).map((o) => {
               const arr = (v as string[]) || [];
               const on = arr.includes(o);
               return (
-                <label key={o} className="badge" style={{ cursor: "pointer", opacity: disabled ? 0.6 : 1 }}>
+                <label key={o} className="likert-opt">
                   <input type="checkbox" checked={on} disabled={disabled}
                     onChange={() => onChange(on ? arr.filter((x) => x !== o) : [...arr, o])} />
-                  {" "}{o}
+                  {o}
                 </label>
               );
             })}

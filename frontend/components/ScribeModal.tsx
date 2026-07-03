@@ -14,6 +14,16 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8040";
 
 type Tab = "gravar" | "upload" | "resumo";
 
+/** Duração legível: mm:ss (ou h:mm:ss acima de 1h). */
+function fmtDuracao(total: number): string {
+  const s = Math.max(0, Math.floor(total));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const seg = s % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(seg)}` : `${pad(m)}:${pad(seg)}`;
+}
+
 export function ScribeModal({
   sessaoId,
   onClose,
@@ -29,6 +39,7 @@ export function ScribeModal({
   // Gravação
   const [gravando, setGravando] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);   // Y8: conferência
   const [duracao, setDuracao] = useState(0);
   const [nivel, setNivel] = useState(0);            // U5: nível do mic (0..1)
   const [confirmarFechar, setConfirmarFechar] = useState(false);  // U4
@@ -52,6 +63,14 @@ export function ScribeModal({
     window.addEventListener("beforeunload", h);
     return () => window.removeEventListener("beforeunload", h);
   }, [temAudioPendente]);
+
+  // Y8: URL de objeto do blob para o <audio controls> de conferência.
+  useEffect(() => {
+    if (!audioBlob) { setAudioUrl(null); return; }
+    const url = URL.createObjectURL(audioBlob);
+    setAudioUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [audioBlob]);
 
   // Limpa recursos de áudio ao desmontar.
   useEffect(() => () => {
@@ -293,7 +312,7 @@ export function ScribeModal({
                 {gravando && (
                   <>
                     <Button variant="danger" onClick={pararGravacao}>
-                      <Square size={16} /> Parar ({duracao}s)
+                      <Square size={16} /> Parar (<span style={{ fontFamily: "var(--font-mono)" }}>{fmtDuracao(duracao)}</span>)
                     </Button>
                     <span aria-live="polite" style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--danger)", fontSize: 13 }}>
                       <span className="rec-dot" aria-hidden style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--danger)", display: "inline-block" }} />
@@ -305,9 +324,19 @@ export function ScribeModal({
                     </span>
                   </>
                 )}
-                {audioBlob && !gravando && (
-                  <>
-                    <span className="badge">gravado {duracao}s · {(audioBlob.size / 1024).toFixed(0)} KB</span>
+              </div>
+              {audioBlob && !gravando && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
+                  <span className="badge" style={{ alignSelf: "flex-start" }}>
+                    gravado <span style={{ fontFamily: "var(--font-mono)" }}>{fmtDuracao(duracao)}</span> · {(audioBlob.size / 1024).toFixed(0)} KB
+                  </span>
+                  {/* Y8: conferência do áudio antes de enviar */}
+                  {audioUrl && (
+                    <audio controls src={audioUrl} style={{ width: "100%" }}>
+                      Seu navegador não reproduz áudio.
+                    </audio>
+                  )}
+                  <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
                     <Button onClick={() => { setAudioBlob(null); setDuracao(0); }} disabled={!!busy}>
                       Descartar
                     </Button>
@@ -318,9 +347,9 @@ export function ScribeModal({
                     >
                       <PresenceMark size={16} /> {busy ?? "Enviar e gerar"}
                     </Button>
-                  </>
-                )}
-              </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>

@@ -279,6 +279,53 @@ kbd {
 .badge-neutral { background: var(--sand-100); border-color: var(--border);   color: var(--muted); }
 
 /* ==========================================================================
+   Likert / multiselect — alvos ≥40px, seleção inconfundível (I4)
+   Input escondido acessível dentro do label (semântica e teclado preservados);
+   a seleção é dirigida por :has(input:checked).
+   ========================================================================== */
+.likert-opcoes { display: flex; flex-wrap: wrap; gap: 6px; }
+.likert-opt {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background var(--dur-base) var(--ease-calm),
+              border-color var(--dur-base) var(--ease-calm),
+              color var(--dur-base) var(--ease-calm);
+}
+.likert-opt input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+.likert-opt:hover { background: var(--teal-50); border-color: var(--teal-300); }
+.likert-opt:has(input:checked) {
+  background: var(--teal-700);
+  border-color: var(--teal-700);
+  color: #fff;
+  font-weight: 600;
+}
+.likert-opt:has(input:focus-visible) {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.likert-opt:has(input:disabled) { cursor: default; opacity: .6; }
+@media (max-width: 640px) {
+  .likert-opcoes { display: grid; grid-template-columns: repeat(2, 1fr); }
+  .likert-opt { width: 100%; }
+}
+
+/* ==========================================================================
    Links
    ========================================================================== */
 .link { color: var(--brand-2); text-decoration: none; }
