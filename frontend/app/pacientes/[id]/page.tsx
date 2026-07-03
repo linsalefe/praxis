@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Activity, CalendarClock, CalendarPlus, ClipboardCheck, ClipboardList, Download, FilePlus, FileSignature, FileText, Package, Paperclip, Trash2, Video } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { formatCentavos, reaisParaCentavos } from "@/lib/money";
-import { dataRelativa } from "@/lib/date";
+import { dataRelativa, dataCurtaComHora, sufixoRelativoProximo } from "@/lib/date";
 import { instrumentoTipoLabel, modalidadeLabel, docTipoLabel } from "@/lib/labels";
 import { formatNome } from "@/lib/format";
 import { Topbar } from "@/components/Topbar";
@@ -228,13 +228,32 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
     document.getElementById(`tab-${k}`)?.focus();
   }
 
+  // Skeleton anatômico: espelha a anatomia real (cabeçalho + subnav + 4 KPIs)
+  // para chegada sem layout shift enquanto as chamadas em paralelo resolvem.
   if (loading) return (
     <>
       <Topbar />
       <main className="container-praxis" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <Skeleton height={96} radius="var(--radius-lg)" />
-        <Skeleton height={40} width="60%" />
-        <Skeleton height={140} radius="var(--radius-lg)" />
+        {/* Card de cabeçalho: retrato 56px + duas linhas */}
+        <div className="card" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <Skeleton width={56} height={56} radius="var(--radius-full)" />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+            <Skeleton width="40%" height={18} />
+            <Skeleton width="60%" height={12} />
+          </div>
+        </div>
+        {/* Faixa da subnav */}
+        <div style={{ display: "flex", gap: 8 }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} width={92} height={30} />
+          ))}
+        </div>
+        {/* Grid de 4 KPIs */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} height={82} radius="var(--radius-lg)" />
+          ))}
+        </div>
       </main>
     </>
   );
@@ -412,7 +431,12 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
               {sessoes.map((s) => (
                 <Card key={s.id} className="row-stack" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div>
-                    <div style={{ fontWeight: 500 }}>{dataRelativa(s.data)}</div>
+                    <div style={{ fontWeight: 500, fontFamily: "var(--font-mono)" }}>
+                      {dataCurtaComHora(s.data)}
+                      {sufixoRelativoProximo(s.data) && (
+                        <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {sufixoRelativoProximo(s.data)}</span>
+                      )}
+                    </div>
                     <div style={{ color: "var(--muted)", fontSize: 13 }}>
                       <span className="badge">{modalidadeLabel(s.modalidade)}</span>{" "}
                       <StatusBadge status={s.status} />

@@ -193,6 +193,7 @@ export default function EvolucaoPage({ params }: { params: Promise<{ id: string 
         description="Após assinar, o conteúdo fica imutável, recebe hash de integridade e passa a compor o prontuário. Revise o texto antes de confirmar."
         confirmLabel="Assinar"
         cancelLabel="Continuar revisando"
+        confirmVariant="primary"
         busy={signing}
         busyLabel="Assinando…"
         onConfirm={assinar}

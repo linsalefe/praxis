@@ -277,6 +277,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         description="Após assinar, o documento fica imutável e o PDF é anexado ao prontuário do paciente."
         confirmLabel="Assinar"
         cancelLabel="Continuar revisando"
+        confirmVariant="primary"
         busy={busy === "Assinando…"}
         busyLabel="Assinando…"
         onConfirm={assinar}

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { Drawer } from "@/components/ui/Drawer";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PrepararSessaoModal } from "@/components/PrepararSessaoModal";
 
 function PageInner() {
@@ -25,6 +26,7 @@ function PageInner() {
   const [drawer, setDrawer] = useState<Citacao | null>(null);
   const [prep, setPrep] = useState<string | null>(null);
   const [showHist, setShowHist] = useState(false);
+  const [confirmExcluir, setConfirmExcluir] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const ultimoTurnoRef = useRef<HTMLDivElement>(null);
 
@@ -67,7 +69,7 @@ function PageInner() {
 
   function excluirConversa(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    void chat.excluirConversa(id);
+    setConfirmExcluir(id);
   }
 
   function novaConversa() {
@@ -250,6 +252,15 @@ function PageInner() {
               )}
           </Drawer>
         )}
+
+        <ConfirmDialog
+          open={confirmExcluir !== null}
+          title="Excluir conversa"
+          description="As perguntas e respostas desta conversa serão removidas. Esta ação não pode ser desfeita."
+          confirmLabel="Excluir"
+          onConfirm={() => { if (confirmExcluir) void chat.excluirConversa(confirmExcluir); setConfirmExcluir(null); }}
+          onCancel={() => setConfirmExcluir(null)}
+        />
         </main>
       </div>
     </>

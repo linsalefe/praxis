@@ -392,6 +392,34 @@ input:-webkit-autofill:focus {
 .menu-acoes-item[data-danger]:hover:not(:disabled) { background: var(--risk-bg); }
 
 /* ==========================================================================
+   Toasts (Sonner) — I13. Sem richColors: fundo calmo na paleta (gramática dos
+   badges), acento só no ícone e na borda esquerda via --pos-* / --risk-*.
+   ========================================================================== */
+[data-sonner-toast][data-type="success"] {
+  border-left: 3px solid var(--pos-line);
+}
+[data-sonner-toast][data-type="success"] [data-icon] { color: var(--pos-fg); }
+[data-sonner-toast][data-type="error"] {
+  border-left: 3px solid var(--risk-line);
+}
+[data-sonner-toast][data-type="error"] [data-icon] { color: var(--risk-fg); }
+
+/* ==========================================================================
+   Utilitário de acessibilidade — conteúdo só para leitores de tela (I11)
+   ========================================================================== */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ==========================================================================
    Acessibilidade — respeitar preferência de movimento reduzido
    ========================================================================== */
 @media (prefers-reduced-motion: reduce) {

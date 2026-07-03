@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { CalendarPlus, ChevronLeft, ChevronRight, Clock, Video } from "lucide-react";
+import { Ban, CalendarClock, CalendarPlus, Check, ChevronLeft, ChevronRight, Clock, UserX, Video } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { statusLabel, modalidadeLabel } from "@/lib/labels";
 import { formatNome } from "@/lib/format";
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { MenuAcoes } from "@/components/ui/MenuAcoes";
 import { Drawer } from "@/components/ui/Drawer";
 import { TelessessaoModal } from "@/components/TelessessaoModal";
 
@@ -306,20 +307,36 @@ function SessaoRow({
           {pendente && <span style={{ fontSize: 11, color: "var(--warn-fg)", fontFamily: "var(--font-mono)" }}>pendente de baixa</span>}
         </div>
       </div>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center" }}>
         {s.modalidade === "online" && s.status !== "cancelada" && (
           <Button variant="primary" onClick={onSala} title="Telessessão"><Video size={15} /> Sala</Button>
         )}
         {s.status === "agendada" ? (
           <>
-            <Button onClick={() => onStatus(s, "realizada")} title="Marcar comparecido">Realizada</Button>
-            <Button onClick={() => onStatus(s, "falta")}>Falta</Button>
-            <Button variant="danger" onClick={onCancelar}>Cancelar</Button>
+            {/* Uma ação de destaque; secundárias e a destrutiva no menu "···". */}
+            <Button variant="primary" onClick={() => onStatus(s, "realizada")} title="Marcar comparecido">
+              <Check size={15} /> Realizada
+            </Button>
+            <MenuAcoes
+              secundarias={[
+                { label: "Marcar falta", icon: <UserX size={16} />, onClick: () => onStatus(s, "falta") },
+                { label: "Reagendar", icon: <CalendarClock size={16} />, onClick: onReagendar },
+              ]}
+              destrutivas={[
+                { label: "Cancelar sessão", icon: <Ban size={16} />, onClick: onCancelar },
+              ]}
+            />
           </>
         ) : (
-          <Button onClick={() => onStatus(s, "agendada")}>Reabrir</Button>
+          <>
+            <Button onClick={() => onStatus(s, "agendada")}>Reabrir</Button>
+            <MenuAcoes
+              secundarias={[
+                { label: "Reagendar", icon: <CalendarClock size={16} />, onClick: onReagendar },
+              ]}
+            />
+          </>
         )}
-        <Button onClick={onReagendar}>Reagendar</Button>
       </div>
     </Card>
   );
