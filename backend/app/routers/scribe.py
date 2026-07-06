@@ -35,10 +35,9 @@ from app.models.user import User
 from app.schemas.scribe import ResumoIn, ScribeOut
 from app.scribe.audio import (
     ACCEPTED_MIMES,
+    guess_ext,
     hash_bytes,
-    reencode_if_needed,
-    save_upload,
-    secure_delete,
+    reencode_bytes_if_needed,
 )
 from app.scribe.structurer import estruturar
 from app.scribe.transcriber import get_transcriber
@@ -198,7 +197,7 @@ async def scribe_audio(
     await _validar_consentimento_gravacao(session, user.tenant_id, pac.id)
     await exigir_uso_ia(session, user.tenant_id, pac.id)
 
-    # 1) Salva upload em disco (chmod 600)
+    # 1) Lê o upload em MEMÓRIA — o áudio em claro não é gravado no disco (D2).
     mimetype = (file.content_type or "").lower() or "application/octet-stream"
     if mimetype not in ACCEPTED_MIMES:
         raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, f"Formato de áudio não aceito: {mimetype}")
@@ -208,7 +207,6 @@ async def scribe_audio(
     tamanho_mb = len(raw) / (1024 * 1024)
     if tamanho_mb > 200:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Áudio acima de 200 MB")
-    audio_path = save_upload(raw, mimetype)
     audio_hash = hash_bytes(raw)
     audio_bytes = len(raw)
     ip = request.client.host if request.client else None
@@ -217,21 +215,15 @@ async def scribe_audio(
          meta={"mimetype": mimetype, "bytes": audio_bytes, "hash": audio_hash})
     await session.commit()
 
-    # 2) Re-encoda se > SCRIBE_MAX_MB para a API OpenAI aceitar
     from datetime import datetime, timezone
-    reencoded_path: Path | None = None
     try:
-        target_path = await reencode_if_needed(audio_path, settings.scribe_max_mb)
-        if target_path != audio_path:
-            reencoded_path = target_path
-            target_mime = "audio/ogg"
-        else:
-            target_mime = mimetype
-
-        # 3) Transcreve
+        # 2) Re-encoda se > SCRIBE_MAX_MB (em tmpfs/RAM); 3) transcreve por bytes.
+        target_bytes, target_mime = await reencode_bytes_if_needed(raw, mimetype, settings.scribe_max_mb)
         t0 = time.perf_counter()
         transcriber = get_transcriber()
-        transcricao = await transcriber.transcribe(target_path, target_mime)
+        transcricao = await transcriber.transcribe(
+            target_bytes, f"audio{guess_ext(target_mime)}", target_mime
+        )
         latencia_transc = int((time.perf_counter() - t0) * 1000)
 
         _log(session, tenant_id=user.tenant_id, user_id=user.id, ip=ip,
@@ -240,8 +232,7 @@ async def scribe_audio(
         await session.commit()
 
     finally:
-        # 4) Deleta áudio (original + reencodado) SEMPRE, mesmo em erro
-        secure_delete(audio_path, *([reencoded_path] if reencoded_path else []))
+        # 4) O áudio em claro só existiu em memória/tmpfs — registra a deleção.
         deleted_at = datetime.now(tz=timezone.utc)
         _log(session, tenant_id=user.tenant_id, user_id=user.id, ip=ip,
              acao="SCRIBE_AUDIO_DELETED", entidade="Sessao", entidade_id=str(sess.id),
