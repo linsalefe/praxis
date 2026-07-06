@@ -7,7 +7,7 @@ export const metadata = {
   title: "Como o Práxis usa IA · CENAT",
   description:
     "Transparência sobre o uso de inteligência artificial de apoio no Práxis, " +
-    "em conformidade com a Res. CFP 09/2024 e a Nota de Posicionamento do CFP sobre IA.",
+    "orientado pela Nota de Posicionamento do CFP sobre IA (2025) e pela LGPD.",
 };
 
 // Página pública (sem autenticação) — material de transparência e confiança.
@@ -65,13 +65,21 @@ export default function ComoUsamosIaPage() {
         <div>
           <h2 style={{ fontSize: 16, margin: "0 0 6px" }}>Supervisão humana e confidencialidade</h2>
           <p style={{ margin: 0, color: "var(--muted)", fontSize: 14, lineHeight: 1.5 }}>
-            Seguimos a <strong>Resolução CFP nº 09/2024</strong> (responsabilidade técnica do
-            psicólogo e informação/consentimento sobre o tratamento de dados com IA) e a{" "}
-            <strong>Nota de Posicionamento do CFP sobre Inteligência Artificial (julho/2025)</strong>,
-            que reforçam a supervisão humana obrigatória e a confidencialidade. Os dados são
-            tratados conforme a LGPD, e cada paciente pode registrar seu consentimento informado
-            sobre o uso de IA de apoio. Todo uso de IA fica registrado e é exportável no pacote
-            de dados do paciente.
+            Não existe uma resolução específica do CFP sobre IA: o uso de IA na Psicologia é
+            orientado pela{" "}
+            <strong>Nota de Posicionamento do CFP sobre Inteligência Artificial (julho/2025)</strong>{" "}
+            e pela Cartilha 2025, que reforçam a supervisão humana obrigatória e a
+            confidencialidade. A responsabilidade técnica do psicólogo decorre do Código de Ética
+            Profissional. Os dados são tratados conforme a LGPD, e cada paciente registra seu
+            consentimento informado sobre o uso de IA de apoio.
+          </p>
+          <p style={{ margin: "10px 0 0", color: "var(--muted)", fontSize: 14, lineHeight: 1.5 }}>
+            <strong>Transferência internacional.</strong> Para transcrever e organizar rascunhos,
+            parte dos dados — incluindo o áudio da sessão, quando o Scribe é usado — é processada
+            por um provedor de IA subcontratado nos Estados Unidos (OpenAI). Isso ocorre com base
+            no consentimento do paciente, apenas para a finalidade de apoio; o áudio é apagado
+            após a transcrição e não é usado para treinar modelos. Todo uso de IA fica registrado
+            e é exportável no pacote de dados do paciente.
           </p>
         </div>
       </Card>

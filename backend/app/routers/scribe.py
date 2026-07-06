@@ -22,6 +22,7 @@ from fastapi import (
 )
 from sqlalchemy import select
 
+from app.conformidade.ia_cfp import exigir_uso_ia
 from app.deps import SessionDep, get_current_user
 from app.models.audit import AuditLog
 from app.models.consentimento import Consentimento
@@ -70,6 +71,7 @@ async def _validar_consentimento_gravacao(session, tenant_id: uuid.UUID, pacient
             Consentimento.tenant_id == tenant_id,
             Consentimento.paciente_id == paciente_id,
             Consentimento.tipo == "gravacao",
+            Consentimento.revogado_em.is_(None),
         )
     )
     if cons is None:
@@ -156,6 +158,7 @@ async def scribe_resumo(
     user: Annotated[User, Depends(get_current_user)],
 ) -> ScribeOut:
     sess, _pac = await _validar_sessao(session, user, sessao_id)
+    await exigir_uso_ia(session, user.tenant_id, sess.paciente_id)
 
     t0 = time.perf_counter()
     estruturada = await estruturar(body.texto, user.abordagem)
@@ -193,6 +196,7 @@ async def scribe_audio(
     settings = get_settings()
     sess, pac = await _validar_sessao(session, user, sessao_id)
     await _validar_consentimento_gravacao(session, user.tenant_id, pac.id)
+    await exigir_uso_ia(session, user.tenant_id, pac.id)
 
     # 1) Salva upload em disco (chmod 600)
     mimetype = (file.content_type or "").lower() or "application/octet-stream"

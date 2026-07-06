@@ -138,3 +138,4 @@ class ConsentimentoOut(BaseModel):
     texto_aceito: str
     aceito_por: str
     aceito_em: datetime
+    revogado_em: datetime | None = None

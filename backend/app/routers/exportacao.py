@@ -154,7 +154,8 @@ async def _montar_export(session, user: User, pac: Paciente) -> tuple[dict[str, 
     )).all())
     consentimentos_json = [
         {"id": str(c.id), "tipo": c.tipo, "texto_aceito": c.texto_aceito,
-         "aceito_por": c.aceito_por, "aceito_em": _iso(c.aceito_em)}
+         "aceito_por": c.aceito_por, "aceito_em": _iso(c.aceito_em),
+         "revogado_em": _iso(c.revogado_em)}
         for c in cons
     ]
 
@@ -274,11 +275,12 @@ def _resumo_pdf(export: dict[str, Any], timbre: Timbre | None = None) -> bytes:
     if export["consentimentos"]:
         partes.append("<h2>Consentimentos</h2><ul>")
         for c2 in export["consentimentos"]:
-            partes.append(f"<li>{esc(c2['tipo'])} — {esc(c2['aceito_por'])} · {esc((c2['aceito_em'] or '')[:10])}</li>")
+            revog = f" · REVOGADO em {esc((c2.get('revogado_em') or '')[:10])}" if c2.get("revogado_em") else ""
+            partes.append(f"<li>{esc(c2['tipo'])} — {esc(c2['aceito_por'])} · {esc((c2['aceito_em'] or '')[:10])}{revog}</li>")
         partes.append("</ul>")
 
     if export.get("ia_log"):
-        partes.append("<h2>Uso de IA de apoio (Res. CFP 09/2024)</h2>")
+        partes.append("<h2>Uso de IA de apoio (Nota de Posicionamento CFP sobre IA, 2025)</h2>")
         partes.append('<p class="muted">Eventos reais de uso de IA de apoio neste prontuário — todo conteúdo é rascunho revisado e assinado pelo profissional.</p><ul>')
         for ev in export["ia_log"]:
             partes.append(f"<li>{esc((ev['ts'] or '')[:16])} · {esc(ev['recurso'])}</li>")

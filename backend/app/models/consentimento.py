@@ -17,7 +17,10 @@ class Consentimento(Base):
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="RESTRICT"), nullable=False, index=True)
     paciente_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("pacientes.id", ondelete="RESTRICT"), nullable=False, index=True)
 
-    tipo: Mapped[str] = mapped_column(String(32), nullable=False)  # tratamento_dados | gravacao | compartilhamento
+    tipo: Mapped[str] = mapped_column(String(32), nullable=False)  # tratamento_dados | gravacao | compartilhamento | teleatendimento | uso_ia
     texto_aceito: Mapped[str] = mapped_column(Text, nullable=False)
     aceito_por: Mapped[str] = mapped_column(String(160), nullable=False)  # nome de quem aceitou
     aceito_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    # Revogação (LGPD art. 18): preenchido = consentimento inativo. Append-only,
+    # nunca apagamos a linha — só marcamos a data. Ver migração 017.
+    revogado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
