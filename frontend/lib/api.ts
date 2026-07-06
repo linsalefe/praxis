@@ -61,6 +61,20 @@ export async function api<T = unknown>(
 
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
+
+  // 2FA obrigatório ainda não configurado ⇒ leva ao onboarding de 2FA. É um 403
+  // (com code estruturado), não 401 — assim o token não é limpo e não há loop
+  // de login. Ignora se já estamos na própria página de setup.
+  if (
+    res.status === 403 &&
+    data?.detail?.code === "2fa_setup_required" &&
+    typeof window !== "undefined" &&
+    !window.location.pathname.startsWith("/conta/2fa")
+  ) {
+    handleSetup2fa();
+    throw new ApiError(403, "2FA obrigatório");
+  }
+
   if (!res.ok) {
     const detail = (data && (data.detail || data.message)) || res.statusText;
     throw new ApiError(res.status, typeof detail === "string" ? detail : JSON.stringify(detail));
@@ -110,6 +124,15 @@ async function maybeRenovarSessao(): Promise<void> {
   } finally {
     _renewing = false;
   }
+}
+
+let _handlingSetup2fa = false;
+
+/** Redireciona ao onboarding de 2FA uma única vez (2FA obrigatório). */
+function handleSetup2fa(): void {
+  if (_handlingSetup2fa) return;
+  _handlingSetup2fa = true;
+  window.location.assign("/conta/2fa?obrigatorio=1");
 }
 
 /** Aviso + redirect uma única vez (evita toasts/redirects em rajada). */
