@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 
+from app.authz import carregar_paciente, escopo_paciente_clause
 from app.deps import SessionDep, get_current_user
 from app.models.consentimento import Consentimento
 from app.models.paciente import Paciente
@@ -40,9 +41,7 @@ async def criar(
     session: SessionDep,
     user: Annotated[User, Depends(get_current_user)],
 ) -> SessaoOut:
-    pac = await session.get(Paciente, uuid.UUID(body.paciente_id))
-    if not pac or pac.tenant_id != user.tenant_id or pac.deleted_at is not None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paciente não encontrado")
+    pac = await carregar_paciente(session, user, body.paciente_id)
     # Valor: usa o informado; se ausente, puxa o padrão do paciente (factual).
     valor = body.valor_centavos if body.valor_centavos is not None else pac.valor_padrao_centavos
     s = Sessao(
@@ -75,6 +74,8 @@ async def agenda(
         )
         .order_by(Sessao.data)
     )
+    if (c := escopo_paciente_clause(user)) is not None:
+        q = q.where(c)
     return [
         SessaoAgendaOut(
             id=str(s.id),
@@ -96,6 +97,8 @@ async def listar_por_paciente(
     session: SessionDep,
     user: Annotated[User, Depends(get_current_user)],
 ) -> list[SessaoOut]:
+    # Valida acesso ao paciente (tenant + dono) antes de listar suas sessões.
+    await carregar_paciente(session, user, paciente_id)
     q = select(Sessao).where(
         Sessao.tenant_id == user.tenant_id,
         Sessao.paciente_id == uuid.UUID(paciente_id),
@@ -114,6 +117,7 @@ async def atualizar(
     s = await session.get(Sessao, uuid.UUID(sessao_id))
     if not s or s.tenant_id != user.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sessão não encontrada")
+    await carregar_paciente(session, user, s.paciente_id)  # escopo por profissional
     if body.data is not None:
         s.data = body.data
     if body.modalidade is not None:
@@ -139,6 +143,7 @@ async def _get_sessao_online(session, user: User, sessao_id: str) -> Sessao:
     s = await session.get(Sessao, sid)
     if not s or s.tenant_id != user.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sessão não encontrada")
+    await carregar_paciente(session, user, s.paciente_id)  # escopo por profissional
     if s.modalidade != "online":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Sala só existe para sessão online")
     return s

@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import desc, select
 
 from app.conformidade.ia_cfp import exigir_uso_ia
+from app.authz import carregar_paciente
 from app.deps import SessionDep, get_current_user
 from app.models.audit import AuditLog
 from app.models.consentimento import Consentimento
@@ -84,14 +85,8 @@ def _to_out(r: RoteiroSessao) -> RoteiroOut:
 
 
 async def _get_paciente(session, user: User, paciente_id: str) -> Paciente:
-    try:
-        pid = uuid.UUID(paciente_id)
-    except ValueError:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "paciente_id inválido")
-    pac = await session.get(Paciente, pid)
-    if not pac or pac.tenant_id != user.tenant_id or pac.deleted_at is not None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paciente não encontrado")
-    return pac
+    # Escopo por profissional (P1): owner vê todos; profissional só os seus.
+    return await carregar_paciente(session, user, paciente_id)
 
 
 async def _valida_consentimento(session, tenant_id, paciente_id) -> None:
@@ -202,6 +197,8 @@ async def obter_roteiro(
     r = await session.get(RoteiroSessao, rid)
     if not r or r.tenant_id != user.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Roteiro não encontrado")
+    if r.paciente_id is not None:
+        await carregar_paciente(session, user, r.paciente_id)  # escopo por profissional
     return _to_out(r)
 
 
@@ -220,6 +217,8 @@ async def editar_roteiro(
     r = await session.get(RoteiroSessao, rid)
     if not r or r.tenant_id != user.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Roteiro não encontrado")
+    if r.paciente_id is not None:
+        await carregar_paciente(session, user, r.paciente_id)  # escopo por profissional
 
     if body.texto is not None:
         r.texto = body.texto

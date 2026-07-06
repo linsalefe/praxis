@@ -9,6 +9,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 
+from app.authz import carregar_paciente
 from app.deps import SessionDep, get_current_user
 from app.models.audit import AuditLog
 from app.models.evolucao import Evolucao
@@ -18,6 +19,15 @@ from app.models.user import User
 from app.schemas.clinico import EvolucaoCreate, EvolucaoOut, EvolucaoUpdate
 
 router = APIRouter(prefix="/evolucoes", tags=["evolucoes"])
+
+
+async def _acesso_paciente_da_sessao(session, user: User, sessao_id) -> None:
+    """Escopo por profissional (P1): evolução não tem paciente_id — o dono é
+    resolvido via a sessão. Levanta 404 se a sessão/paciente não for acessível."""
+    s = await session.get(Sessao, sessao_id)
+    if s is None or s.tenant_id != user.tenant_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Sessão não encontrada")
+    await carregar_paciente(session, user, s.paciente_id)
 
 
 async def _to_out(e: Evolucao, session: SessionDep) -> EvolucaoOut:
@@ -56,6 +66,7 @@ async def criar(
     s = await session.get(Sessao, uuid.UUID(body.sessao_id))
     if not s or s.tenant_id != user.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sessão não encontrada")
+    await carregar_paciente(session, user, s.paciente_id)  # escopo por profissional
     e = Evolucao(
         tenant_id=user.tenant_id, sessao_id=s.id, autor_id=user.id,
         identificacao=body.identificacao, demanda_objetivos=body.demanda_objetivos,
@@ -73,6 +84,7 @@ async def listar_por_sessao(
     session: SessionDep,
     user: Annotated[User, Depends(get_current_user)],
 ) -> list[EvolucaoOut]:
+    await _acesso_paciente_da_sessao(session, user, uuid.UUID(sessao_id))
     q = select(Evolucao).where(
         Evolucao.tenant_id == user.tenant_id,
         Evolucao.sessao_id == uuid.UUID(sessao_id),
@@ -90,6 +102,7 @@ async def obter(
     e = await session.get(Evolucao, uuid.UUID(evolucao_id))
     if not e or e.tenant_id != user.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Evolução não encontrada")
+    await _acesso_paciente_da_sessao(session, user, e.sessao_id)
     return await _to_out(e, session)
 
 
@@ -103,6 +116,7 @@ async def atualizar(
     e = await session.get(Evolucao, uuid.UUID(evolucao_id))
     if not e or e.tenant_id != user.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Evolução não encontrada")
+    await _acesso_paciente_da_sessao(session, user, e.sessao_id)
     if e.assinado_em is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Evolução assinada é imutável")
     for field in ("identificacao", "demanda_objetivos", "evolucao", "encaminhamento"):
@@ -123,6 +137,7 @@ async def assinar(
     e = await session.get(Evolucao, uuid.UUID(evolucao_id))
     if not e or e.tenant_id != user.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Evolução não encontrada")
+    await _acesso_paciente_da_sessao(session, user, e.sessao_id)
     if e.autor_id != user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Só o autor pode assinar")
     if e.assinado_em is not None:

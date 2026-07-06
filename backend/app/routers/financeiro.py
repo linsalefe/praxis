@@ -15,6 +15,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func, select, text
 
+from app.authz import carregar_paciente, escopo_paciente_clause
 from app.deps import SessionDep, get_current_user
 from app.financeiro.recibo_pdf import render_recibo_pdf
 from app.models.audit import AuditLog
@@ -51,6 +52,7 @@ async def _get_sessao(session, user: User, sessao_id: str) -> Sessao:
     s = await session.get(Sessao, sid)
     if not s or s.tenant_id != user.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sessão não encontrada")
+    await carregar_paciente(session, user, s.paciente_id)  # escopo por profissional
     return s
 
 
@@ -79,6 +81,8 @@ async def listar_pagamentos(
         )
         .order_by(Sessao.data.desc())
     )
+    if (c := escopo_paciente_clause(user)) is not None:
+        q = q.where(c)
     if de is not None:
         q = q.where(func.date(Sessao.data) >= de)
     if ate is not None:
@@ -190,9 +194,7 @@ async def emitir_recibo(
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             "Marque a sessão como paga antes de emitir o recibo")
 
-    pac = await session.get(Paciente, s.paciente_id)
-    if pac is None or pac.tenant_id != user.tenant_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paciente não encontrado")
+    pac = await carregar_paciente(session, user, s.paciente_id)
     pac_nome = decrypt_str(pac.nome_cifrado) or "(sem nome)"
 
     # 1 recibo por sessão: reemissão devolve o existente (não queima número).
@@ -259,6 +261,8 @@ async def listar_recibos(
         .where(Recibo.tenant_id == user.tenant_id)
         .order_by(Recibo.numero.desc())
     )
+    if (c := escopo_paciente_clause(user)) is not None:
+        q = q.where(c)
     if de is not None:
         q = q.where(func.date(Recibo.emitido_em) >= de)
     if ate is not None:
@@ -288,6 +292,7 @@ async def baixar_recibo(
     rec = await session.get(Recibo, rid)
     if not rec or rec.tenant_id != user.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Recibo não encontrado")
+    await carregar_paciente(session, user, rec.paciente_id)  # escopo por profissional
     if rec.anexo_id is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Recibo sem PDF anexado")
     anexo = await session.get(AnexoProntuario, rec.anexo_id)

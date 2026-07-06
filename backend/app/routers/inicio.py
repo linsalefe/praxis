@@ -11,6 +11,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 
+from app.authz import escopo_paciente_clause
 from app.deps import SessionDep, get_current_user
 from app.models.documento import DocumentoCFP
 from app.models.evolucao import Evolucao
@@ -56,6 +57,9 @@ async def pendencias(
         )
         .order_by(Sessao.data)
     )
+    # Escopo por profissional (P1): Sessao não tem autor → dono via paciente.
+    if (c := escopo_paciente_clause(user)) is not None:
+        q_sessoes = q_sessoes.where(c)
     sessoes_hoje = [
         SessaoHoje(
             sessao_id=str(s.id),
@@ -147,7 +151,7 @@ async def pendencias(
     async def contar(stmt) -> int:
         return int((await session.scalar(stmt)) or 0)
 
-    c_sessoes = await contar(
+    q_c_sessoes = (
         select(func.count())
         .select_from(Sessao)
         .join(Paciente, Paciente.id == Sessao.paciente_id)
@@ -158,6 +162,9 @@ async def pendencias(
             Sessao.status == "agendada",
         )
     )
+    if (c := escopo_paciente_clause(user)) is not None:
+        q_c_sessoes = q_c_sessoes.where(c)
+    c_sessoes = await contar(q_c_sessoes)
     c_evol = await contar(
         select(func.count())
         .select_from(Evolucao)
