@@ -12,6 +12,7 @@ from app.models.sessao import Sessao
 from app.models.sofia import SofiaConversa, SofiaTurno
 from app.models.supervisao import EstudoSupervisao
 from app.models.tenant import Tenant
+from app.models.token_revogado import TokenRevogado
 from app.models.user import User
 
 __all__ = [
@@ -33,5 +34,6 @@ __all__ = [
     "SofiaTurno",
     "EstudoSupervisao",
     "Tenant",
+    "TokenRevogado",
     "User",
 ]

@@ -1,4 +1,5 @@
 """Emissão e verificação de JWT."""
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -15,6 +16,7 @@ def make_token(
     scope: str = "session",
     ttl_minutes: int | None = None,
     auth_at: int | None = None,
+    token_versao: int = 0,
     extra: dict[str, Any] | None = None,
 ) -> str:
     s = get_settings()
@@ -28,6 +30,12 @@ def make_token(
         "scope": scope,
         "iat": iat,
         "exp": int((now + timedelta(minutes=ttl)).timestamp()),
+        # jti: identifica o token para revogação server-side (blocklist). Cada
+        # emissão/renovação recebe um jti novo.
+        "jti": uuid.uuid4().hex,
+        # tv: versão do token do usuário — "encerrar todas as sessões" incrementa
+        # a versão no banco, invalidando todos os tokens com tv anterior.
+        "tv": token_versao,
     }
     # auth_at fixa o momento do login (não o iat, que muda a cada renovação):
     # é o âncora do teto absoluto de sessão. Emitido no login e copiado nas

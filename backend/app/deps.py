@@ -17,6 +17,7 @@ from app.db import (
     current_user_id,
 )
 from app.middleware.audit import install as install_audit
+from app.models.token_revogado import TokenRevogado
 from app.models.user import User
 from app.security.jwt import decode_token
 
@@ -36,13 +37,17 @@ SessionDep = Annotated[AsyncSession, Depends(scoped_session)]
 
 
 class Principal:
-    __slots__ = ("user_id", "tenant_id", "mfa_verified", "scope")
+    __slots__ = ("user_id", "tenant_id", "mfa_verified", "scope", "jti", "auth_at", "token_versao")
 
-    def __init__(self, user_id: str, tenant_id: str, mfa_verified: bool, scope: str):
+    def __init__(self, user_id: str, tenant_id: str, mfa_verified: bool, scope: str,
+                 jti: str | None = None, auth_at: int | None = None, token_versao: int | None = None):
         self.user_id = user_id
         self.tenant_id = tenant_id
         self.mfa_verified = mfa_verified
         self.scope = scope
+        self.jti = jti
+        self.auth_at = auth_at
+        self.token_versao = token_versao
 
 
 def _extract_token(authorization: str | None) -> str:
@@ -66,6 +71,9 @@ async def get_principal(
         tenant_id=payload["tid"],
         mfa_verified=bool(payload.get("mfa")),
         scope=payload.get("scope", "session"),
+        jti=payload.get("jti"),
+        auth_at=payload.get("auth_at"),
+        token_versao=payload.get("tv"),
     )
     # popula contextvars para audit
     current_user_id.set(p.user_id)
@@ -93,6 +101,12 @@ async def _load_user(session: AsyncSession, principal: Principal) -> User:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário não existe")
     if str(user.tenant_id) != principal.tenant_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant divergente")
+    # Revogação server-side (S3): jti na blocklist (logout) OU versão de token
+    # anterior à atual ("encerrar todas as sessões").
+    if principal.jti is not None and await session.get(TokenRevogado, principal.jti) is not None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessão revogada")
+    if principal.token_versao is not None and principal.token_versao != user.token_versao:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessão revogada")
     return user
 
 

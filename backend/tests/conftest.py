@@ -95,13 +95,14 @@ def _email_unico(prefixo: str = "user") -> str:
     return f"{prefixo}{_seq['n']}@example.com"
 
 
-async def _ativar_2fa(client: AsyncClient, headers: dict) -> None:
+async def _ativar_2fa(client: AsyncClient, headers: dict) -> str:
     r = await client.post("/auth/2fa/setup", headers=headers)
     assert r.status_code == 200, r.text
     secret = _up.parse_qs(_up.urlparse(r.json()["otpauth_url"]).query)["secret"][0]
     r = await client.post("/auth/2fa/verify", headers=headers,
                           json={"codigo": pyotp.TOTP(secret).now()})
     assert r.status_code == 200, r.text
+    return secret
 
 
 @pytest_asyncio.fixture
@@ -118,9 +119,10 @@ async def criar_conta(client: AsyncClient):
         assert r.status_code == 201, r.text
         token = r.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
+        secret = None
         if com_2fa:
-            await _ativar_2fa(client, headers)
-        return {"email": email, "senha": senha, "token": token, "headers": headers}
+            secret = await _ativar_2fa(client, headers)
+        return {"email": email, "senha": senha, "token": token, "headers": headers, "secret": secret}
     return _factory
 
 

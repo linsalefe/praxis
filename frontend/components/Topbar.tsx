@@ -70,7 +70,8 @@ export function Topbar({ meNome }: { meNome?: string }) {
     return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onEsc); };
   }, [conta]);
 
-  function logout() {
+  async function logout() {
+    try { await api("/auth/logout", { method: "POST" }); } catch { /* revogação best-effort */ }
     clearToken();
     router.replace("/login");
   }

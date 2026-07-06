@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Info, KeyRound, ShieldCheck } from "lucide-react";
-import { api, ApiError, getToken } from "@/lib/api";
+import { Info, KeyRound, LogOut, ShieldCheck } from "lucide-react";
+import { api, ApiError, getToken, clearToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { CertificadoManager } from "@/components/CertificadoManager";
 import { Button } from "@/components/ui/Button";
@@ -50,6 +50,18 @@ export default function Conta2FA() {
       if (obrigatorio) router.replace("/inicio");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Código inválido");
+    }
+  }
+
+  async function encerrarTodasSessoes() {
+    if (!window.confirm("Encerrar todas as sessões em todos os dispositivos? Você precisará entrar novamente.")) return;
+    try {
+      await api("/auth/sessoes/revogar-todas", { method: "POST" });
+      clearToken();
+      toast.success("Todas as sessões foram encerradas.");
+      router.replace("/login");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Não foi possível encerrar as sessões.");
     }
   }
 
@@ -101,6 +113,19 @@ export default function Conta2FA() {
               </div>
             </>
           )}
+        </Card>
+
+        <Card style={{ marginTop: 16 }}>
+          <h2 style={{ fontSize: 15, margin: "0 0 6px", display: "flex", alignItems: "center", gap: 8 }}>
+            <LogOut size={16} color="var(--muted)" /> Sessões
+          </h2>
+          <p style={{ margin: "0 0 12px", color: "var(--muted)", fontSize: 14 }}>
+            Se você suspeitar de acesso indevido, encerre todas as sessões ativas — inclusive
+            neste dispositivo. Você precisará entrar novamente.
+          </p>
+          <Button onClick={encerrarTodasSessoes}>
+            <LogOut size={16} /> Encerrar todas as sessões
+          </Button>
         </Card>
 
         <CertificadoManager />

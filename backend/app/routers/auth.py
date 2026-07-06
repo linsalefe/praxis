@@ -19,6 +19,7 @@ from app.deps import (
 )
 from app.models.audit import AuditLog
 from app.models.tenant import Tenant
+from app.models.token_revogado import TokenRevogado
 from app.models.user import User
 from app.schemas.auth import (
     LoginIn,
@@ -105,7 +106,8 @@ async def register(body: RegisterIn, request: Request, session: SessionDep) -> T
     )
     await session.commit()
 
-    token = make_token(user_id=str(user.id), tenant_id=str(tenant.id), mfa_verified=True)
+    token = make_token(user_id=str(user.id), tenant_id=str(tenant.id), mfa_verified=True,
+                       token_versao=user.token_versao)
     return TokenOut(access_token=token, mfa_required=False, scope="session")
 
 
@@ -133,17 +135,56 @@ async def login(body: LoginIn, request: Request, session: SessionDep) -> TokenOu
         pre = make_token(
             user_id=str(user.id), tenant_id=str(user.tenant_id),
             mfa_verified=False, scope="pre_2fa", ttl_minutes=5,
+            token_versao=user.token_versao,
         )
         await _log(session, acao="LOGIN", entidade="User", entidade_id=str(user.id),
                    tenant_id=user.tenant_id, user_id=user.id, ip=ip, meta={"mfa": "required"})
         await session.commit()
         return TokenOut(access_token=pre, mfa_required=True, scope="pre_2fa")
 
-    tok = make_token(user_id=str(user.id), tenant_id=str(user.tenant_id), mfa_verified=True)
+    tok = make_token(user_id=str(user.id), tenant_id=str(user.tenant_id), mfa_verified=True,
+                     token_versao=user.token_versao)
     await _log(session, acao="LOGIN", entidade="User", entidade_id=str(user.id),
                tenant_id=user.tenant_id, user_id=user.id, ip=ip, meta={"mfa": "none"})
     await session.commit()
     return TokenOut(access_token=tok, mfa_required=False, scope="session")
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(
+    request: Request,
+    session: SessionDep,
+    principal: Annotated[Principal, Depends(get_principal)],
+) -> Response:
+    """Revoga a sessão atual (blocklist por jti). Idempotente."""
+    if principal.jti and await session.get(TokenRevogado, principal.jti) is None:
+        session.add(TokenRevogado(
+            jti=principal.jti,
+            user_id=uuid.UUID(principal.user_id),
+            motivo="logout",
+        ))
+        ip = request.client.host if request.client else None
+        await _log(session, acao="LOGOUT", entidade="User", entidade_id=principal.user_id,
+                   tenant_id=uuid.UUID(principal.tenant_id), user_id=uuid.UUID(principal.user_id), ip=ip)
+        await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/sessoes/revogar-todas", status_code=status.HTTP_204_NO_CONTENT)
+async def revogar_todas_sessoes(
+    request: Request,
+    session: SessionDep,
+    user: Annotated[User, Depends(get_user_sem_gate_2fa)],
+) -> Response:
+    """Encerra TODAS as sessões do usuário (inclusive a atual). Resposta a
+    comprometimento: incrementa a versão do token — todos os tokens com a versão
+    anterior deixam de valer."""
+    user.token_versao = (user.token_versao or 0) + 1
+    ip = request.client.host if request.client else None
+    await _log(session, acao="SESSOES_REVOGADAS", entidade="User", entidade_id=str(user.id),
+               tenant_id=user.tenant_id, user_id=user.id, ip=ip)
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/2fa/setup", response_model=TotpSetupOut)
@@ -220,7 +261,8 @@ async def totp_login(
                tenant_id=user.tenant_id, user_id=user.id, ip=ip)
     await session.commit()
 
-    tok = make_token(user_id=str(user.id), tenant_id=str(user.tenant_id), mfa_verified=True)
+    tok = make_token(user_id=str(user.id), tenant_id=str(user.tenant_id), mfa_verified=True,
+                     token_versao=user.token_versao)
     return TokenOut(access_token=tok, mfa_required=False, scope="session")
 
 
@@ -287,7 +329,7 @@ async def renovar(
 
     tok = make_token(
         user_id=str(user.id), tenant_id=str(user.tenant_id),
-        mfa_verified=True, auth_at=int(auth_at),
+        mfa_verified=True, auth_at=int(auth_at), token_versao=user.token_versao,
     )
     ip = request.client.host if request.client else None
     await _log(session, acao="RENEW_SESSION", entidade="User", entidade_id=str(user.id),

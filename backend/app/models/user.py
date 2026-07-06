@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, LargeBinary, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, LargeBinary, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -38,6 +38,10 @@ class User(Base):
 
     totp_secret_cifrado: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     totp_ativado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    # Revogação em massa (S3): a versão do token vai no claim `tv`. Tokens com
+    # tv != token_versao são rejeitados. "Encerrar todas as sessões" incrementa.
+    token_versao: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)
 
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
