@@ -9,7 +9,14 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from sqlalchemy import select
 
 from app.db import current_request_ip, current_tenant_id, current_user_id
-from app.deps import Principal, SessionDep, _extract_token, get_current_user, get_principal
+from app.deps import (
+    Principal,
+    SessionDep,
+    _extract_token,
+    get_current_user,
+    get_principal,
+    get_user_sem_gate_2fa,
+)
 from app.models.audit import AuditLog
 from app.models.tenant import Tenant
 from app.models.user import User
@@ -142,7 +149,7 @@ async def login(body: LoginIn, request: Request, session: SessionDep) -> TokenOu
 @router.post("/2fa/setup", response_model=TotpSetupOut)
 async def totp_setup(
     session: SessionDep,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(get_user_sem_gate_2fa)],
 ) -> TotpSetupOut:
     if user.totp_ativado:
         raise HTTPException(status.HTTP_409_CONFLICT, "2FA já ativado")
@@ -158,7 +165,7 @@ async def totp_verify(
     body: TotpVerifyIn,
     request: Request,
     session: SessionDep,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(get_user_sem_gate_2fa)],
 ) -> MeOut:
     if not user.totp_secret_cifrado:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Setup 2FA não iniciado")
@@ -218,7 +225,7 @@ async def totp_login(
 
 
 @router.get("/me", response_model=MeOut)
-async def me(user: Annotated[User, Depends(get_current_user)]) -> MeOut:
+async def me(user: Annotated[User, Depends(get_user_sem_gate_2fa)]) -> MeOut:
     return _me_out(user)
 
 

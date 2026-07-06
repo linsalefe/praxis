@@ -81,15 +81,49 @@ async def require_session(principal: Annotated[Principal, Depends(get_principal)
     return principal
 
 
+# Código estruturado do 403 de "2FA obrigatório, ainda não configurado". O
+# frontend intercepta este code para redirecionar ao onboarding de 2FA (é 403,
+# não 401 — 401 limparia o token e cairia no loop de login).
+MFA_SETUP_REQUIRED = "2fa_setup_required"
+
+
+async def _load_user(session: AsyncSession, principal: Principal) -> User:
+    user = await session.scalar(select(User).where(User.id == uuid.UUID(principal.user_id)))
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário não existe")
+    if str(user.tenant_id) != principal.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant divergente")
+    return user
+
+
+async def get_user_sem_gate_2fa(
+    principal: Annotated[Principal, Depends(require_session)],
+    session: SessionDep,
+) -> User:
+    """Usuário de sessão SEM exigir 2FA ativo — só para o próprio onboarding de
+    2FA (`/auth/me`, `/auth/2fa/setup`, `/auth/2fa/verify`). Fora disso, use
+    `get_current_user`, que bloqueia acesso clínico sem 2FA."""
+    return await _load_user(session, principal)
+
+
 async def require_mfa_verified(
     principal: Annotated[Principal, Depends(require_session)],
     session: SessionDep,
 ) -> Principal:
-    """Se o usuário já ativou TOTP, o JWT precisa carregar mfa=True."""
+    """2FA obrigatório: bloqueia sessão clínica sem TOTP ativo (403 com code
+    para o frontend levar ao setup) e exige mfa=True no JWT."""
     user = await session.get(User, uuid.UUID(principal.user_id))
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário não existe")
-    if user.totp_ativado and not principal.mfa_verified:
+    if not user.totp_ativado:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": MFA_SETUP_REQUIRED,
+                "message": "Configure a verificação em duas etapas (2FA) para acessar dados clínicos.",
+            },
+        )
+    if not principal.mfa_verified:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="2FA obrigatório")
     return principal
 
@@ -98,9 +132,4 @@ async def get_current_user(
     principal: Annotated[Principal, Depends(require_mfa_verified)],
     session: SessionDep,
 ) -> User:
-    user = await session.scalar(select(User).where(User.id == uuid.UUID(principal.user_id)))
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário não existe")
-    if str(user.tenant_id) != principal.tenant_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant divergente")
-    return user
+    return await _load_user(session, principal)

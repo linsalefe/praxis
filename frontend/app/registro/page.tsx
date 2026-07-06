@@ -45,8 +45,8 @@ export default function RegisterPage() {
         body: JSON.stringify(form),
       });
       saveToken(data.access_token, data.scope);
-      toast.success("Cadastro concluído.");
-      router.replace("/inicio");
+      toast.success("Cadastro concluído. Configure o 2FA para continuar.");
+      router.replace("/conta/2fa?obrigatorio=1");
     } catch (err) {
       if (err instanceof ApiError) setErro(err.message);
       else toast.error("Falha de conexão. Tente novamente.");

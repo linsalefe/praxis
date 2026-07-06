@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { KeyRound, ShieldCheck } from "lucide-react";
+import { Info, KeyRound, ShieldCheck } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { Topbar } from "@/components/Topbar";
 import { CertificadoManager } from "@/components/CertificadoManager";
@@ -16,9 +16,14 @@ type SetupResp = { otpauth_url: string; qrcode_data_uri: string };
 
 export default function Conta2FA() {
   const router = useRouter();
+  const [obrigatorio, setObrigatorio] = useState(false);
   const [me, setMe] = useState<Me | null>(null);
   const [setup, setSetup] = useState<SetupResp | null>(null);
   const [codigo, setCodigo] = useState("");
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("obrigatorio") === "1") setObrigatorio(true);
+  }, []);
 
   useEffect(() => {
     if (!getToken()) return void router.replace("/login");
@@ -42,6 +47,7 @@ export default function Conta2FA() {
       setSetup(null);
       setCodigo("");
       toast.success("2FA ativado.");
+      if (obrigatorio) router.replace("/inicio");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Código inválido");
     }
@@ -54,6 +60,12 @@ export default function Conta2FA() {
       <Topbar meNome={me.nome} />
       <main className="container-praxis" style={{ maxWidth: 560 }}>
         <h1 style={{ fontSize: "var(--fs-xl)", margin: "8px 0 20px" }}>Autenticação em dois fatores</h1>
+        {obrigatorio && !me.totp_ativado && (
+          <div className="badge badge-warn" role="status" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, padding: "10px 14px" }}>
+            <Info size={16} />
+            <span>O 2FA é obrigatório para acessar dados clínicos. Conclua a configuração abaixo para continuar.</span>
+          </div>
+        )}
         <Card>
           <p style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <ShieldCheck size={18} color={me.totp_ativado ? "var(--ok)" : "var(--muted)"} />
