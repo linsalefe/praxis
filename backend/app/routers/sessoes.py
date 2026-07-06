@@ -128,7 +128,7 @@ async def atualizar(
 
 
 # --------------------------------------------------------------------------
-# Telessessão — sala de vídeo com gate de consentimento (Res. CFP 11/2018)
+# Telessessão — sala de vídeo com gate de consentimento (Res. CFP 09/2024)
 # --------------------------------------------------------------------------
 
 async def _get_sessao_online(session, user: User, sessao_id: str) -> Sessao:
@@ -150,6 +150,7 @@ async def _tem_consentimento_tele(session, tenant_id, paciente_id) -> bool:
             Consentimento.tenant_id == tenant_id,
             Consentimento.paciente_id == paciente_id,
             Consentimento.tipo == "teleatendimento",
+            Consentimento.revogado_em.is_(None),
         )
     )
     return c is not None
@@ -185,7 +186,7 @@ async def abrir_sala(
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             "Consentimento de teleatendimento pendente. Registre o consentimento "
-            "(Res. CFP 11/2018) antes de liberar a sala.",
+            "(Res. CFP 09/2024) antes de liberar a sala.",
         )
     if not s.sala_url:
         s.sala_url = gerar_sala_url(str(s.id))

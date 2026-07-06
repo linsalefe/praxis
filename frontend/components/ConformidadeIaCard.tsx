@@ -91,7 +91,7 @@ export function ConformidadeIaCard({
     <Card style={{ marginTop: 20 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
         <ShieldCheck size={16} color="var(--brand-2)" />
-        <h2 style={{ fontSize: 15, margin: 0 }}>Conformidade IA (Res. CFP 09/2024)</h2>
+        <h2 style={{ fontSize: 15, margin: 0 }}>Conformidade IA (Nota de Posicionamento CFP, 2025)</h2>
       </div>
 
       {loading ? (
@@ -153,7 +153,7 @@ export function ConformidadeIaCard({
       >
         <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
           Leia o termo com o paciente antes de registrar o aceite. O texto é gravado
-          junto do consentimento (Res. CFP 09/2024).
+          junto do consentimento (Nota de Posicionamento CFP sobre IA, 2025).
         </p>
 
         {loadingTcle || !tcle ? (

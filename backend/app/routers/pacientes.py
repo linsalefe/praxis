@@ -142,7 +142,7 @@ async def ia_log(
     session: SessionDep,
     user: Annotated[User, Depends(get_current_user)],
 ) -> list[IaLogItemOut]:
-    """Log factual de uso de IA para este paciente (Res. CFP 09/2024)."""
+    """Log factual de uso de IA para este paciente (Nota de Posicionamento CFP sobre IA, 2025)."""
     p = await session.get(Paciente, uuid.UUID(paciente_id))
     if not p or p.tenant_id != user.tenant_id or p.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Paciente não encontrado")

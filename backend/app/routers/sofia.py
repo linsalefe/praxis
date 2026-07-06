@@ -11,6 +11,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 
 from app.config import get_settings
+from app.conformidade.ia_cfp import exigir_uso_ia
 from app.db import SessionLocal
 from app.deps import SessionDep, get_current_user
 from app.models.acervo import AcervoChunk, AcervoDocumento
@@ -80,6 +81,7 @@ async def _validar_paciente_e_consentimento(
             Consentimento.tenant_id == user.tenant_id,
             Consentimento.paciente_id == pac.id,
             Consentimento.tipo == "tratamento_dados",
+            Consentimento.revogado_em.is_(None),
         )
     )
     if cons is None:
@@ -88,6 +90,7 @@ async def _validar_paciente_e_consentimento(
             "Sem consentimento LGPD 'tratamento_dados' registrado para este paciente. "
             "Registre o consentimento antes de consultar Sofia sobre este caso.",
         )
+    await exigir_uso_ia(session, user.tenant_id, pac.id)
     return pac
 
 

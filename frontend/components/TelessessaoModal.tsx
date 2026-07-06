@@ -22,7 +22,7 @@ type SalaStatus = {
 const TEXTO_CONSENTIMENTO =
   "Concordo em realizar o atendimento psicológico por meio de videochamada, " +
   "ciente de que o profissional zela pelo sigilo e por ambiente reservado, " +
-  "conforme a Resolução CFP nº 11/2018 e atualizações.";
+  "conforme a Resolução CFP nº 09/2024 e atualizações.";
 
 export function TelessessaoModal({
   sessaoId,
@@ -130,7 +130,7 @@ export function TelessessaoModal({
         <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "var(--surface-2)", borderRadius: "var(--radius-md)", padding: 10, marginBottom: 14 }}>
           <ShieldCheck size={16} color="var(--brand-2)" style={{ flexShrink: 0, marginTop: 1 }} />
           <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
-            Atendimento por tecnologia (Res. CFP nº 11/2018): garanta ambiente reservado
+            Atendimento por tecnologia (Res. CFP nº 09/2024): garanta ambiente reservado
             e conexão adequada. Gravação apenas com consentimento específico.
           </p>
         </div>

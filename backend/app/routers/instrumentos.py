@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 
+from app.conformidade.ia_cfp import exigir_uso_ia
 from app.deps import SessionDep, get_current_user
 from app.instrumentos.geradores import (
     formular_maastricht,
@@ -78,6 +79,7 @@ async def _validar_consentimento_tratamento(session, tenant_id, paciente_id) -> 
             Consentimento.tenant_id == tenant_id,
             Consentimento.paciente_id == paciente_id,
             Consentimento.tipo == "tratamento_dados",
+            Consentimento.revogado_em.is_(None),
         )
     )
     if cons is None:
@@ -86,6 +88,7 @@ async def _validar_consentimento_tratamento(session, tenant_id, paciente_id) -> 
             "Sem consentimento LGPD 'tratamento_dados' registrado para este paciente. "
             "Registre o consentimento antes de gerar saídas por IA.",
         )
+    await exigir_uso_ia(session, tenant_id, paciente_id)
 
 
 def _log(session, *, tenant_id, user_id, ip, acao, entidade, entidade_id, meta=None):
