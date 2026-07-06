@@ -13,6 +13,7 @@ import { Field } from "@/components/ui/Field";
 
 type Me = {
   id: string; nome: string; email: string; crp: string | null;
+  crp_verificado: boolean;
   nome_exibicao: string | null;
   registro_profissional: string | null;
   contato_timbre: string | null;
@@ -105,6 +106,11 @@ export default function ContaPerfil() {
                 placeholder={me.crp ?? "ex.: CRP 06/12345"}
                 onChange={(e) => setRegistro(e.target.value)}
               />
+              {me.crp && !me.crp_verificado && (
+                <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--muted)" }}>
+                  CRP {me.crp} — verificação pendente.
+                </p>
+              )}
             </Field>
             <Field label="Contato no timbre">
               <input

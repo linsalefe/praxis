@@ -20,6 +20,9 @@ class User(Base):
     senha_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     nome: Mapped[str] = mapped_column(String(160), nullable=False)
     crp: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Verificação do CRP: formato é validado no cadastro; a confirmação contra a
+    # base do CFP/CRP (quando houver integração) marca True. Ver migração 019.
+    crp_verificado: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false", default=False)
 
     # Timbre profissional dos PDFs (Sprint W1) — todos opcionais, com fallback
     # para nome/crp quando vazios. Apenas apresentação nos documentos gerados.

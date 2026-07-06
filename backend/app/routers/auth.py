@@ -26,6 +26,13 @@ from app.schemas.auth import (
 from app.security.crypto import decrypt_str, encrypt_str
 from app.security.jwt import decode_token, make_token
 from app.security.password import hash_password, verify_password
+from app.security.throttle import (
+    chave_conta,
+    chave_ip,
+    registrar_falha,
+    registrar_sucesso,
+    verificar_bloqueio,
+)
 from app.security.totp import build_uri, generate_secret, qr_png_datauri, verify
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -39,6 +46,7 @@ _TETO_SESSAO_S = 12 * 60 * 60
 def _me_out(user: User) -> MeOut:
     return MeOut(
         id=str(user.id), nome=user.nome, email=user.email, crp=user.crp,
+        crp_verificado=user.crp_verificado,
         abordagem=user.abordagem, papel=user.papel, totp_ativado=user.totp_ativado,
         tenant_id=str(user.tenant_id),
         nome_exibicao=user.nome_exibicao,
@@ -96,11 +104,22 @@ async def register(body: RegisterIn, request: Request, session: SessionDep) -> T
 
 @router.post("/login", response_model=TokenOut)
 async def login(body: LoginIn, request: Request, session: SessionDep) -> TokenOut:
+    ip = request.client.host if request.client else None
+    chaves = [chave_conta(body.email), chave_ip(ip)]
+    await verificar_bloqueio(session, chaves)
+
     user = await session.scalar(select(User).where(User.email == body.email.lower()))
     if not user or not verify_password(body.senha, user.senha_hash):
+        await registrar_falha(session, chaves)
+        await _log(session, acao="LOGIN_FALHA", entidade="Auth",
+                   entidade_id=(str(user.id) if user else None),
+                   tenant_id=(user.tenant_id if user else None),
+                   user_id=(user.id if user else None), ip=ip,
+                   meta={"email": body.email.lower(), "motivo": "credenciais"})
+        await session.commit()
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Credenciais inválidas")
 
-    ip = request.client.host if request.client else None
+    await registrar_sucesso(session, chaves)
 
     if user.totp_ativado:
         # Emite token pré-2FA (escopo diferente).
@@ -143,12 +162,21 @@ async def totp_verify(
 ) -> MeOut:
     if not user.totp_secret_cifrado:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Setup 2FA não iniciado")
+
+    ip = request.client.host if request.client else None
+    chaves = [chave_conta(str(user.id)), chave_ip(ip)]
+    await verificar_bloqueio(session, chaves)
+
     secret = decrypt_str(user.totp_secret_cifrado) or ""
     if not verify(secret, body.codigo):
+        await registrar_falha(session, chaves)
+        await _log(session, acao="ENABLE_2FA_FALHA", entidade="User", entidade_id=str(user.id),
+                   tenant_id=user.tenant_id, user_id=user.id, ip=ip)
+        await session.commit()
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Código inválido")
 
+    await registrar_sucesso(session, chaves)
     user.totp_ativado = True
-    ip = request.client.host if request.client else None
     await _log(session, acao="ENABLE_2FA", entidade="User", entidade_id=str(user.id),
                tenant_id=user.tenant_id, user_id=user.id, ip=ip)
     await session.commit()
@@ -165,14 +193,22 @@ async def totp_login(
     if principal.scope != "pre_2fa":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Escopo inválido — faça login primeiro")
 
+    ip = request.client.host if request.client else None
+    chaves = [chave_conta(principal.user_id), chave_ip(ip)]
+    await verificar_bloqueio(session, chaves)
+
     user = await session.get(User, uuid.UUID(principal.user_id))
     if not user or not user.totp_ativado or not user.totp_secret_cifrado:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "2FA não configurado")
     secret = decrypt_str(user.totp_secret_cifrado) or ""
     if not verify(secret, body.codigo):
+        await registrar_falha(session, chaves)
+        await _log(session, acao="LOGIN_2FA_FALHA", entidade="User", entidade_id=str(user.id),
+                   tenant_id=user.tenant_id, user_id=user.id, ip=ip)
+        await session.commit()
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Código 2FA inválido")
 
-    ip = request.client.host if request.client else None
+    await registrar_sucesso(session, chaves)
     await _log(session, acao="LOGIN_2FA", entidade="User", entidade_id=str(user.id),
                tenant_id=user.tenant_id, user_id=user.id, ip=ip)
     await session.commit()

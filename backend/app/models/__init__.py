@@ -1,5 +1,6 @@
 from app.models.acervo import AcervoChunk, AcervoDocumento
 from app.models.audit import AuditLog
+from app.models.auth_throttle import AuthThrottle
 from app.models.consentimento import Consentimento
 from app.models.documento import DocumentoCFP
 from app.models.evolucao import Evolucao
@@ -18,6 +19,7 @@ __all__ = [
     "AcervoDocumento",
     "AnexoProntuario",
     "AuditLog",
+    "AuthThrottle",
     "Instrumento",
     "RespostaInstrumento",
     "Consentimento",
