@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   BookOpen, CalendarDays, ChevronDown, Compass, IdCard, LayoutGrid, LogOut, Menu,
-  UserCog, Users, Wallet,
+  UserCog, Users, UsersRound, Wallet,
 } from "lucide-react";
 import { api, clearToken } from "@/lib/api";
 import { PresenceMark } from "@/components/ui/PresenceMark";
@@ -46,14 +46,14 @@ export function Topbar({ meNome }: { meNome?: string }) {
   const [menu, setMenu] = useState(false);
   const [conta, setConta] = useState(false);
   const [nome, setNome] = useState<string>(meNome ?? "");
+  const [papel, setPapel] = useState<string | null>(null);
   const contaRef = useRef<HTMLDivElement>(null);
 
-  // Nome do profissional para o menu de conta (se não veio por prop).
+  // Nome (se não veio por prop) e papel — o papel gate o item "Equipe" (owner).
   useEffect(() => {
-    if (meNome) { setNome(meNome); return; }
     let vivo = true;
-    api<{ nome: string }>("/auth/me")
-      .then((m) => { if (vivo) setNome(m.nome); })
+    api<{ nome: string; papel: string }>("/auth/me")
+      .then((m) => { if (vivo) { if (!meNome) setNome(m.nome); setPapel(m.papel); } })
       .catch(() => { /* menu degrada para rótulo genérico */ });
     return () => { vivo = false; };
   }, [meNome]);
@@ -161,6 +161,15 @@ export function Topbar({ meNome }: { meNome?: string }) {
               >
                 <UserCog size={15} /> Conta / 2FA
               </Link>
+              {papel === "owner" && (
+                <Link
+                  href="/conta/equipe" role="menuitem" onClick={() => setConta(false)}
+                  className="link"
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--radius-sm, 6px)", color: "var(--text)" }}
+                >
+                  <UsersRound size={15} /> Equipe
+                </Link>
+              )}
               <button
                 type="button" role="menuitem" onClick={() => { setConta(false); logout(); }}
                 className="link"
@@ -199,6 +208,17 @@ export function Topbar({ meNome }: { meNome?: string }) {
               </Link>
             );
           })}
+          {papel === "owner" && (
+            <Link
+              href="/conta/equipe"
+              onClick={() => setMenu(false)}
+              className={`link topbar-link${ehAtivo(pathname, "/conta/equipe") ? " ativo" : ""}`}
+              aria-current={ehAtivo(pathname, "/conta/equipe") ? "page" : undefined}
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 8px", borderRadius: "var(--radius-md)" }}
+            >
+              <UsersRound size={16} /> Equipe
+            </Link>
+          )}
           <hr className="divider" />
           <Button onClick={() => { setMenu(false); logout(); }} style={{ justifyContent: "flex-start" }}>
             <LogOut size={14} /> Sair
