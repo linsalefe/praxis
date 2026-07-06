@@ -22,6 +22,7 @@ from fastapi import (
 )
 from sqlalchemy import select
 
+from app.authz import carregar_paciente
 from app.conformidade.ia_cfp import exigir_uso_ia
 from app.deps import SessionDep, get_current_user
 from app.models.audit import AuditLog
@@ -55,9 +56,8 @@ async def _validar_sessao(session, user: User, sessao_id: str) -> tuple[Sessao, 
     s = await session.get(Sessao, sid)
     if not s or s.tenant_id != user.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sessão não encontrada")
-    pac = await session.get(Paciente, s.paciente_id)
-    if not pac or pac.deleted_at is not None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paciente não encontrado")
+    # Escopo por profissional (P1): valida tenant + dono + não-deletado.
+    pac = await carregar_paciente(session, user, s.paciente_id)
     return s, pac
 
 

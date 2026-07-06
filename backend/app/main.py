@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.db import SessionLocal
 from app.instrumentos.seed import upsert_catalogo
-from app.routers import assinatura, auth, biblioteca, consentimentos, documentos, evolucoes, exportacao, financeiro, inicio, instrumentos as instrumentos_router, longitudinal, pacientes, preparacao, scribe, sessoes, sofia, supervisao
+from app.routers import assinatura, auth, biblioteca, consentimentos, documentos, equipe, evolucoes, exportacao, financeiro, inicio, instrumentos as instrumentos_router, longitudinal, pacientes, preparacao, scribe, sessoes, sofia, supervisao
 
 
 @asynccontextmanager
@@ -55,6 +55,7 @@ async def healthz() -> dict[str, str]:
 
 
 app.include_router(auth.router)
+app.include_router(equipe.router)
 app.include_router(pacientes.router)
 app.include_router(sessoes.router)
 app.include_router(evolucoes.router)

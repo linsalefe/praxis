@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 
+from app.authz import carregar_paciente, escopo_paciente_clause
 from app.conformidade.ia_cfp import listar_ia_log
 from app.deps import SessionDep, get_current_user
 from app.models.audit import AuditLog
@@ -63,6 +64,8 @@ async def listar(
         Paciente.tenant_id == user.tenant_id,
         Paciente.deleted_at.is_(None),
     ).order_by(Paciente.criado_em.desc())
+    if (c := escopo_paciente_clause(user)) is not None:
+        q = q.where(c)
     rows = list((await session.scalars(q)).all())
     # Auditar VIEW em lote.
     session.add(AuditLog(
@@ -79,9 +82,7 @@ async def obter(
     session: SessionDep,
     user: Annotated[User, Depends(get_current_user)],
 ) -> PacienteOut:
-    p = await session.get(Paciente, uuid.UUID(paciente_id))
-    if not p or p.tenant_id != user.tenant_id or p.deleted_at is not None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paciente não encontrado")
+    p = await carregar_paciente(session, user, paciente_id)
     session.add(AuditLog(
         tenant_id=user.tenant_id, user_id=user.id, acao="VIEW",
         entidade="Paciente", entidade_id=str(p.id),
@@ -97,9 +98,7 @@ async def atualizar(
     session: SessionDep,
     user: Annotated[User, Depends(get_current_user)],
 ) -> PacienteOut:
-    p = await session.get(Paciente, uuid.UUID(paciente_id))
-    if not p or p.tenant_id != user.tenant_id or p.deleted_at is not None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paciente não encontrado")
+    p = await carregar_paciente(session, user, paciente_id)
 
     if body.nome is not None:
         p.nome_cifrado = encrypt_str(body.nome)  # type: ignore[assignment]
@@ -125,9 +124,7 @@ async def deletar(
 ) -> None:
     from datetime import datetime, timezone
 
-    p = await session.get(Paciente, uuid.UUID(paciente_id))
-    if not p or p.tenant_id != user.tenant_id or p.deleted_at is not None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paciente não encontrado")
+    p = await carregar_paciente(session, user, paciente_id)
 
     # Soft-delete respeitando guarda de prontuário (20 anos).
     from datetime import timedelta
@@ -143,8 +140,6 @@ async def ia_log(
     user: Annotated[User, Depends(get_current_user)],
 ) -> list[IaLogItemOut]:
     """Log factual de uso de IA para este paciente (Nota de Posicionamento CFP sobre IA, 2025)."""
-    p = await session.get(Paciente, uuid.UUID(paciente_id))
-    if not p or p.tenant_id != user.tenant_id or p.deleted_at is not None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paciente não encontrado")
+    p = await carregar_paciente(session, user, paciente_id)
     itens = await listar_ia_log(session, user.tenant_id, p.id)
     return [IaLogItemOut(**it) for it in itens]

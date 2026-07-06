@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 
+from app.authz import carregar_paciente
 from app.config import get_settings
 from app.conformidade.ia_cfp import exigir_uso_ia
 from app.db import SessionLocal
@@ -69,13 +70,8 @@ def _to_citacao(i: int, h: Hit) -> CitacaoOut:
 async def _validar_paciente_e_consentimento(
     session, user: User, paciente_id: str
 ) -> Paciente:
-    try:
-        pid = uuid.UUID(paciente_id)
-    except ValueError:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "paciente_id inválido")
-    pac = await session.get(Paciente, pid)
-    if not pac or pac.tenant_id != user.tenant_id or pac.deleted_at is not None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paciente não encontrado")
+    # Escopo por profissional (P1): valida tenant + dono + não-deletado.
+    pac = await carregar_paciente(session, user, paciente_id)
     cons = await session.scalar(
         select(Consentimento).where(
             Consentimento.tenant_id == user.tenant_id,

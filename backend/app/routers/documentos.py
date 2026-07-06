@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import desc, select
 
+from app.authz import carregar_paciente
 from app.deps import SessionDep, get_current_user
 from app.documentos.gerador import gerar_documento
 from app.documentos.pdf import render_documento_pdf
@@ -53,14 +54,8 @@ router = APIRouter(tags=["documentos"])
 # --------------------------------------------------------------------------
 
 async def _get_paciente(session, user: User, paciente_id: str) -> Paciente:
-    try:
-        pid = uuid.UUID(paciente_id)
-    except ValueError:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "paciente_id inválido")
-    pac = await session.get(Paciente, pid)
-    if not pac or pac.tenant_id != user.tenant_id or pac.deleted_at is not None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paciente não encontrado")
-    return pac
+    # Escopo por profissional (P1): owner vê todos; profissional só os seus.
+    return await carregar_paciente(session, user, paciente_id)
 
 
 async def _get_doc(session, user: User, doc_id: str) -> DocumentoCFP:
@@ -71,6 +66,7 @@ async def _get_doc(session, user: User, doc_id: str) -> DocumentoCFP:
     d = await session.get(DocumentoCFP, did)
     if not d or d.tenant_id != user.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento não encontrado")
+    await carregar_paciente(session, user, d.paciente_id)  # escopo por profissional
     return d
 
 

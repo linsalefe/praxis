@@ -21,6 +21,20 @@ ABORDAGENS = Literal[
 ]
 
 
+def validar_crp(v: str | None) -> str | None:
+    """Normaliza e valida o formato do CRP (região/inscrição). None se vazio."""
+    if v is None:
+        return None
+    # Normaliza: remove prefixo "CRP" e espaços; unifica separadores.
+    limpo = re.sub(r"(?i)\bcrp\b", "", v).strip()
+    limpo = re.sub(r"\s+", "", limpo)
+    if not limpo:
+        return None
+    if not _CRP_RE.match(limpo):
+        raise ValueError("CRP inválido. Use o formato região/inscrição, ex.: 06/123456.")
+    return limpo
+
+
 class RegisterIn(BaseModel):
     nome: str = Field(min_length=2, max_length=160)
     email: EmailStr
@@ -33,16 +47,31 @@ class RegisterIn(BaseModel):
     @field_validator("crp")
     @classmethod
     def _valida_crp(cls, v: str | None) -> str | None:
-        if v is None:
-            return None
-        # Normaliza: remove prefixo "CRP" e espaços; unifica separadores.
-        limpo = re.sub(r"(?i)\bcrp\b", "", v).strip()
-        limpo = re.sub(r"\s+", "", limpo)
-        if not limpo:
-            return None
-        if not _CRP_RE.match(limpo):
-            raise ValueError("CRP inválido. Use o formato região/inscrição, ex.: 06/123456.")
-        return limpo
+        return validar_crp(v)
+
+
+class ProfissionalCreate(BaseModel):
+    """Owner adiciona um profissional à sua clínica (mesmo tenant)."""
+    nome: str = Field(min_length=2, max_length=160)
+    email: EmailStr
+    senha: str = Field(min_length=8, max_length=128)
+    crp: str | None = None
+    abordagem: ABORDAGENS | None = None
+
+    @field_validator("crp")
+    @classmethod
+    def _valida_crp(cls, v: str | None) -> str | None:
+        return validar_crp(v)
+
+
+class EquipeMembroOut(BaseModel):
+    id: str
+    nome: str
+    email: str
+    papel: str
+    crp: str | None = None
+    crp_verificado: bool = False
+    totp_ativado: bool = False
 
 
 class LoginIn(BaseModel):

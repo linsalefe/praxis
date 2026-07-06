@@ -13,6 +13,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 
+from app.authz import carregar_paciente
 from app.deps import SessionDep, get_current_user
 from app.instrumentos.scoring import pontuar_likert
 from app.models.documento import DocumentoCFP
@@ -38,14 +39,8 @@ router = APIRouter(tags=["longitudinal"])
 
 
 async def _assert_paciente(session, user: User, paciente_id: str) -> Paciente:
-    try:
-        pid = uuid.UUID(paciente_id)
-    except ValueError:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "paciente_id inválido")
-    pac = await session.get(Paciente, pid)
-    if not pac or pac.tenant_id != user.tenant_id or pac.deleted_at is not None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paciente não encontrado")
-    return pac
+    # Escopo por profissional (P1): owner vê todos; profissional só os seus.
+    return await carregar_paciente(session, user, paciente_id)
 
 
 def _escore_max(definicao: dict[str, Any], subescala: dict[str, Any] | None = None) -> int:

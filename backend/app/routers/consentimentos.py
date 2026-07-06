@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
 
+from app.authz import carregar_paciente
 from app.conformidade.ia_cfp import tcle_ia
 from app.deps import SessionDep, get_current_user
 from app.models.audit import AuditLog
@@ -39,9 +40,7 @@ async def registrar(
     session: SessionDep,
     user: Annotated[User, Depends(get_current_user)],
 ) -> ConsentimentoOut:
-    pac = await session.get(Paciente, uuid.UUID(body.paciente_id))
-    if not pac or pac.tenant_id != user.tenant_id or pac.deleted_at is not None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paciente não encontrado")
+    pac = await carregar_paciente(session, user, body.paciente_id)
     c = Consentimento(
         tenant_id=user.tenant_id, paciente_id=pac.id, tipo=body.tipo,
         texto_aceito=body.texto_aceito, aceito_por=body.aceito_por,
@@ -69,6 +68,7 @@ async def revogar(
     c = await session.get(Consentimento, cid)
     if not c or c.tenant_id != user.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Consentimento não encontrado")
+    await carregar_paciente(session, user, c.paciente_id)  # escopo por profissional
     if c.revogado_em is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Consentimento já revogado")
     c.revogado_em = func.now()
@@ -89,6 +89,7 @@ async def listar(
     session: SessionDep,
     user: Annotated[User, Depends(get_current_user)],
 ) -> list[ConsentimentoOut]:
+    await carregar_paciente(session, user, paciente_id)  # escopo por profissional
     q = select(Consentimento).where(
         Consentimento.tenant_id == user.tenant_id,
         Consentimento.paciente_id == uuid.UUID(paciente_id),
