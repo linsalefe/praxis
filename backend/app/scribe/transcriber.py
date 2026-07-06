@@ -1,7 +1,7 @@
 """Transcrição plugável. Selecionado via PRAXIS_TRANSCRIBER."""
 from __future__ import annotations
 
-from pathlib import Path
+import io
 from typing import Protocol
 
 from openai import AsyncOpenAI
@@ -19,7 +19,7 @@ PROMPT_CLINICO_PT = (
 class Transcriber(Protocol):
     provider_id: str
 
-    async def transcribe(self, path: Path, mimetype: str) -> str: ...
+    async def transcribe(self, data: bytes, filename: str, mimetype: str) -> str: ...
 
 
 class OpenAITranscriber:
@@ -31,15 +31,16 @@ class OpenAITranscriber:
         self.provider_id = f"openai:{self.model}"
         self._client = AsyncOpenAI(api_key=s.openai_api_key)
 
-    async def transcribe(self, path: Path, mimetype: str) -> str:
-        with path.open("rb") as f:
-            resp = await self._client.audio.transcriptions.create(
-                model=self.model,
-                file=(path.name, f, mimetype),
-                language="pt",
-                prompt=PROMPT_CLINICO_PT,
-                response_format="text",
-            )
+    async def transcribe(self, data: bytes, filename: str, mimetype: str) -> str:
+        # Recebe os bytes em memória (o áudio em claro não toca o disco físico).
+        buf = io.BytesIO(data)
+        resp = await self._client.audio.transcriptions.create(
+            model=self.model,
+            file=(filename, buf, mimetype),
+            language="pt",
+            prompt=PROMPT_CLINICO_PT,
+            response_format="text",
+        )
         # Para response_format=text, resp já é string.
         return str(resp).strip()
 
@@ -49,7 +50,7 @@ class WhisperLocalTranscriber:
 
     provider_id = "local:whisper-large-v3"
 
-    async def transcribe(self, path: Path, mimetype: str) -> str:
+    async def transcribe(self, data: bytes, filename: str, mimetype: str) -> str:
         raise NotImplementedError(
             "Whisper local não está habilitado. Instale `openai-whisper` e torch, "
             "crie swap de 8 GB e defina PRAXIS_TRANSCRIBER=whisper_local."

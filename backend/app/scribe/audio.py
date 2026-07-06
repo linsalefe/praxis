@@ -70,6 +70,59 @@ async def reencode_if_needed(src: Path, max_mb: int) -> Path:
     return dst
 
 
+# --------------------------------------------------------------------------
+# Processamento em tmpfs (RAM) — o áudio em claro NUNCA toca o disco físico
+# (D2). O upload fica em memória; só o passo de ffmpeg escreve num diretório
+# tmpfs (/dev/shm), que é RAM, e é apagado logo em seguida.
+# --------------------------------------------------------------------------
+
+def _tmpfs_dir() -> Path:
+    """Diretório de trabalho em RAM (tmpfs). Usa /dev/shm quando existe."""
+    base = Path("/dev/shm") if Path("/dev/shm").is_dir() else Path(get_settings().scribe_audio_dir)
+    d = base / "praxis-scribe"
+    d.mkdir(parents=True, exist_ok=True)
+    try:
+        d.chmod(0o700)
+    except OSError:
+        pass
+    return d
+
+
+async def reencode_bytes_if_needed(data: bytes, mimetype: str, max_mb: int) -> tuple[bytes, str]:
+    """Se o áudio exceder `max_mb`, re-encoda para opus 24 kbps mono via ffmpeg.
+
+    Trabalha inteiramente em tmpfs (RAM): escreve o áudio em claro em /dev/shm,
+    roda o ffmpeg e lê o resultado, apagando os dois arquivos ao final. Se cabe,
+    devolve os bytes originais sem tocar o disco.
+    """
+    if len(data) <= max_mb * 1024 * 1024:
+        return data, mimetype
+    d = _tmpfs_dir()
+    stem = uuid.uuid4().hex
+    src = d / f"{stem}{guess_ext(mimetype)}"
+    dst = d / f"{stem}-comp.ogg"
+    try:
+        src.write_bytes(data)
+        src.chmod(0o600)
+
+        def _run() -> None:
+            subprocess.run(
+                [
+                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                    "-i", str(src),
+                    "-vn", "-ac", "1", "-ar", "16000",
+                    "-c:a", "libopus", "-b:a", "24k",
+                    str(dst),
+                ],
+                check=True,
+            )
+
+        await asyncio.to_thread(_run)
+        return dst.read_bytes(), "audio/ogg"
+    finally:
+        secure_delete(src, dst)
+
+
 def secure_delete(*paths: Path) -> None:
     """Apaga arquivos com unlink + tentativa de sobrescrever antes.
 
