@@ -39,6 +39,7 @@ from app.scribe.audio import (
     hash_bytes,
     reencode_bytes_if_needed,
 )
+from app.risco.scoring import detectar_sinal_risco
 from app.scribe.structurer import estruturar
 from app.scribe.transcriber import get_transcriber
 from app.security.crypto import encrypt_str
@@ -181,6 +182,7 @@ async def scribe_resumo(
         provider_transc=None, provider_estrut=estruturada.provider_id,
         prompt_versao=estruturada.prompt_versao, latencia_ms=latencia,
         audio_deletado=False,
+        risco_sinalizado=detectar_sinal_risco(body.texto),
     )
 
 
@@ -271,4 +273,5 @@ async def scribe_audio(
         prompt_versao=estruturada.prompt_versao,
         latencia_ms=latencia_transc + latencia_estrut,
         audio_deletado=True,
+        risco_sinalizado=detectar_sinal_risco(transcricao),
     )
