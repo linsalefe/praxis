@@ -17,6 +17,7 @@ from app.instrumentos.geradores import (
     planejar_wrap,
     redigir_leitura_escala,
     sintetizar_gam,
+    sintetizar_rd,
 )
 from app.instrumentos.pdf import render_instrumento_pdf
 from app.pdftimbre import Timbre
@@ -263,6 +264,8 @@ async def gerar_saida(
         gerada = await sintetizar_gam(instr.definicao, r.respostas or {})
     elif instr.tipo == "ptmf":
         gerada = await formular_ptmf(instr.definicao, r.respostas or {})
+    elif instr.tipo == "rd":
+        gerada = await sintetizar_rd(instr.definicao, r.respostas or {})
     elif (instr.definicao or {}).get("kind") == "likert_sum":
         # Escore/faixa são calculados de forma determinística; a IA só redige a
         # leitura sobre o número pronto (nunca recalcula).

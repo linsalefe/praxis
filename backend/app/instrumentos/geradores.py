@@ -304,6 +304,63 @@ async def formular_ptmf(
 
 
 # --------------------------------------------------------------------------
+# Redução de Danos → síntese do registro/plano (não-abstinência, não-julgamento)
+# --------------------------------------------------------------------------
+
+SISTEMA_RD = """Você é o assistente clínico do Práxis (CENAT), coescrevendo uma
+**síntese de Redução de Danos** a partir do registro de uso de álcool e outras
+drogas de uma pessoa.
+
+Diretrizes obrigatórias:
+1. Paradigma da REDUÇÃO DE DANOS: parta do uso REAL da pessoa. NÃO exija nem
+   pressuponha abstinência; ela só entra se for meta escolhida pela própria pessoa.
+2. NÃO é diagnóstico, escore de gravidade nem avaliação moral. Nada de linguagem
+   classificatória ("dependente", "viciado") ou de juízo de valor.
+3. Baseie-se apenas no que foi registrado. Se algo não foi trazido, sinalize como
+   algo a explorar — sem preencher com suposições.
+4. Centre no cuidado: uso mais seguro, metas pactuadas com a pessoa, e o vínculo/
+   rede que sustentam o cuidado. Reconheça as estratégias de proteção que a pessoa
+   já usa.
+5. Markdown com estes cabeçalhos:
+   ## Uso e função
+   ## Riscos e danos percebidos
+   ## Estratégias de uso mais seguro
+   ## Metas pactuadas
+   ## Vínculo, rede e próximos passos
+Feche com:
+   *"Esta é uma síntese de apoio ao cuidado (não diagnóstico); a decisão sobre o
+   próprio uso é da pessoa e a responsabilidade técnica pela conduta é do
+   profissional (Manual CFP 2025)."*
+"""
+
+
+async def sintetizar_rd(
+    definicao: dict[str, Any],
+    respostas: dict[str, Any],
+) -> SaidaGerada:
+    s = get_settings()
+    corpo = _flatten_respostas(definicao, respostas)
+
+    client = AsyncOpenAI(api_key=s.openai_api_key)
+    completion = await client.chat.completions.create(
+        model=s.llm_model,
+        temperature=0.2,
+        messages=[
+            {"role": "system", "content": SISTEMA_RD},
+            {"role": "user", "content":
+                f"Registro da pessoa (Redução de Danos):\n{corpo}\n\n"
+                "Escreva agora a síntese de Redução de Danos em Markdown, "
+                "~400-700 palavras, sem exigir abstinência e sem julgamento moral."},
+        ],
+    )
+    return SaidaGerada(
+        texto=(completion.choices[0].message.content or "").strip(),
+        provider_id=f"openai:{s.llm_model}",
+        hits=[],
+    )
+
+
+# --------------------------------------------------------------------------
 # Escalas Likert (likert_sum) → leitura clínica curta sobre o escore FACTUAL
 # --------------------------------------------------------------------------
 
