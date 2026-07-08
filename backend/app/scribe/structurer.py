@@ -20,6 +20,38 @@ _ABORDAGEM_LABEL = {
     "outros": "abordagem própria",
 }
 
+# Diretriz específica de Diálogo Aberto (práticas dialógicas): estrutura a
+# evolução pelos princípios dialógicos, mantendo os 4 campos CFP.
+_DIRETRIZ_DIALOGO_ABERTO = """
+
+O profissional trabalha com **Diálogo Aberto** (práticas dialógicas). Sem inventar
+dados, estruture a evolução segundo os princípios dialógicos:
+- identificacao: registre quem participou do encontro além da pessoa atendida
+  (familiares, rede social, outros profissionais) — o cuidado se faz na rede.
+- demanda_objetivos: apresente a demanda como formulada pelas diferentes vozes
+  presentes (polifonia), preservando divergências, sem reduzir a uma única versão.
+- evolucao: registre o diálogo — falas significativas que foram respondidas
+  (responsividade), a tolerância à incerteza (sem conclusões precipitadas) e os
+  múltiplos pontos de vista. Evite a voz de perito unilateral.
+- encaminhamento: registre as decisões tomadas de forma compartilhada com a pessoa
+  e sua rede (transparência) e o próximo encontro combinado.
+Mantenha português técnico-clínico, 3ª pessoa; não sugira diagnóstico nem prescrição."""
+
+
+def montar_diretriz(abordagem_prof: str | None) -> str:
+    """Diretriz de abordagem injetada no system prompt (puro, testável).
+
+    Diálogo Aberto recebe um template dialógico completo; as demais abordagens
+    recebem apenas uma frase de tom (comportamento anterior preservado).
+    """
+    if not abordagem_prof:
+        return ""
+    if abordagem_prof == "dialogo_aberto":
+        return _DIRETRIZ_DIALOGO_ABERTO
+    rotulo = _ABORDAGEM_LABEL.get(abordagem_prof, abordagem_prof)
+    return f"\n\nO profissional trabalha com **{rotulo}** — mantenha a linguagem coerente com essa abordagem."
+
+
 SISTEMA = """Você é o **Scribe** do Práxis (CENAT), um assistente que transforma a nota
 clínica bruta de uma sessão de psicoterapia em uma **evolução clínica estruturada**
 segundo os campos usados pelo Conselho Federal de Psicologia (CFP):
@@ -58,10 +90,7 @@ async def estruturar(entrada: str, abordagem_prof: str | None) -> Estruturada:
     abordagem_prof: enum de User.abordagem — injeta tom no system prompt.
     """
     s = get_settings()
-    tom = ""
-    if abordagem_prof:
-        rotulo = _ABORDAGEM_LABEL.get(abordagem_prof, abordagem_prof)
-        tom = f"\n\nO profissional trabalha com **{rotulo}** — mantenha a linguagem coerente com essa abordagem."
+    tom = montar_diretriz(abordagem_prof)
 
     client = AsyncOpenAI(api_key=s.openai_api_key)
     completion = await client.chat.completions.create(
