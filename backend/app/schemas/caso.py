@@ -76,3 +76,24 @@ class MembroRedeOut(BaseModel):
     tipo_vinculo: str
     forca_vinculo: str
     observacoes: str | None
+
+
+# --- Matriciamento / apoio matricial ---------------------------------------
+
+class MatriciamentoCreate(BaseModel):
+    data: datetime | None = None
+    equipe_referencia: str | None = None
+    demanda: str | None = None
+    discussao: str | None = None
+    combinados: str | None = None
+
+
+class MatriciamentoOut(BaseModel):
+    id: str
+    caso_id: str
+    data: datetime
+    equipe_referencia: str | None
+    demanda: str | None
+    discussao: str | None
+    combinados: str | None
+    criado_em: datetime
