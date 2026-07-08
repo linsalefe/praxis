@@ -4,11 +4,11 @@ import { useEffect, useState, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Activity, CalendarClock, CalendarPlus, ClipboardCheck, ClipboardList, Download, FilePlus, FileSignature, FileText, Package, Paperclip, Trash2, Video } from "lucide-react";
+import { Activity, CalendarClock, CalendarPlus, ClipboardCheck, ClipboardList, Download, FilePlus, FileSignature, FileText, Package, Paperclip, ShieldAlert, Trash2, Video } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { formatCentavos, reaisParaCentavos } from "@/lib/money";
 import { dataRelativa, dataCurtaComHora, sufixoRelativoProximo } from "@/lib/date";
-import { instrumentoTipoLabel, modalidadeLabel, docTipoLabel } from "@/lib/labels";
+import { instrumentoTipoLabel, modalidadeLabel, docTipoLabel, nivelRiscoLabel } from "@/lib/labels";
 import { formatNome } from "@/lib/format";
 import { Topbar } from "@/components/Topbar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -19,6 +19,7 @@ import { InstrumentoModal } from "@/components/InstrumentoModal";
 import { PrepararSessaoModal } from "@/components/PrepararSessaoModal";
 import { DocumentoModal } from "@/components/DocumentoModal";
 import { SofiaPainelProntuario } from "@/components/SofiaPainelProntuario";
+import { RiscoModal } from "@/components/RiscoModal";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { PacienteCard } from "@/components/ui/PacienteCard";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -28,14 +29,15 @@ import { Drawer } from "@/components/ui/Drawer";
 import { MenuAcoes } from "@/components/ui/MenuAcoes";
 import { GraficoTrajetoria, type SerieTrajetoria } from "@/components/ui/GraficoTrajetoria";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { Card } from "@/components/ui/Card";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Field } from "@/components/ui/Field";
 
-type TabKey = "visao" | "trajetoria" | "sessoes" | "instrumentos" | "documentos";
+type TabKey = "visao" | "trajetoria" | "sessoes" | "instrumentos" | "documentos" | "risco";
 const TABS: [TabKey, string][] = [
   ["visao", "Visão geral"], ["trajetoria", "Trajetória"], ["sessoes", "Sessões"],
-  ["instrumentos", "Instrumentos"], ["documentos", "Documentos"],
+  ["instrumentos", "Instrumentos"], ["documentos", "Documentos"], ["risco", "Risco"],
 ];
 function normalizarTab(v: string | null): TabKey {
   if (v === "anexos") return "documentos";           // alias do redirect do InstrumentoWizard
@@ -77,6 +79,17 @@ type Resumo = {
   instrumentos_aplicados: number;
   primeira_sessao: string | null; ultima_sessao: string | null;
 };
+type RiscoAtual = {
+  tem_avaliacao: boolean; nivel_risco: string | null;
+  avaliado_em: string | null; avaliacao_id: string | null;
+};
+type AvaliacaoResumo = {
+  id: string; paciente_id: string; avaliado_em: string; nivel_risco: string; gatilhos: string[];
+};
+type AvaliacaoDetalhe = AvaliacaoResumo & {
+  recomendacao: string; cssrs: Record<string, unknown>;
+  plano_seguranca: Record<string, string>; observacoes: string | null; criado_em: string;
+};
 
 export default function FichaPacientePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -106,6 +119,10 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [series, setSeries] = useState<SerieTrajetoria[]>([]);
   const [timeline, setTimeline] = useState<EventoTimeline[]>([]);
+  const [riscoAtual, setRiscoAtual] = useState<RiscoAtual | null>(null);
+  const [avaliacoes, setAvaliacoes] = useState<AvaliacaoResumo[]>([]);
+  const [riscoModal, setRiscoModal] = useState(false);
+  const [riscoDetalhe, setRiscoDetalhe] = useState<AvaliacaoDetalhe | null>(null);
 
   useEffect(() => {
     if (!getToken()) return void router.replace("/login");
@@ -118,7 +135,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
         } catch { /* ignora */ }
         // Blocos independentes (só dependem do id): buscados em paralelo. allSettled
         // → uma falha em bloco não-crítico não apaga o prontuário inteiro.
-        const [sess, resp, anex, docs, res, traj, tl] = await Promise.allSettled([
+        const [sess, resp, anex, docs, res, traj, tl, rAtual, avals] = await Promise.allSettled([
           api<Sessao[]>(`/sessoes/paciente/${id}`),
           api<RespInstr[]>(`/pacientes/${id}/respostas-instrumento`),
           api<Anexo[]>(`/pacientes/${id}/anexos`),
@@ -126,6 +143,8 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
           api<Resumo>(`/pacientes/${id}/resumo`),
           api<{ series: SerieTrajetoria[] }>(`/pacientes/${id}/trajetoria`),
           api<{ eventos: EventoTimeline[] }>(`/pacientes/${id}/timeline`),
+          api<RiscoAtual>(`/pacientes/${id}/risco-atual`),
+          api<AvaliacaoResumo[]>(`/pacientes/${id}/avaliacoes-risco`),
         ]);
         if (sess.status === "fulfilled") setSessoes(sess.value);
         if (resp.status === "fulfilled") setRespostas(resp.value);
@@ -134,6 +153,8 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
         if (res.status === "fulfilled") setResumo(res.value);
         if (traj.status === "fulfilled") setSeries(traj.value.series);
         if (tl.status === "fulfilled") setTimeline(tl.value.eventos);
+        if (rAtual.status === "fulfilled") setRiscoAtual(rAtual.value);
+        if (avals.status === "fulfilled") setAvaliacoes(avals.value);
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) router.replace("/login");
         else toast.error(err instanceof ApiError ? err.message : "Erro");
@@ -142,6 +163,25 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
       }
     })();
   }, [id, router]);
+
+  async function recarregarRisco() {
+    try {
+      const [ra, av] = await Promise.all([
+        api<RiscoAtual>(`/pacientes/${id}/risco-atual`),
+        api<AvaliacaoResumo[]>(`/pacientes/${id}/avaliacoes-risco`),
+      ]);
+      setRiscoAtual(ra);
+      setAvaliacoes(av);
+    } catch { /* mantém estado anterior */ }
+  }
+
+  async function abrirDetalheRisco(avaliacaoId: string) {
+    try {
+      setRiscoDetalhe(await api<AvaliacaoDetalhe>(`/avaliacoes-risco/${avaliacaoId}`));
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Falha ao carregar avaliação");
+    }
+  }
 
   async function criarSessao(e: React.FormEvent) {
     e.preventDefault();
@@ -282,6 +322,27 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
         <p style={{ margin: "0 0 12px" }}><Link className="link" href="/pacientes">← Pacientes</Link></p>
         <PacienteCard paciente={pac} sessoes={sessoes} />
 
+        {/* Bandeira de risco (moderado/alto) — clique leva à aba Risco. Registro
+            factual; não é alerta automático. */}
+        {riscoAtual?.tem_avaliacao && riscoAtual.nivel_risco &&
+          (riscoAtual.nivel_risco === "moderado" || riscoAtual.nivel_risco === "alto") && (
+          <button
+            onClick={() => mudarTab("risco")}
+            className="card"
+            style={{
+              marginTop: 12, width: "100%", textAlign: "left", cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 10,
+              borderColor: "var(--risk-line)", background: "var(--risk-bg)",
+            }}
+          >
+            <ShieldAlert size={18} color="var(--danger)" />
+            <span style={{ fontSize: 13, color: "var(--risk-fg)" }}>
+              Última avaliação de risco: <strong>{nivelRiscoLabel(riscoAtual.nivel_risco)}</strong>
+              {riscoAtual.avaliado_em && ` · ${dataRelativa(riscoAtual.avaliado_em)}`}. Ver aba Risco.
+            </span>
+          </button>
+        )}
+
         {/* Header de ação: 1 CTA primário contextual + menu "···" (secundárias e destrutivas separadas) */}
         <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", justifyContent: "flex-end", flexWrap: "wrap" }}>
           {sessaoHojeSemEvolucao ? (
@@ -300,6 +361,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
             secundarias={[
               { label: "Perguntar à Sofia", icon: <PresenceMark size={16} />, onClick: () => setSofiaOpen(true) },
               { label: "Novo instrumento", icon: <ClipboardList size={16} />, onClick: () => setInstrModal(true) },
+              { label: "Avaliação de risco", icon: <ShieldAlert size={16} />, onClick: () => setRiscoModal(true) },
               { label: "Preparar sessão", icon: <ClipboardCheck size={16} />, onClick: () => setPrepModal(true) },
               { label: "Gerar documento", icon: <FileSignature size={16} />, onClick: () => setDocModal(true) },
             ]}
@@ -570,6 +632,38 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
             </>
           )}
         </div>
+
+        {/* ===== Risco ===== */}
+        <div role="tabpanel" id="panel-risco" aria-labelledby="tab-risco" hidden={tab !== "risco"}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 0 8px", gap: 8 }}>
+            <SectionTitle margin="0">Avaliação de risco</SectionTitle>
+            <Button variant="primary" onClick={() => setRiscoModal(true)}><ShieldAlert size={16} /> Nova avaliação</Button>
+          </div>
+          <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 12px" }}>
+            Rastreio C-SSRS + Plano de Segurança. Registro de apoio à decisão clínica —
+            não substitui seu julgamento; sem alerta ou monitoramento automático.
+          </p>
+          {avaliacoes.length === 0 ? (
+            <EmptyState icone={<ShieldAlert size={28} />} frase="Nenhuma avaliação de risco registrada." />
+          ) : (
+            avaliacoes.map((a) => (
+              <Card key={a.id} className="row-stack" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <StatusBadge status={`risco_${a.nivel_risco}`} />
+                    <span style={{ color: "var(--muted)", fontSize: 12 }}>{dataCurtaComHora(a.avaliado_em)}</span>
+                  </div>
+                  {a.gatilhos.length > 0 && (
+                    <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
+                      Itens que elevaram: {a.gatilhos.join(", ")}
+                    </div>
+                  )}
+                </div>
+                <Button onClick={() => abrirDetalheRisco(a.id)}>Ver detalhes</Button>
+              </Card>
+            ))
+          )}
+        </div>
       </main>
       <Drawer open={agendarOpen} title="Agendar sessão" onClose={() => setAgendarOpen(false)}>
         <form onSubmit={criarSessao} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -617,6 +711,49 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
       {docModal && (
         <DocumentoModal pacienteId={id} onClose={() => setDocModal(false)} />
       )}
+      {riscoModal && (
+        <RiscoModal
+          pacienteId={id}
+          onClose={() => setRiscoModal(false)}
+          onSaved={() => { setRiscoModal(false); mudarTab("risco"); recarregarRisco(); }}
+        />
+      )}
+      {riscoDetalhe && (
+        <Modal open maxWidth={560} onClose={() => setRiscoDetalhe(null)}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+              <ShieldAlert size={18} color="var(--danger)" /> Avaliação de risco
+            </h3>
+            <StatusBadge status={`risco_${riscoDetalhe.nivel_risco}`} />
+          </div>
+          <p style={{ color: "var(--muted)", fontSize: 12, marginTop: 4 }}>
+            {dataCurtaComHora(riscoDetalhe.avaliado_em)}
+          </p>
+          <p style={{ fontSize: 13, background: "var(--surface-2)", padding: 10, borderRadius: "var(--radius-md)" }}>
+            {riscoDetalhe.recomendacao}
+          </p>
+          {Object.keys(riscoDetalhe.plano_seguranca).length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <div className="label" style={{ marginBottom: 6 }}>Plano de Segurança</div>
+              {Object.entries(riscoDetalhe.plano_seguranca).map(([k, v]) => (
+                <div key={k} style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600 }}>{passoLabel(k)}</div>
+                  <div style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{v}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          {riscoDetalhe.observacoes && (
+            <div style={{ marginTop: 8 }}>
+              <div className="label" style={{ marginBottom: 4 }}>Observações</div>
+              <div style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{riscoDetalhe.observacoes}</div>
+            </div>
+          )}
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+            <Button onClick={() => setRiscoDetalhe(null)}>Fechar</Button>
+          </div>
+        </Modal>
+      )}
       <SofiaPainelProntuario
         open={sofiaOpen}
         pacienteId={id}
@@ -650,6 +787,20 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
 const EVENTO_ICON: Record<string, typeof CalendarClock> = {
   sessao: CalendarClock, evolucao: FileText, instrumento: ClipboardList, documento: FileSignature,
 };
+
+// Rótulos dos passos do Plano de Segurança (Stanley-Brown) para a exibição do detalhe.
+const PASSO_LABEL: Record<string, string> = {
+  sinais_alerta: "1. Sinais de alerta",
+  estrategias_internas: "2. Estratégias de enfrentamento internas",
+  contatos_distracao: "3. Pessoas e locais que ajudam a distrair",
+  contatos_ajuda: "4. Pessoas a quem pedir ajuda",
+  profissionais_agencias: "5. Profissionais e serviços de emergência",
+  ambiente_seguro: "6. Tornar o ambiente seguro",
+  motivos_para_viver: "Motivos para viver",
+};
+function passoLabel(id: string): string {
+  return PASSO_LABEL[id] ?? id;
+}
 
 function EventoLinha({ ev }: { ev: EventoTimeline }) {
   const Icon = EVENTO_ICON[ev.tipo_evento] || CalendarClock;

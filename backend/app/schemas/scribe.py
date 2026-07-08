@@ -15,6 +15,9 @@ class ScribeOut(BaseModel):
     prompt_versao: str
     latencia_ms: int
     audio_deletado: bool
+    # Sinal (não-diagnóstico) de que o relato menciona risco de suicídio/autolesão —
+    # sugere ao profissional registrar uma avaliação de risco formal (C-SSRS).
+    risco_sinalizado: bool = False
     aviso: str = (
         "Rascunho gerado por IA. Revise e assine manualmente — a responsabilidade "
         "técnica pela conduta é do profissional (Manual CFP 2025)."

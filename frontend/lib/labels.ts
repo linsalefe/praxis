@@ -29,6 +29,11 @@ const STATUS_LABEL: Record<string, string> = {
   // financeiro
   pendente: "Pendente",
   pago: "Pago",
+  // risco (nível derivado — prefixado para não colidir com outros enums)
+  risco_minimo: "Risco mínimo",
+  risco_baixo: "Risco baixo",
+  risco_moderado: "Risco moderado",
+  risco_alto: "Risco alto",
 };
 
 /** Tom semântico → classe de badge existente no design system. */
@@ -49,6 +54,11 @@ const STATUS_TOM: Record<string, Tom> = {
   cancelada: "risk",
   // rascunho → neutro
   rascunho: "neutral",
+  // risco
+  risco_minimo: "pos",
+  risco_baixo: "info",
+  risco_moderado: "warn",
+  risco_alto: "risk",
 };
 
 export const TOM_CLASSE: Record<Tom, string> = {
@@ -142,4 +152,18 @@ const DOC_TIPO_LABEL: Record<string, string> = {
 export function docTipoLabel(tipo: string | null | undefined): string {
   if (!tipo) return "—";
   return DOC_TIPO_LABEL[tipo] ?? humanizar(tipo);
+}
+
+// --- Nível de risco (C-SSRS) ---
+const NIVEL_RISCO_LABEL: Record<string, string> = {
+  minimo: "Mínimo",
+  baixo: "Baixo",
+  moderado: "Moderado",
+  alto: "Alto",
+};
+
+/** Rótulo curto do nível ("Moderado"). Para badge, use status={`risco_${nivel}`}. */
+export function nivelRiscoLabel(nivel: string | null | undefined): string {
+  if (!nivel) return "—";
+  return NIVEL_RISCO_LABEL[nivel] ?? humanizar(nivel);
 }
