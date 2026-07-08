@@ -36,6 +36,11 @@ const STATUS_LABEL: Record<string, string> = {
   vinculo_forte: "Vínculo forte",
   vinculo_fragil: "Vínculo frágil",
   vinculo_conflito: "Conflito",
+  // nível de fator psicossocial (laudo NR-1)
+  nivel_na: "N/A",
+  nivel_baixo: "Baixo",
+  nivel_medio: "Médio",
+  nivel_alto: "Alto",
   // risco (nível derivado — prefixado para não colidir com outros enums)
   risco_minimo: "Risco mínimo",
   risco_baixo: "Risco baixo",
@@ -68,6 +73,11 @@ const STATUS_TOM: Record<string, Tom> = {
   vinculo_forte: "pos",
   vinculo_fragil: "warn",
   vinculo_conflito: "risk",
+  // nível de fator psicossocial (NR-1)
+  nivel_na: "neutral",
+  nivel_baixo: "pos",
+  nivel_medio: "warn",
+  nivel_alto: "risk",
   // risco
   risco_minimo: "pos",
   risco_baixo: "info",
