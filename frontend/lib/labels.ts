@@ -130,6 +130,7 @@ const INSTRUMENTO_LABEL: Record<string, string> = {
   gam: "GAM",
   maastricht: "Entrevista de Maastricht",
   ptmf: "PTMF",
+  rd: "Redução de Danos",
   srq20: "SRQ-20",
   who5: "WHO-5",
   wrap: "WRAP",
