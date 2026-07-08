@@ -160,6 +160,18 @@ export function docTipoLabel(tipo: string | null | undefined): string {
   return DOC_TIPO_LABEL[tipo] ?? humanizar(tipo);
 }
 
+// --- Tipo de encontro de grupo ---
+const GRUPO_TIPO_LABEL: Record<string, string> = {
+  grupo: "Grupo",
+  oficina: "Oficina",
+  assembleia: "Assembleia",
+};
+
+export function grupoTipoLabel(tipo: string | null | undefined): string {
+  if (!tipo) return "—";
+  return GRUPO_TIPO_LABEL[tipo] ?? humanizar(tipo);
+}
+
 // --- Nível de risco (C-SSRS) ---
 const NIVEL_RISCO_LABEL: Record<string, string> = {
   minimo: "Mínimo",
