@@ -18,6 +18,7 @@ const NAV: Item[] = [
   { href: "/inicio", label: "Início", icon: <LayoutGrid size={16} /> },
   { href: "/agenda", label: "Agenda", icon: <CalendarDays size={16} /> },
   { href: "/pacientes", label: "Pacientes", icon: <Users size={16} /> },
+  { href: "/grupos", label: "Grupos", icon: <UsersRound size={16} /> },
   { href: "/sofia", label: "Sofia", icon: <PresenceMark size={16} /> },
   { href: "/biblioteca", label: "Biblioteca", icon: <BookOpen size={16} /> },
   { href: "/financeiro", label: "Financeiro", icon: <Wallet size={16} /> },
