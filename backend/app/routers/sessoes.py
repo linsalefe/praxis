@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 
 from app.authz import carregar_paciente, escopo_paciente_clause
 from app.deps import SessionDep, get_current_user
+from app.models.caso import Caso
 from app.models.consentimento import Consentimento
 from app.models.paciente import Paciente
 from app.models.sessao import Sessao
@@ -29,7 +30,8 @@ router = APIRouter(prefix="/sessoes", tags=["sessoes"])
 
 def _to_out(s: Sessao) -> SessaoOut:
     return SessaoOut(
-        id=str(s.id), paciente_id=str(s.paciente_id), data=s.data,
+        id=str(s.id), paciente_id=str(s.paciente_id),
+        caso_id=str(s.caso_id) if s.caso_id else None, data=s.data,
         modalidade=s.modalidade, status=s.status,
         valor_centavos=s.valor_centavos, sala_url=s.sala_url, criado_em=s.criado_em,
     )
@@ -42,10 +44,17 @@ async def criar(
     user: Annotated[User, Depends(get_current_user)],
 ) -> SessaoOut:
     pac = await carregar_paciente(session, user, body.paciente_id)
+    # Caso opcional: precisa ser do mesmo paciente/tenant (não vaza caso de outro).
+    caso_id = None
+    if body.caso_id:
+        caso = await session.get(Caso, uuid.UUID(body.caso_id))
+        if not caso or caso.tenant_id != user.tenant_id or caso.paciente_id != pac.id:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Caso não encontrado")
+        caso_id = caso.id
     # Valor: usa o informado; se ausente, puxa o padrão do paciente (factual).
     valor = body.valor_centavos if body.valor_centavos is not None else pac.valor_padrao_centavos
     s = Sessao(
-        tenant_id=user.tenant_id, paciente_id=pac.id,
+        tenant_id=user.tenant_id, paciente_id=pac.id, caso_id=caso_id,
         data=body.data, modalidade=body.modalidade, status=body.status,
         valor_centavos=valor,
     )

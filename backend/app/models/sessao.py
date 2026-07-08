@@ -16,6 +16,8 @@ class Sessao(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="RESTRICT"), nullable=False, index=True)
     paciente_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("pacientes.id", ondelete="RESTRICT"), nullable=False, index=True)
+    # Caso ao qual a sessão pertence (opcional; consultório pode não usar caso).
+    caso_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("casos.id", ondelete="SET NULL"), nullable=True, index=True)
 
     data: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     modalidade: Mapped[str] = mapped_column(String(16), nullable=False)  # presencial | online
