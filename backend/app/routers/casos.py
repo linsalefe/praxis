@@ -20,15 +20,20 @@ from app.authz import carregar_paciente
 from app.casos.pts import PTS_SECAO_IDS, definicao
 from app.deps import SessionDep, get_current_user
 from app.models.caso import Caso, PtsVersao
+from app.models.rede import MembroRede
 from app.models.user import User
 from app.schemas.caso import (
     CasoCreate,
     CasoOut,
     CasoResumo,
     CasoUpdate,
+    MembroRedeCreate,
+    MembroRedeOut,
+    MembroRedeUpdate,
     PtsSalvar,
     PtsVersaoOut,
 )
+from app.security.crypto import decrypt_str, encrypt_str
 
 router = APIRouter(tags=["casos"])
 
@@ -185,3 +190,99 @@ async def historico_pts(
     caso = await _carregar_caso(session, user, caso_id)
     q = select(PtsVersao).where(PtsVersao.caso_id == caso.id).order_by(PtsVersao.versao.desc())
     return [_pts_out(p) for p in (await session.scalars(q)).all()]
+
+
+# --------------------------------------------------------------------------
+# Rede de apoio (genograma/ecomapa) — Onda 2.3
+# --------------------------------------------------------------------------
+
+def _membro_out(m: MembroRede) -> MembroRedeOut:
+    return MembroRedeOut(
+        id=str(m.id), caso_id=str(m.caso_id), nome=decrypt_str(m.nome_cifrado) or "—",
+        papel=m.papel, tipo_vinculo=m.tipo_vinculo, forca_vinculo=m.forca_vinculo,
+        observacoes=m.observacoes,
+    )
+
+
+async def _carregar_membro(session, caso: Caso, membro_id: str) -> MembroRede:
+    try:
+        mid = uuid.UUID(membro_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "membro_id inválido")
+    m = await session.get(MembroRede, mid)
+    if m is None or m.caso_id != caso.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Membro não encontrado")
+    return m
+
+
+@router.get("/casos/{caso_id}/rede", response_model=list[MembroRedeOut])
+async def listar_rede(
+    caso_id: str,
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+) -> list[MembroRedeOut]:
+    caso = await _carregar_caso(session, user, caso_id)
+    q = select(MembroRede).where(MembroRede.caso_id == caso.id).order_by(MembroRede.criado_em)
+    return [_membro_out(m) for m in (await session.scalars(q)).all()]
+
+
+@router.post("/casos/{caso_id}/rede", response_model=MembroRedeOut, status_code=status.HTTP_201_CREATED)
+async def adicionar_membro(
+    caso_id: str,
+    body: MembroRedeCreate,
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+) -> MembroRedeOut:
+    caso = await _carregar_caso(session, user, caso_id)
+    if not body.nome.strip():
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nome é obrigatório")
+    m = MembroRede(
+        tenant_id=user.tenant_id, caso_id=caso.id, criado_por=user.id,
+        nome_cifrado=encrypt_str(body.nome.strip()), papel=(body.papel or None),
+        tipo_vinculo=body.tipo_vinculo, forca_vinculo=body.forca_vinculo,
+        observacoes=(body.observacoes or None),
+    )
+    session.add(m)
+    await session.commit()
+    await session.refresh(m)
+    return _membro_out(m)
+
+
+@router.patch("/casos/{caso_id}/rede/{membro_id}", response_model=MembroRedeOut)
+async def atualizar_membro(
+    caso_id: str,
+    membro_id: str,
+    body: MembroRedeUpdate,
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+) -> MembroRedeOut:
+    caso = await _carregar_caso(session, user, caso_id)
+    m = await _carregar_membro(session, caso, membro_id)
+    if body.nome is not None:
+        if not body.nome.strip():
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nome não pode ser vazio")
+        m.nome_cifrado = encrypt_str(body.nome.strip())
+    if body.papel is not None:
+        m.papel = body.papel or None
+    if body.tipo_vinculo is not None:
+        m.tipo_vinculo = body.tipo_vinculo
+    if body.forca_vinculo is not None:
+        m.forca_vinculo = body.forca_vinculo
+    if body.observacoes is not None:
+        m.observacoes = body.observacoes or None
+    await session.commit()
+    await session.refresh(m)
+    return _membro_out(m)
+
+
+@router.delete("/casos/{caso_id}/rede/{membro_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remover_membro(
+    caso_id: str,
+    membro_id: str,
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+) -> None:
+    caso = await _carregar_caso(session, user, caso_id)
+    m = await _carregar_membro(session, caso, membro_id)
+    await session.delete(m)
+    await session.commit()
