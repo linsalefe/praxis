@@ -20,6 +20,7 @@ from app.authz import carregar_paciente
 from app.casos.pts import PTS_SECAO_IDS, definicao
 from app.deps import SessionDep, get_current_user
 from app.models.caso import Caso, PtsVersao
+from app.models.matriciamento import Matriciamento
 from app.models.rede import MembroRede
 from app.models.user import User
 from app.schemas.caso import (
@@ -27,6 +28,8 @@ from app.schemas.caso import (
     CasoOut,
     CasoResumo,
     CasoUpdate,
+    MatriciamentoCreate,
+    MatriciamentoOut,
     MembroRedeCreate,
     MembroRedeOut,
     MembroRedeUpdate,
@@ -284,5 +287,67 @@ async def remover_membro(
 ) -> None:
     caso = await _carregar_caso(session, user, caso_id)
     m = await _carregar_membro(session, caso, membro_id)
+    await session.delete(m)
+    await session.commit()
+
+
+# --------------------------------------------------------------------------
+# Matriciamento / apoio matricial — Onda 2.4
+# --------------------------------------------------------------------------
+
+def _matric_out(m: Matriciamento) -> MatriciamentoOut:
+    return MatriciamentoOut(
+        id=str(m.id), caso_id=str(m.caso_id), data=m.data,
+        equipe_referencia=m.equipe_referencia, demanda=m.demanda,
+        discussao=m.discussao, combinados=m.combinados, criado_em=m.criado_em,
+    )
+
+
+@router.get("/casos/{caso_id}/matriciamentos", response_model=list[MatriciamentoOut])
+async def listar_matriciamentos(
+    caso_id: str,
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+) -> list[MatriciamentoOut]:
+    caso = await _carregar_caso(session, user, caso_id)
+    q = select(Matriciamento).where(Matriciamento.caso_id == caso.id).order_by(Matriciamento.data.desc())
+    return [_matric_out(m) for m in (await session.scalars(q)).all()]
+
+
+@router.post("/casos/{caso_id}/matriciamentos", response_model=MatriciamentoOut, status_code=status.HTTP_201_CREATED)
+async def criar_matriciamento(
+    caso_id: str,
+    body: MatriciamentoCreate,
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+) -> MatriciamentoOut:
+    caso = await _carregar_caso(session, user, caso_id)
+    m = Matriciamento(
+        tenant_id=user.tenant_id, caso_id=caso.id, criado_por=user.id,
+        data=body.data or datetime.now(timezone.utc),
+        equipe_referencia=(body.equipe_referencia or None), demanda=(body.demanda or None),
+        discussao=(body.discussao or None), combinados=(body.combinados or None),
+    )
+    session.add(m)
+    await session.commit()
+    await session.refresh(m)
+    return _matric_out(m)
+
+
+@router.delete("/casos/{caso_id}/matriciamentos/{matric_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remover_matriciamento(
+    caso_id: str,
+    matric_id: str,
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+) -> None:
+    caso = await _carregar_caso(session, user, caso_id)
+    try:
+        mid = uuid.UUID(matric_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "matric_id inválido")
+    m = await session.get(Matriciamento, mid)
+    if m is None or m.caso_id != caso.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Matriciamento não encontrado")
     await session.delete(m)
     await session.commit()

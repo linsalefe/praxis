@@ -33,6 +33,10 @@ type MembroRede = {
   id: string; caso_id: string; nome: string; papel: string | null;
   tipo_vinculo: string; forca_vinculo: string; observacoes: string | null;
 };
+type Matriciamento = {
+  id: string; caso_id: string; data: string; equipe_referencia: string | null;
+  demanda: string | null; discussao: string | null; combinados: string | null; criado_em: string;
+};
 
 export default function CasoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -48,18 +52,23 @@ export default function CasoPage({ params }: { params: Promise<{ id: string }> }
   const [rede, setRede] = useState<MembroRede[]>([]);
   const [novoMembro, setNovoMembro] = useState({ nome: "", papel: "", tipo_vinculo: "familiar", forca_vinculo: "forte" });
   const [addingMembro, setAddingMembro] = useState(false);
+  const [matriciamentos, setMatriciamentos] = useState<Matriciamento[]>([]);
+  const [novoMatric, setNovoMatric] = useState({ equipe_referencia: "", demanda: "", discussao: "", combinados: "" });
+  const [addingMatric, setAddingMatric] = useState(false);
 
   async function carregar() {
-    const [c, def, hist, membros] = await Promise.all([
+    const [c, def, hist, membros, matric] = await Promise.all([
       api<Caso>(`/casos/${id}`),
       api<{ secoes: Secao[] }>(`/casos/pts/definicao`),
       api<PtsVersao[]>(`/casos/${id}/pts`),
       api<MembroRede[]>(`/casos/${id}/rede`),
+      api<Matriciamento[]>(`/casos/${id}/matriciamentos`),
     ]);
     setCaso(c);
     setSecoes(def.secoes);
     setHistorico(hist);
     setRede(membros);
+    setMatriciamentos(matric);
     setTitulo(c.titulo || "");
     setConteudo(c.pts_atual?.conteudo || {});
     try {
@@ -139,6 +148,41 @@ export default function CasoPage({ params }: { params: Promise<{ id: string }> }
     try {
       await api(`/casos/${id}/rede/${membroId}`, { method: "DELETE" });
       setRede((r) => r.filter((x) => x.id !== membroId));
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Falha ao remover");
+    }
+  }
+
+  async function adicionarMatriciamento() {
+    if (!novoMatric.demanda.trim() && !novoMatric.discussao.trim() && !novoMatric.equipe_referencia.trim()) {
+      toast.error("Preencha ao menos a equipe, a demanda ou a discussão.");
+      return;
+    }
+    setAddingMatric(true);
+    try {
+      const m = await api<Matriciamento>(`/casos/${id}/matriciamentos`, {
+        method: "POST",
+        body: JSON.stringify({
+          equipe_referencia: novoMatric.equipe_referencia.trim() || null,
+          demanda: novoMatric.demanda.trim() || null,
+          discussao: novoMatric.discussao.trim() || null,
+          combinados: novoMatric.combinados.trim() || null,
+        }),
+      });
+      setMatriciamentos((r) => [m, ...r]);
+      setNovoMatric({ equipe_referencia: "", demanda: "", discussao: "", combinados: "" });
+      toast.success("Matriciamento registrado.");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Falha");
+    } finally {
+      setAddingMatric(false);
+    }
+  }
+
+  async function removerMatriciamento(matricId: string) {
+    try {
+      await api(`/casos/${id}/matriciamentos/${matricId}`, { method: "DELETE" });
+      setMatriciamentos((r) => r.filter((x) => x.id !== matricId));
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Falha ao remover");
     }
@@ -292,6 +336,47 @@ export default function CasoPage({ params }: { params: Promise<{ id: string }> }
           <Button variant="primary" onClick={adicionarMembro} loading={addingMembro} disabled={!novoMembro.nome.trim()}>
             <UserPlus size={16} /> Adicionar
           </Button>
+        </Card>
+
+        {/* Matriciamento / apoio matricial */}
+        <SectionTitle margin="24px 0 8px">Matriciamento</SectionTitle>
+        <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 12px" }}>
+          Registros de apoio matricial: demanda trazida pela equipe de referência, discussão conjunta e combinados.
+        </p>
+        {matriciamentos.map((m) => (
+          <Card key={m.id} style={{ marginBottom: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+              <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                {dataCurtaComHora(m.data)}{m.equipe_referencia && ` · ${m.equipe_referencia}`}
+              </div>
+              <Button onClick={() => removerMatriciamento(m.id)} aria-label="Remover matriciamento"><Trash2 size={14} /></Button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+              {m.demanda && <div><span style={{ fontSize: 12, fontWeight: 600 }}>Demanda: </span><span style={{ fontSize: 13 }}>{m.demanda}</span></div>}
+              {m.discussao && <div><span style={{ fontSize: 12, fontWeight: 600 }}>Discussão: </span><span style={{ fontSize: 13 }}>{m.discussao}</span></div>}
+              {m.combinados && <div><span style={{ fontSize: 12, fontWeight: 600 }}>Combinados: </span><span style={{ fontSize: 13 }}>{m.combinados}</span></div>}
+            </div>
+          </Card>
+        ))}
+        <Card style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontWeight: 600, fontSize: 14 }}>Registrar matriciamento</div>
+          <Field label="Equipe de referência">
+            <input className="input" placeholder="ex.: ESF Vila Nova, CAPS" value={novoMatric.equipe_referencia} onChange={(e) => setNovoMatric({ ...novoMatric, equipe_referencia: e.target.value })} />
+          </Field>
+          <Field label="Demanda trazida">
+            <textarea className="input" rows={2} value={novoMatric.demanda} onChange={(e) => setNovoMatric({ ...novoMatric, demanda: e.target.value })} />
+          </Field>
+          <Field label="Discussão / construção conjunta">
+            <textarea className="input" rows={2} value={novoMatric.discussao} onChange={(e) => setNovoMatric({ ...novoMatric, discussao: e.target.value })} />
+          </Field>
+          <Field label="Combinados">
+            <textarea className="input" rows={2} value={novoMatric.combinados} onChange={(e) => setNovoMatric({ ...novoMatric, combinados: e.target.value })} />
+          </Field>
+          <div style={{ textAlign: "right" }}>
+            <Button variant="primary" onClick={adicionarMatriciamento} loading={addingMatric}>
+              <Save size={16} /> Registrar
+            </Button>
+          </div>
         </Card>
 
         {/* Histórico de versões */}
