@@ -32,6 +32,10 @@ const STATUS_LABEL: Record<string, string> = {
   // casos
   ativo: "Ativo",
   encerrado: "Encerrado",
+  // força do vínculo (rede de apoio)
+  vinculo_forte: "Vínculo forte",
+  vinculo_fragil: "Vínculo frágil",
+  vinculo_conflito: "Conflito",
   // risco (nível derivado — prefixado para não colidir com outros enums)
   risco_minimo: "Risco mínimo",
   risco_baixo: "Risco baixo",
@@ -60,6 +64,10 @@ const STATUS_TOM: Record<string, Tom> = {
   // casos
   ativo: "pos",
   encerrado: "neutral",
+  // força do vínculo
+  vinculo_forte: "pos",
+  vinculo_fragil: "warn",
+  vinculo_conflito: "risk",
   // risco
   risco_minimo: "pos",
   risco_baixo: "info",
@@ -170,6 +178,19 @@ const GRUPO_TIPO_LABEL: Record<string, string> = {
 export function grupoTipoLabel(tipo: string | null | undefined): string {
   if (!tipo) return "—";
   return GRUPO_TIPO_LABEL[tipo] ?? humanizar(tipo);
+}
+
+// --- Tipo de vínculo na rede de apoio ---
+const VINCULO_TIPO_LABEL: Record<string, string> = {
+  familiar: "Familiar",
+  comunitario: "Comunitário",
+  servico: "Serviço",
+  outro: "Outro",
+};
+
+export function vinculoTipoLabel(tipo: string | null | undefined): string {
+  if (!tipo) return "—";
+  return VINCULO_TIPO_LABEL[tipo] ?? humanizar(tipo);
 }
 
 // --- Nível de risco (C-SSRS) ---
