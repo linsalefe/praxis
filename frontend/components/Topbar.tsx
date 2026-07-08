@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
-  BookOpen, CalendarDays, ChevronDown, Compass, IdCard, LayoutGrid, LogOut, Menu,
+  BookOpen, CalendarDays, ChevronDown, Compass, FileWarning, IdCard, LayoutGrid, LogOut, Menu,
   UserCog, Users, UsersRound, Wallet,
 } from "lucide-react";
 import { api, clearToken } from "@/lib/api";
@@ -23,6 +23,7 @@ const NAV: Item[] = [
   { href: "/biblioteca", label: "Biblioteca", icon: <BookOpen size={16} /> },
   { href: "/financeiro", label: "Financeiro", icon: <Wallet size={16} /> },
   { href: "/supervisao", label: "Supervisão", icon: <Compass size={16} /> },
+  { href: "/laudos-nr1", label: "Laudos NR-1", icon: <FileWarning size={16} /> },
   { href: "/conta/2fa", label: "Conta / 2FA", icon: <UserCog size={16} /> },
 ];
 
