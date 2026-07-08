@@ -39,6 +39,7 @@ class SessaoCreate(BaseModel):
     modalidade: Literal["presencial", "online"]
     status: Literal["agendada", "realizada", "cancelada", "falta"] = "agendada"
     valor_centavos: int | None = Field(default=None, ge=0)  # ausente → puxa padrão do paciente
+    caso_id: str | None = None  # opcional: pendura a sessão num caso
 
 
 class SessaoUpdate(BaseModel):
@@ -51,6 +52,7 @@ class SessaoUpdate(BaseModel):
 class SessaoOut(BaseModel):
     id: str
     paciente_id: str
+    caso_id: str | None = None
     data: datetime
     modalidade: str
     status: str

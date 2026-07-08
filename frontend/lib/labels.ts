@@ -29,6 +29,9 @@ const STATUS_LABEL: Record<string, string> = {
   // financeiro
   pendente: "Pendente",
   pago: "Pago",
+  // casos
+  ativo: "Ativo",
+  encerrado: "Encerrado",
   // risco (nível derivado — prefixado para não colidir com outros enums)
   risco_minimo: "Risco mínimo",
   risco_baixo: "Risco baixo",
@@ -54,6 +57,9 @@ const STATUS_TOM: Record<string, Tom> = {
   cancelada: "risk",
   // rascunho → neutro
   rascunho: "neutral",
+  // casos
+  ativo: "pos",
+  encerrado: "neutral",
   // risco
   risco_minimo: "pos",
   risco_baixo: "info",

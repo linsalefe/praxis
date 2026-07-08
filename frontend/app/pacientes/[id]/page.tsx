@@ -34,10 +34,10 @@ import { Card } from "@/components/ui/Card";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Field } from "@/components/ui/Field";
 
-type TabKey = "visao" | "trajetoria" | "sessoes" | "instrumentos" | "documentos" | "risco";
+type TabKey = "visao" | "trajetoria" | "sessoes" | "instrumentos" | "documentos" | "risco" | "casos";
 const TABS: [TabKey, string][] = [
   ["visao", "Visão geral"], ["trajetoria", "Trajetória"], ["sessoes", "Sessões"],
-  ["instrumentos", "Instrumentos"], ["documentos", "Documentos"], ["risco", "Risco"],
+  ["instrumentos", "Instrumentos"], ["documentos", "Documentos"], ["risco", "Risco"], ["casos", "Casos"],
 ];
 function normalizarTab(v: string | null): TabKey {
   if (v === "anexos") return "documentos";           // alias do redirect do InstrumentoWizard
@@ -90,6 +90,10 @@ type AvaliacaoDetalhe = AvaliacaoResumo & {
   recomendacao: string; cssrs: Record<string, unknown>;
   plano_seguranca: Record<string, string>; observacoes: string | null; criado_em: string;
 };
+type CasoResumo = {
+  id: string; paciente_id: string; titulo: string | null;
+  status: string; aberto_em: string; pts_versao_atual: number | null;
+};
 
 export default function FichaPacientePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -123,6 +127,8 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoResumo[]>([]);
   const [riscoModal, setRiscoModal] = useState(false);
   const [riscoDetalhe, setRiscoDetalhe] = useState<AvaliacaoDetalhe | null>(null);
+  const [casos, setCasos] = useState<CasoResumo[]>([]);
+  const [criandoCaso, setCriandoCaso] = useState(false);
 
   useEffect(() => {
     if (!getToken()) return void router.replace("/login");
@@ -135,7 +141,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
         } catch { /* ignora */ }
         // Blocos independentes (só dependem do id): buscados em paralelo. allSettled
         // → uma falha em bloco não-crítico não apaga o prontuário inteiro.
-        const [sess, resp, anex, docs, res, traj, tl, rAtual, avals] = await Promise.allSettled([
+        const [sess, resp, anex, docs, res, traj, tl, rAtual, avals, cas] = await Promise.allSettled([
           api<Sessao[]>(`/sessoes/paciente/${id}`),
           api<RespInstr[]>(`/pacientes/${id}/respostas-instrumento`),
           api<Anexo[]>(`/pacientes/${id}/anexos`),
@@ -145,6 +151,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
           api<{ eventos: EventoTimeline[] }>(`/pacientes/${id}/timeline`),
           api<RiscoAtual>(`/pacientes/${id}/risco-atual`),
           api<AvaliacaoResumo[]>(`/pacientes/${id}/avaliacoes-risco`),
+          api<CasoResumo[]>(`/pacientes/${id}/casos`),
         ]);
         if (sess.status === "fulfilled") setSessoes(sess.value);
         if (resp.status === "fulfilled") setRespostas(resp.value);
@@ -155,6 +162,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
         if (tl.status === "fulfilled") setTimeline(tl.value.eventos);
         if (rAtual.status === "fulfilled") setRiscoAtual(rAtual.value);
         if (avals.status === "fulfilled") setAvaliacoes(avals.value);
+        if (cas.status === "fulfilled") setCasos(cas.value);
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) router.replace("/login");
         else toast.error(err instanceof ApiError ? err.message : "Erro");
@@ -173,6 +181,19 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
       setRiscoAtual(ra);
       setAvaliacoes(av);
     } catch { /* mantém estado anterior */ }
+  }
+
+  async function criarCaso() {
+    setCriandoCaso(true);
+    try {
+      const c = await api<{ id: string }>(`/pacientes/${id}/casos`, {
+        method: "POST", body: JSON.stringify({ titulo: null }),
+      });
+      router.push(`/casos/${c.id}`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Falha ao criar caso");
+      setCriandoCaso(false);
+    }
   }
 
   async function abrirDetalheRisco(avaliacaoId: string) {
@@ -660,6 +681,37 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
                   )}
                 </div>
                 <Button onClick={() => abrirDetalheRisco(a.id)}>Ver detalhes</Button>
+              </Card>
+            ))
+          )}
+        </div>
+
+        {/* ===== Casos (espinha Caso/PTS) ===== */}
+        <div role="tabpanel" id="panel-casos" aria-labelledby="tab-casos" hidden={tab !== "casos"}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 0 8px", gap: 8 }}>
+            <SectionTitle margin="0">Casos e PTS</SectionTitle>
+            <Button variant="primary" onClick={criarCaso} loading={criandoCaso}>
+              <FilePlus size={16} /> Novo caso
+            </Button>
+          </div>
+          <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 12px" }}>
+            Um caso agrega o cuidado desta pessoa e guarda o Projeto Terapêutico Singular (PTS)
+            versionado. O consultório pode usar um único caso; o serviço, um caso por linha de cuidado.
+          </p>
+          {casos.length === 0 ? (
+            <EmptyState icone={<Package size={28} />} frase="Nenhum caso aberto ainda." />
+          ) : (
+            casos.map((c) => (
+              <Card key={c.id} className="row-stack" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ fontWeight: 500 }}>{c.titulo || "Caso sem título"}</div>
+                  <div style={{ color: "var(--muted)", fontSize: 12, display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
+                    <StatusBadge status={c.status} />
+                    <span>Aberto {dataRelativa(c.aberto_em)}</span>
+                    <span>· PTS {c.pts_versao_atual ? `v${c.pts_versao_atual}` : "não iniciado"}</span>
+                  </div>
+                </div>
+                <Link href={`/casos/${c.id}`} className="btn">Abrir</Link>
               </Card>
             ))
           )}
