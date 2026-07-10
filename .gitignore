@@ -44,9 +44,10 @@ Thumbs.db
 *.log
 logs/
 
-# Acervo — PDFs são grandes e o Paul Baker / Maastricht são de terceiros.
-# Mantemos o manifest.toml versionado; PDFs ficam fora do repo.
-backend/acervo/*.pdf
+# Acervo — conteúdo (PDFs/DOCX/VTT, inclusive em subpastas) é grande e de terceiros.
+# Mantemos apenas o manifest.toml versionado; o conteúdo fica fora do repo.
+backend/acervo/*
+!backend/acervo/manifest.toml
 
 # Build
 dist/
