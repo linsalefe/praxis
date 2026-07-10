@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
-  BookOpen, CalendarDays, ChevronDown, Compass, FileWarning, IdCard, LayoutGrid, LogOut, Menu,
+  BookOpen, CalendarDays, ChevronDown, Compass, FileWarning, FolderKanban, IdCard, LayoutGrid, LogOut, Menu,
   UserCog, Users, UsersRound, Wallet,
 } from "lucide-react";
 import { api, clearToken } from "@/lib/api";
@@ -18,6 +18,7 @@ const NAV: Item[] = [
   { href: "/inicio", label: "Início", icon: <LayoutGrid size={16} /> },
   { href: "/agenda", label: "Agenda", icon: <CalendarDays size={16} /> },
   { href: "/pacientes", label: "Pacientes", icon: <Users size={16} /> },
+  { href: "/casos", label: "Casos", icon: <FolderKanban size={16} /> },
   { href: "/grupos", label: "Grupos", icon: <UsersRound size={16} /> },
   { href: "/sofia", label: "Sofia", icon: <PresenceMark size={16} /> },
   { href: "/biblioteca", label: "Biblioteca", icon: <BookOpen size={16} /> },

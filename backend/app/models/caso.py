@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -27,6 +27,10 @@ class Caso(Base):
 
     titulo: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="ativo")  # ativo | encerrado
+    # Compartilhamento com a equipe (Onda 2.1). false = sigilo estrito por
+    # profissional (padrão); true = caso visível/editável por toda a equipe clínica
+    # do tenant. Alterado só pelo dono do caso/owner (ver routers/casos.py).
+    compartilhado: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false", default=False)
     aberto_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     encerrado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

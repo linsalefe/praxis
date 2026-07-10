@@ -14,6 +14,7 @@ class CasoCreate(BaseModel):
 class CasoUpdate(BaseModel):
     titulo: str | None = None
     status: str | None = None  # 'ativo' | 'encerrado' (validado no router)
+    compartilhado: bool | None = None  # toggle de equipe (só dono/owner — validado no router)
 
 
 class PtsVersaoOut(BaseModel):
@@ -22,6 +23,7 @@ class PtsVersaoOut(BaseModel):
     versao: int
     conteudo: dict[str, str]
     criado_por: str
+    autor_nome: str | None = None  # quem escreveu esta versão (co-autoria)
     criado_em: datetime
 
 
@@ -30,6 +32,8 @@ class CasoOut(BaseModel):
     paciente_id: str
     titulo: str | None
     status: str
+    compartilhado: bool
+    pode_compartilhar: bool  # true se o usuário atual pode ligar/desligar o compartilhamento
     aberto_em: datetime
     encerrado_em: datetime | None
     criado_em: datetime
@@ -41,6 +45,19 @@ class CasoResumo(BaseModel):
     paciente_id: str
     titulo: str | None
     status: str
+    compartilhado: bool
+    aberto_em: datetime
+    pts_versao_atual: int | None = None
+
+
+class CasoCompartilhadoOut(BaseModel):
+    """Item do quadro 'casos compartilhados com a equipe'."""
+    id: str
+    paciente_id: str
+    paciente_nome: str
+    titulo: str | None
+    status: str
+    dono_nome: str | None
     aberto_em: datetime
     pts_versao_atual: int | None = None
 
@@ -96,4 +113,5 @@ class MatriciamentoOut(BaseModel):
     demanda: str | None
     discussao: str | None
     combinados: str | None
+    autor_nome: str | None = None  # quem registrou (co-autoria de equipe)
     criado_em: datetime
