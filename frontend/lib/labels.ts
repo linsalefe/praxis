@@ -46,6 +46,10 @@ const STATUS_LABEL: Record<string, string> = {
   risco_baixo: "Risco baixo",
   risco_moderado: "Risco moderado",
   risco_alto: "Risco alto",
+  // posvenção (andamento do processo)
+  aberto: "Aberto",
+  em_acompanhamento: "Em acompanhamento",
+  concluido: "Concluído",
 };
 
 /** Tom semântico → classe de badge existente no design system. */
@@ -83,6 +87,10 @@ const STATUS_TOM: Record<string, Tom> = {
   risco_baixo: "info",
   risco_moderado: "warn",
   risco_alto: "risk",
+  // posvenção
+  aberto: "warn",
+  em_acompanhamento: "info",
+  concluido: "pos",
 };
 
 export const TOM_CLASSE: Record<Tom, string> = {
@@ -216,4 +224,18 @@ const NIVEL_RISCO_LABEL: Record<string, string> = {
 export function nivelRiscoLabel(nivel: string | null | undefined): string {
   if (!nivel) return "—";
   return NIVEL_RISCO_LABEL[nivel] ?? humanizar(nivel);
+}
+
+// --- Posvenção: vínculo da pessoa falecida com o paciente-âncora ---
+const VINCULO_PERDA_LABEL: Record<string, string> = {
+  proprio_paciente: "O próprio paciente",
+  familiar: "Familiar",
+  amigo: "Amigo(a)/pessoa próxima",
+  pessoa_rede: "Pessoa da rede",
+  outro: "Outro",
+};
+
+export function vinculoPerdaLabel(v: string | null | undefined): string {
+  if (!v) return "—";
+  return VINCULO_PERDA_LABEL[v] ?? humanizar(v);
 }
