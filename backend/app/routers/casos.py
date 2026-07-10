@@ -13,17 +13,20 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
 
-from app.authz import carregar_paciente
+from app.authz import acessa_prontuario, carregar_paciente, is_owner, pode_acessar_paciente
 from app.casos.pts import PTS_SECAO_IDS, definicao
 from app.deps import SessionDep, get_current_user
+from app.models.audit import AuditLog
 from app.models.caso import Caso, PtsVersao
 from app.models.matriciamento import Matriciamento
+from app.models.paciente import Paciente
 from app.models.rede import MembroRede
 from app.models.user import User
 from app.schemas.caso import (
+    CasoCompartilhadoOut,
     CasoCreate,
     CasoOut,
     CasoResumo,
@@ -41,8 +44,19 @@ from app.security.crypto import decrypt_str, encrypt_str
 router = APIRouter(tags=["casos"])
 
 
+def _pode_compartilhar(user: User, caso: Caso) -> bool:
+    """Quem pode ligar/desligar o compartilhamento: dono do caso ou owner do tenant."""
+    return is_owner(user) or caso.criado_por == user.id
+
+
 async def _carregar_caso(session, user: User, caso_id: str) -> Caso:
-    """Carrega um caso do tenant, validando o sigilo pelo paciente dono."""
+    """Carrega um caso do tenant respeitando o sigilo.
+
+    Acesso é concedido quando (a) o usuário acessa o paciente dono do caso —
+    dono do paciente ou owner do tenant (sigilo estrito, padrão) — OU (b) o caso
+    está `compartilhado` e o usuário tem papel clínico (co-autoria de equipe,
+    Onda 2.1). Caso contrário, 404 (não vaza existência).
+    """
     try:
         cid = uuid.UUID(caso_id)
     except (ValueError, TypeError):
@@ -50,9 +64,23 @@ async def _carregar_caso(session, user: User, caso_id: str) -> Caso:
     caso = await session.get(Caso, cid)
     if caso is None or caso.tenant_id != user.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Caso não encontrado")
-    # Escopo por profissional: valida acesso ao paciente dono do caso (pode 404).
-    await carregar_paciente(session, user, caso.paciente_id)
-    return caso
+    pac = await session.get(Paciente, caso.paciente_id)
+    if pac is None or pac.tenant_id != user.tenant_id or pac.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Caso não encontrado")
+    if pode_acessar_paciente(user, pac):
+        return caso  # dono do paciente ou owner — sigilo estrito
+    if caso.compartilhado and acessa_prontuario(user):
+        return caso  # compartilhado com a equipe
+    raise HTTPException(status.HTTP_404_NOT_FOUND, "Caso não encontrado")
+
+
+async def _nomes_por_id(session, ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:
+    """Mapa user_id -> nome, para atribuir autoria (co-autoria de equipe)."""
+    ids = {i for i in ids if i is not None}
+    if not ids:
+        return {}
+    rows = (await session.scalars(select(User).where(User.id.in_(ids)))).all()
+    return {u.id: u.nome for u in rows}
 
 
 async def _pts_atual(session, caso_id: uuid.UUID) -> PtsVersao | None:
@@ -61,18 +89,22 @@ async def _pts_atual(session, caso_id: uuid.UUID) -> PtsVersao | None:
     )
 
 
-def _pts_out(p: PtsVersao) -> PtsVersaoOut:
+def _pts_out(p: PtsVersao, autor_nome: str | None = None) -> PtsVersaoOut:
     return PtsVersaoOut(
         id=str(p.id), caso_id=str(p.caso_id), versao=p.versao,
-        conteudo=p.conteudo or {}, criado_por=str(p.criado_por), criado_em=p.criado_em,
+        conteudo=p.conteudo or {}, criado_por=str(p.criado_por),
+        autor_nome=autor_nome, criado_em=p.criado_em,
     )
 
 
-def _caso_out(caso: Caso, pts: PtsVersao | None) -> CasoOut:
+def _caso_out(caso: Caso, pts: PtsVersao | None, user: User, autor_nome: str | None = None) -> CasoOut:
     return CasoOut(
         id=str(caso.id), paciente_id=str(caso.paciente_id), titulo=caso.titulo,
-        status=caso.status, aberto_em=caso.aberto_em, encerrado_em=caso.encerrado_em,
-        criado_em=caso.criado_em, pts_atual=_pts_out(pts) if pts else None,
+        status=caso.status, compartilhado=caso.compartilhado,
+        pode_compartilhar=_pode_compartilhar(user, caso),
+        aberto_em=caso.aberto_em, encerrado_em=caso.encerrado_em,
+        criado_em=caso.criado_em,
+        pts_atual=_pts_out(pts, autor_nome) if pts else None,
     )
 
 
@@ -101,7 +133,7 @@ async def criar_caso(
     session.add(caso)
     await session.commit()
     await session.refresh(caso)
-    return _caso_out(caso, None)
+    return _caso_out(caso, None, user)
 
 
 @router.get("/pacientes/{paciente_id}/casos", response_model=list[CasoResumo])
@@ -124,7 +156,46 @@ async def listar_casos(
         )
         out.append(CasoResumo(
             id=str(c.id), paciente_id=str(c.paciente_id), titulo=c.titulo,
-            status=c.status, aberto_em=c.aberto_em, pts_versao_atual=vmax,
+            status=c.status, compartilhado=c.compartilhado,
+            aberto_em=c.aberto_em, pts_versao_atual=vmax,
+        ))
+    return out
+
+
+# Declarado ANTES de "/casos/{caso_id}" para não ser capturado pela rota dinâmica.
+@router.get("/casos/compartilhados", response_model=list[CasoCompartilhadoOut])
+async def listar_compartilhados(
+    session: SessionDep,
+    user: Annotated[User, Depends(get_current_user)],
+) -> list[CasoCompartilhadoOut]:
+    """Quadro de casos compartilhados com a equipe do tenant (Onda 2.1).
+
+    A porta de entrada da equipe: um profissional que não é dono do paciente não
+    chega ao caso pelo prontuário, então descobre os casos compartilhados aqui.
+    """
+    if not acessa_prontuario(user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Sem acesso a prontuário")
+    q = (
+        select(Caso)
+        .where(Caso.tenant_id == user.tenant_id, Caso.compartilhado.is_(True))
+        .order_by(Caso.atualizado_em.desc())
+    )
+    casos = list((await session.scalars(q)).all())
+    donos = await _nomes_por_id(session, {c.criado_por for c in casos})
+    out: list[CasoCompartilhadoOut] = []
+    for c in casos:
+        pac = await session.get(Paciente, c.paciente_id)
+        if pac is None or pac.deleted_at is not None:
+            continue
+        vmax = await session.scalar(
+            select(func.max(PtsVersao.versao)).where(PtsVersao.caso_id == c.id)
+        )
+        out.append(CasoCompartilhadoOut(
+            id=str(c.id), paciente_id=str(c.paciente_id),
+            paciente_nome=decrypt_str(pac.nome_cifrado) or "—",
+            titulo=c.titulo, status=c.status,
+            dono_nome=donos.get(c.criado_por),
+            aberto_em=c.aberto_em, pts_versao_atual=vmax,
         ))
     return out
 
@@ -136,13 +207,16 @@ async def detalhe_caso(
     user: Annotated[User, Depends(get_current_user)],
 ) -> CasoOut:
     caso = await _carregar_caso(session, user, caso_id)
-    return _caso_out(caso, await _pts_atual(session, caso.id))
+    pts = await _pts_atual(session, caso.id)
+    autor = (await _nomes_por_id(session, {pts.criado_por})).get(pts.criado_por) if pts else None
+    return _caso_out(caso, pts, user, autor)
 
 
 @router.patch("/casos/{caso_id}", response_model=CasoOut)
 async def atualizar_caso(
     caso_id: str,
     body: CasoUpdate,
+    request: Request,
     session: SessionDep,
     user: Annotated[User, Depends(get_current_user)],
 ) -> CasoOut:
@@ -154,9 +228,26 @@ async def atualizar_caso(
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "status inválido")
         caso.status = body.status
         caso.encerrado_em = datetime.now(timezone.utc) if body.status == "encerrado" else None
+    if body.compartilhado is not None and body.compartilhado != caso.compartilhado:
+        # Ligar/desligar o compartilhamento controla a exposição do caso à equipe:
+        # ação sensível, restrita ao dono do caso/owner e auditada.
+        if not _pode_compartilhar(user, caso):
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Só o responsável pelo caso ou o owner pode alterar o compartilhamento.",
+            )
+        caso.compartilhado = body.compartilhado
+        ip = request.client.host if request.client else None
+        session.add(AuditLog(
+            tenant_id=user.tenant_id, user_id=user.id, ip=ip,
+            acao="CASO_COMPARTILHAR", entidade="Caso", entidade_id=str(caso.id),
+            meta={"compartilhado": caso.compartilhado},
+        ))
     await session.commit()
     await session.refresh(caso)
-    return _caso_out(caso, await _pts_atual(session, caso.id))
+    pts = await _pts_atual(session, caso.id)
+    autor = (await _nomes_por_id(session, {pts.criado_por})).get(pts.criado_por) if pts else None
+    return _caso_out(caso, pts, user, autor)
 
 
 @router.post("/casos/{caso_id}/pts", response_model=PtsVersaoOut, status_code=status.HTTP_201_CREATED)
@@ -181,7 +272,7 @@ async def salvar_pts(
     session.add(pts)
     await session.commit()
     await session.refresh(pts)
-    return _pts_out(pts)
+    return _pts_out(pts, user.nome)
 
 
 @router.get("/casos/{caso_id}/pts", response_model=list[PtsVersaoOut])
@@ -192,7 +283,9 @@ async def historico_pts(
 ) -> list[PtsVersaoOut]:
     caso = await _carregar_caso(session, user, caso_id)
     q = select(PtsVersao).where(PtsVersao.caso_id == caso.id).order_by(PtsVersao.versao.desc())
-    return [_pts_out(p) for p in (await session.scalars(q)).all()]
+    versoes = list((await session.scalars(q)).all())
+    nomes = await _nomes_por_id(session, {p.criado_por for p in versoes})
+    return [_pts_out(p, nomes.get(p.criado_por)) for p in versoes]
 
 
 # --------------------------------------------------------------------------
@@ -295,11 +388,12 @@ async def remover_membro(
 # Matriciamento / apoio matricial — Onda 2.4
 # --------------------------------------------------------------------------
 
-def _matric_out(m: Matriciamento) -> MatriciamentoOut:
+def _matric_out(m: Matriciamento, autor_nome: str | None = None) -> MatriciamentoOut:
     return MatriciamentoOut(
         id=str(m.id), caso_id=str(m.caso_id), data=m.data,
         equipe_referencia=m.equipe_referencia, demanda=m.demanda,
-        discussao=m.discussao, combinados=m.combinados, criado_em=m.criado_em,
+        discussao=m.discussao, combinados=m.combinados,
+        autor_nome=autor_nome, criado_em=m.criado_em,
     )
 
 
@@ -311,7 +405,9 @@ async def listar_matriciamentos(
 ) -> list[MatriciamentoOut]:
     caso = await _carregar_caso(session, user, caso_id)
     q = select(Matriciamento).where(Matriciamento.caso_id == caso.id).order_by(Matriciamento.data.desc())
-    return [_matric_out(m) for m in (await session.scalars(q)).all()]
+    registros = list((await session.scalars(q)).all())
+    nomes = await _nomes_por_id(session, {m.criado_por for m in registros})
+    return [_matric_out(m, nomes.get(m.criado_por)) for m in registros]
 
 
 @router.post("/casos/{caso_id}/matriciamentos", response_model=MatriciamentoOut, status_code=status.HTTP_201_CREATED)
@@ -331,7 +427,7 @@ async def criar_matriciamento(
     session.add(m)
     await session.commit()
     await session.refresh(m)
-    return _matric_out(m)
+    return _matric_out(m, user.nome)
 
 
 @router.delete("/casos/{caso_id}/matriciamentos/{matric_id}", status_code=status.HTTP_204_NO_CONTENT)

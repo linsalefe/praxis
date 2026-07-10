@@ -4,7 +4,7 @@ import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { CheckCircle2, FileText, RotateCcw, Save, Trash2, UserPlus } from "lucide-react";
+import { CheckCircle2, FileText, RotateCcw, Save, Share2, Trash2, UserPlus, Users2 } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { formatNome } from "@/lib/format";
 import { dataRelativa, dataCurtaComHora } from "@/lib/date";
@@ -21,10 +21,11 @@ import { vinculoTipoLabel } from "@/lib/labels";
 type Secao = { id: string; titulo: string; ajuda: string };
 type PtsVersao = {
   id: string; caso_id: string; versao: number;
-  conteudo: Record<string, string>; criado_por: string; criado_em: string;
+  conteudo: Record<string, string>; criado_por: string; autor_nome: string | null; criado_em: string;
 };
 type Caso = {
   id: string; paciente_id: string; titulo: string | null; status: string;
+  compartilhado: boolean; pode_compartilhar: boolean;
   aberto_em: string; encerrado_em: string | null; criado_em: string;
   pts_atual: PtsVersao | null;
 };
@@ -35,7 +36,8 @@ type MembroRede = {
 };
 type Matriciamento = {
   id: string; caso_id: string; data: string; equipe_referencia: string | null;
-  demanda: string | null; discussao: string | null; combinados: string | null; criado_em: string;
+  demanda: string | null; discussao: string | null; combinados: string | null;
+  autor_nome: string | null; criado_em: string;
 };
 
 export default function CasoPage({ params }: { params: Promise<{ id: string }> }) {
@@ -200,6 +202,18 @@ export default function CasoPage({ params }: { params: Promise<{ id: string }> }
     }
   }
 
+  async function alternarCompartilhamento() {
+    if (!caso) return;
+    const novo = !caso.compartilhado;
+    try {
+      const atualizado = await api<Caso>(`/casos/${id}`, { method: "PATCH", body: JSON.stringify({ compartilhado: novo }) });
+      setCaso(atualizado);
+      toast.success(novo ? "Caso compartilhado com a equipe." : "Compartilhamento encerrado.");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Falha");
+    }
+  }
+
   if (loading) {
     return (
       <>
@@ -220,8 +234,13 @@ export default function CasoPage({ params }: { params: Promise<{ id: string }> }
 
         <Card style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: 240 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
               <StatusBadge status={caso.status} />
+              {caso.compartilhado && (
+                <span className="badge badge-info" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <Users2 size={12} /> Compartilhado
+                </span>
+              )}
               {pac && (
                 <Link className="link" href={`/pacientes/${caso.paciente_id}`}>{formatNome(pac.nome)}</Link>
               )}
@@ -238,9 +257,16 @@ export default function CasoPage({ params }: { params: Promise<{ id: string }> }
               />
             </div>
           </div>
-          <Button onClick={alternarStatus}>
-            {caso.status === "ativo" ? <><CheckCircle2 size={16} /> Encerrar caso</> : <><RotateCcw size={16} /> Reabrir</>}
-          </Button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {caso.pode_compartilhar && (
+              <Button onClick={alternarCompartilhamento} title="Controla quem da equipe vê e co-edita este caso">
+                <Share2 size={16} /> {caso.compartilhado ? "Deixar de compartilhar" : "Compartilhar com a equipe"}
+              </Button>
+            )}
+            <Button onClick={alternarStatus}>
+              {caso.status === "ativo" ? <><CheckCircle2 size={16} /> Encerrar caso</> : <><RotateCcw size={16} /> Reabrir</>}
+            </Button>
+          </div>
         </Card>
 
         {/* Editor do PTS */}
@@ -248,7 +274,10 @@ export default function CasoPage({ params }: { params: Promise<{ id: string }> }
           <SectionTitle margin="0">
             Projeto Terapêutico Singular
             {caso.pts_atual && (
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--muted)" }}> · v{caso.pts_atual.versao}</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--muted)" }}>
+                {" · "}v{caso.pts_atual.versao}
+                {caso.pts_atual.autor_nome && <span style={{ fontFamily: "var(--font-sans)" }}> · {formatNome(caso.pts_atual.autor_nome)}</span>}
+              </span>
             )}
           </SectionTitle>
           <Button variant="primary" onClick={salvarPts} loading={salvando}>
@@ -256,8 +285,10 @@ export default function CasoPage({ params }: { params: Promise<{ id: string }> }
           </Button>
         </div>
         <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 12px" }}>
-          Cada save cria uma nova versão (o histórico é preservado). v1 individual —
-          a co-autoria pela equipe entra numa próxima onda.
+          Cada save cria uma nova versão (o histórico é preservado){caso.compartilhado ? " e fica atribuída a quem escreveu" : ""}.
+          {caso.compartilhado
+            ? " Este caso está compartilhado: a equipe constrói o PTS a várias mãos."
+            : " Compartilhe o caso com a equipe para construir o PTS em conjunto."}
         </p>
 
         {secoes.map((s) => (
@@ -347,7 +378,7 @@ export default function CasoPage({ params }: { params: Promise<{ id: string }> }
           <Card key={m.id} style={{ marginBottom: 8 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
               <div style={{ color: "var(--muted)", fontSize: 12 }}>
-                {dataCurtaComHora(m.data)}{m.equipe_referencia && ` · ${m.equipe_referencia}`}
+                {dataCurtaComHora(m.data)}{m.equipe_referencia && ` · ${m.equipe_referencia}`}{m.autor_nome && ` · ${formatNome(m.autor_nome)}`}
               </div>
               <Button onClick={() => removerMatriciamento(m.id)} aria-label="Remover matriciamento"><Trash2 size={14} /></Button>
             </div>
@@ -389,6 +420,7 @@ export default function CasoPage({ params }: { params: Promise<{ id: string }> }
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span className="badge">v{v.versao}</span>
                 <span style={{ color: "var(--muted)", fontSize: 12 }}>{dataCurtaComHora(v.criado_em)}</span>
+                {v.autor_nome && <span style={{ color: "var(--muted)", fontSize: 12 }}>· {formatNome(v.autor_nome)}</span>}
               </div>
               <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 6 }}>
                 {secoes.filter((s) => v.conteudo[s.id]).map((s) => (
