@@ -4,11 +4,11 @@ import { useEffect, useState, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Activity, CalendarClock, CalendarPlus, ClipboardCheck, ClipboardList, Download, FilePlus, FileSignature, FileText, Package, Paperclip, ShieldAlert, Trash2, Video } from "lucide-react";
+import { Activity, CalendarClock, CalendarPlus, ClipboardCheck, ClipboardList, Download, FilePlus, FileSignature, FileText, HeartHandshake, Package, Paperclip, ShieldAlert, Trash2, Video } from "lucide-react";
 import { api, ApiError, getToken } from "@/lib/api";
 import { formatCentavos, reaisParaCentavos } from "@/lib/money";
-import { dataRelativa, dataCurtaComHora, sufixoRelativoProximo } from "@/lib/date";
-import { instrumentoTipoLabel, modalidadeLabel, docTipoLabel, nivelRiscoLabel } from "@/lib/labels";
+import { dataRelativa, dataCurta, dataCurtaComHora, sufixoRelativoProximo } from "@/lib/date";
+import { instrumentoTipoLabel, modalidadeLabel, docTipoLabel, nivelRiscoLabel, vinculoPerdaLabel } from "@/lib/labels";
 import { formatNome } from "@/lib/format";
 import { Topbar } from "@/components/Topbar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -20,6 +20,7 @@ import { PrepararSessaoModal } from "@/components/PrepararSessaoModal";
 import { DocumentoModal } from "@/components/DocumentoModal";
 import { SofiaPainelProntuario } from "@/components/SofiaPainelProntuario";
 import { RiscoModal } from "@/components/RiscoModal";
+import { PosvencaoModal, type PosvencaoDetalhe } from "@/components/PosvencaoModal";
 import { PresenceMark } from "@/components/ui/PresenceMark";
 import { PacienteCard } from "@/components/ui/PacienteCard";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -94,6 +95,10 @@ type CasoResumo = {
   id: string; paciente_id: string; titulo: string | null;
   status: string; aberto_em: string; pts_versao_atual: number | null;
 };
+type PosvencaoResumo = {
+  id: string; paciente_id: string; ocorrido_em: string;
+  vinculo_perda: string; status: string; passos_preenchidos: number;
+};
 
 export default function FichaPacientePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -129,6 +134,9 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
   const [riscoDetalhe, setRiscoDetalhe] = useState<AvaliacaoDetalhe | null>(null);
   const [casos, setCasos] = useState<CasoResumo[]>([]);
   const [criandoCaso, setCriandoCaso] = useState(false);
+  const [posvencoes, setPosvencoes] = useState<PosvencaoResumo[]>([]);
+  const [posvModal, setPosvModal] = useState(false);
+  const [posvEditar, setPosvEditar] = useState<PosvencaoDetalhe | null>(null);
 
   useEffect(() => {
     if (!getToken()) return void router.replace("/login");
@@ -141,7 +149,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
         } catch { /* ignora */ }
         // Blocos independentes (só dependem do id): buscados em paralelo. allSettled
         // → uma falha em bloco não-crítico não apaga o prontuário inteiro.
-        const [sess, resp, anex, docs, res, traj, tl, rAtual, avals, cas] = await Promise.allSettled([
+        const [sess, resp, anex, docs, res, traj, tl, rAtual, avals, cas, posv] = await Promise.allSettled([
           api<Sessao[]>(`/sessoes/paciente/${id}`),
           api<RespInstr[]>(`/pacientes/${id}/respostas-instrumento`),
           api<Anexo[]>(`/pacientes/${id}/anexos`),
@@ -152,6 +160,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
           api<RiscoAtual>(`/pacientes/${id}/risco-atual`),
           api<AvaliacaoResumo[]>(`/pacientes/${id}/avaliacoes-risco`),
           api<CasoResumo[]>(`/pacientes/${id}/casos`),
+          api<PosvencaoResumo[]>(`/pacientes/${id}/posvencao`),
         ]);
         if (sess.status === "fulfilled") setSessoes(sess.value);
         if (resp.status === "fulfilled") setRespostas(resp.value);
@@ -163,6 +172,7 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
         if (rAtual.status === "fulfilled") setRiscoAtual(rAtual.value);
         if (avals.status === "fulfilled") setAvaliacoes(avals.value);
         if (cas.status === "fulfilled") setCasos(cas.value);
+        if (posv.status === "fulfilled") setPosvencoes(posv.value);
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) router.replace("/login");
         else toast.error(err instanceof ApiError ? err.message : "Erro");
@@ -201,6 +211,20 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
       setRiscoDetalhe(await api<AvaliacaoDetalhe>(`/avaliacoes-risco/${avaliacaoId}`));
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Falha ao carregar avaliação");
+    }
+  }
+
+  async function recarregarPosvencao() {
+    try {
+      setPosvencoes(await api<PosvencaoResumo[]>(`/pacientes/${id}/posvencao`));
+    } catch { /* mantém estado anterior */ }
+  }
+
+  async function abrirEdicaoPosvencao(registroId: string) {
+    try {
+      setPosvEditar(await api<PosvencaoDetalhe>(`/posvencao/${registroId}`));
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Falha ao carregar posvenção");
     }
   }
 
@@ -684,6 +708,34 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
               </Card>
             ))
           )}
+
+          {/* Posvenção — cuidado após morte por suicídio (fecha Onda 1.1) */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "24px 0 8px", gap: 8 }}>
+            <SectionTitle margin="0">Posvenção</SectionTitle>
+            <Button onClick={() => setPosvModal(true)}><HeartHandshake size={16} /> Registrar posvenção</Button>
+          </div>
+          <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 12px" }}>
+            Cuidado após uma morte por suicídio: acolhimento dos enlutados (que têm risco
+            aumentado), comunicação segura e acompanhamento do luto.
+          </p>
+          {posvencoes.length === 0 ? (
+            <EmptyState icone={<HeartHandshake size={28} />} frase="Nenhum registro de posvenção." />
+          ) : (
+            posvencoes.map((p) => (
+              <Card key={p.id} className="row-stack" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <StatusBadge status={p.status} />
+                    <span style={{ fontSize: 13 }}>{vinculoPerdaLabel(p.vinculo_perda)}</span>
+                  </div>
+                  <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
+                    Óbito em {dataCurta(p.ocorrido_em)} · {p.passos_preenchidos} de 7 passos do protocolo
+                  </div>
+                </div>
+                <Button onClick={() => abrirEdicaoPosvencao(p.id)}>Abrir</Button>
+              </Card>
+            ))
+          )}
         </div>
 
         {/* ===== Casos (espinha Caso/PTS) ===== */}
@@ -768,6 +820,14 @@ export default function FichaPacientePage({ params }: { params: Promise<{ id: st
           pacienteId={id}
           onClose={() => setRiscoModal(false)}
           onSaved={() => { setRiscoModal(false); mudarTab("risco"); recarregarRisco(); }}
+        />
+      )}
+      {(posvModal || posvEditar) && (
+        <PosvencaoModal
+          pacienteId={id}
+          registro={posvEditar}
+          onClose={() => { setPosvModal(false); setPosvEditar(null); }}
+          onSaved={() => { setPosvModal(false); setPosvEditar(null); mudarTab("risco"); recarregarPosvencao(); }}
         />
       )}
       {riscoDetalhe && (

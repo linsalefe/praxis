@@ -50,6 +50,21 @@ export function dataCurtaComHora(input: Date | string | null | undefined): strin
 }
 
 /**
+ * Data-só ("YYYY-MM-DD") formatada como "dd/mm/aaaa", sem escorregar de dia por
+ * fuso (a string é lida como data local, não UTC). Aceita também Date/ISO.
+ */
+export function dataCurta(input: Date | string | null | undefined): string {
+  if (!input) return "—";
+  if (typeof input === "string") {
+    const m = input.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  }
+  const d = typeof input === "string" ? new Date(input) : input;
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+/**
  * Sufixo relativo curto — só quando o evento está a ≤6 dias (passado ou futuro):
  * "hoje", "amanhã", "ontem", "em N dias", "há N dias". Fora dessa janela, "".
  */
